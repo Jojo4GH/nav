@@ -14,11 +14,11 @@ kotlin {
         )
     }
 
-    jvm {
-        mainRun {
-            mainClass.set("$group.MainKt")
-        }
-    }
+//    jvm {
+//        mainRun {
+//            mainClass.set("$group.MainKt")
+//        }
+//    }
 
     linuxX64 {
         binaries {
@@ -46,14 +46,12 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlinx.coroutines)
+                implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io)
 
                 implementation(libs.mordant)
                 implementation(libs.mordant.coroutines)
             }
-        }
-        jvmMain {
-
         }
         nativeMain {
 

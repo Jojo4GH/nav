@@ -1,8 +1,8 @@
 package de.jonasbroeckmann.nav
 
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.toKString
+import kotlinx.cinterop.*
 import kotlinx.io.files.Path
+import platform.posix.*
 import kotlin.experimental.ExperimentalNativeApi
 
 
@@ -12,9 +12,19 @@ actual fun getenv(key: String): String? {
 }
 
 actual fun changeDirectory(path: Path): Boolean {
-    return platform.posix.chdir(path.toString()) == 0
+    return chdir(path.toString()) == 0
 }
 
 
 @OptIn(ExperimentalNativeApi::class)
 actual val platformName: String = "${Platform.osFamily} on ${Platform.cpuArchitecture}"
+
+
+@OptIn(ExperimentalNativeApi::class)
+actual val RealSystemPathSeparator: Char = when (Platform.osFamily) {
+    OsFamily.WINDOWS -> '\\'
+    else -> '/'
+}
+
+
+
