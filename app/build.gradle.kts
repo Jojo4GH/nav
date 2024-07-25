@@ -4,7 +4,7 @@ plugins {
     // alias(libs.plugins.compose.compiler)
 }
 
-group = "org.example"
+group = "de.jonasbroeckmann.nav"
 version = "1.0-SNAPSHOT"
 
 kotlin {
@@ -34,18 +34,22 @@ kotlin {
             }
         }
     }
-    macosX64 {
-        binaries {
-            executable {
-                entryPoint = "$group.main"
-            }
-        }
-    }
+//    macosX64 {
+//        binaries {
+//            executable {
+//                entryPoint = "$group.main"
+//            }
+//        }
+//    }
 
     sourceSets {
         commonMain {
             dependencies {
                 implementation(libs.kotlinx.coroutines)
+                implementation(libs.kotlinx.io)
+
+                implementation(libs.mordant)
+                implementation(libs.mordant.coroutines)
             }
         }
         jvmMain {

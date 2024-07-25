@@ -9,5 +9,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "kotlin-template"
+rootProject.name = "nav"
 include("app")
