@@ -27,6 +27,13 @@ kotlin {
             }
         }
     }
+    linuxArm64 {
+        binaries {
+            executable {
+                entryPoint = "$group.main"
+            }
+        }
+    }
     mingwX64 {
         binaries {
             executable {

@@ -12,13 +12,16 @@ import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.format
+import kotlinx.datetime.format.DateTimeComponents
+import kotlinx.datetime.format.MonthNames
 import kotlinx.io.buffered
-import kotlinx.io.files.FileMetadata
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemPathSeparator
 import kotlinx.io.writeString
+import kotlin.time.Duration.Companion.days
 
 private val terminal = Terminal()
 
@@ -66,7 +69,7 @@ expect fun changeDirectory(path: Path): Boolean
 
 
 private data class Config(
-    val limit: Int = 20,
+    val limit: Int = 32,
     val clearOnExit: Boolean = true,
 
     val cursorMarker: String? = null,
@@ -93,7 +96,7 @@ data class Entry(
     val isDirectory get() = stat.mode.isDirectory
     val isRegularFile get() = stat.mode.isRegularFile
     val isSymbolicLink get() = stat.mode.isSymbolicLink
-    val size get() = stat.size.takeIf { it >= 0 }
+    val size get() = stat.size.takeIf { it >= 0 && !isDirectory }
 }
 
 
@@ -213,7 +216,7 @@ private class SelectInputAnimation(
             key = config.keySubmit,
             description = "cd & exit",
             style = TextColors.rgb("1dff7b"),
-            condition = { directory != workingDirectory },
+            condition = { directory != workingDirectory && filter.isEmpty() },
             action = { exit(directory) }
         )
         val exit = KeyAction(
@@ -309,6 +312,7 @@ private class SelectInputAnimation(
                     cell("Size") {
                         align = TextAlign.RIGHT
                     }
+                    cell("Last Modified")
                     cell("Name")
                 }
             }
@@ -321,6 +325,7 @@ private class SelectInputAnimation(
 
                     fun SectionBuilder.more(n: Int) {
                         row {
+                            cell("")
                             cell("")
                             cell("")
                             cell("… $n more") {
@@ -346,12 +351,31 @@ private class SelectInputAnimation(
                             align = TextAlign.RIGHT
                         }
 
-                        val instant = entry.stat.lastModificationTime
-
-                        cell(instant.format("yyyy-MM-dd HH:mm:ss"))
+                        cell(renderTime(entry.stat.lastModificationTime))
 
                         val name = entry.path.name
+                            .let {
+                                if (s.filter.isNotEmpty()) {
+                                    // highlight all filter occurrences
+                                    var index = 0
+                                    var result = ""
+                                    while (index < it.length) {
+                                        val found = it.indexOf(s.filter, index, ignoreCase = true)
+                                        if (found < 0) {
+                                            result += it.substring(index, it.length)
+                                            break
+                                        }
+                                        result += it.substring(index, found)
+                                        index = found
+
+                                        result += TextColors.brightRed(it.substring(index, index + s.filter.length))
+                                        index += s.filter.length
+                                    }
+                                    result
+                                } else it
+                            }
                             .let { if (i == selectedIndex) highlighted(it) else it }
+                            .let { "\u0006$it" } // prevent filter highlighting from getting removed
                             .let {
                                 when {
                                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
@@ -446,6 +470,22 @@ private class SelectInputAnimation(
         }.joinToString(dim(" • "))
     }
 
+    private fun renderPermissions(stat: Stat): String {
+        val mode = stat.mode
+        val user = mode.user
+        val group = mode.group
+        val others = mode.others
+
+        fun render(perm: Stat.Mode.Permissions): String {
+            val r = if (perm.canRead) TextColors.red("r") else dim("-")
+            val w = if (perm.canWrite) TextColors.green("w") else dim("-")
+            val x = if (perm.canExecute) TextColors.brightBlue("x") else dim("-")
+            return "$r$w$x"
+        }
+
+        return "${render(user)}${render(group)}${render(others)}"
+    }
+
     private fun renderFileSize(bytes: Long): String {
         val numStyle = TextStyle(TextColors.brightYellow)
         val unitStyle = TextStyle(TextColors.brightYellow, dim = true)
@@ -473,20 +513,29 @@ private class SelectInputAnimation(
         return "${numStyle(value.format())}${unitStyle(units[i])}"
     }
 
-    private fun renderPermissions(stat: Stat): String {
-        val mode = stat.mode
-        val user = mode.user
-        val group = mode.group
-        val others = mode.others
-
-        fun render(perm: Stat.Mode.Permissions): String {
-            val r = if (perm.canRead) TextColors.red("r") else dim("-")
-            val w = if (perm.canWrite) TextColors.green("w") else dim("-")
-            val x = if (perm.canExecute) TextColors.blue("x") else dim("-")
-            return "$r$w$x"
+    private fun renderTime(instant: Instant): String {
+        val now = Clock.System.now()
+        val duration = now - instant
+        val format = if (duration > 365.days) DateTimeComponents.Format {
+            dayOfMonth()
+            chars(" ")
+            monthName(MonthNames.ENGLISH_ABBREVIATED)
+            chars("  ")
+            year()
+        } else DateTimeComponents.Format {
+            dayOfMonth()
+            chars(" ")
+            monthName(MonthNames.ENGLISH_ABBREVIATED)
+            chars(" ")
+            hour()
+            chars(":")
+            minute()
         }
 
-        return "${render(user)}${render(group)}${render(others)}"
+        val halfBrightnessAtHours = 6L
+        val brightness = 1L / ((duration.inWholeMinutes / (halfBrightnessAtHours * 60L)) + 1)
+        val color = TextColors.hsv(120, 1, brightness * 0.6 + 0.4)
+        return color(instant.format(format))
     }
 }
 
