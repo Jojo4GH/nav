@@ -1,9 +1,12 @@
 package de.jonasbroeckmann.nav
 
+import com.github.ajalt.colormath.model.RGB
 import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.input.*
 import com.github.ajalt.mordant.input.InputReceiver.Status
 import com.github.ajalt.mordant.rendering.*
+import com.github.ajalt.mordant.rendering.TextColors.Companion.color
+import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.rendering.TextStyles.dim
 import com.github.ajalt.mordant.table.Borders
 import com.github.ajalt.mordant.table.SectionBuilder
@@ -19,18 +22,11 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemPathSeparator
 import kotlinx.io.writeString
 import kotlin.time.Duration.Companion.days
 
 private val terminal = Terminal()
 
-private val workingDirectory: Path = SystemFileSystem.resolve(Path("."))
-
-private val userHome: Path = (getenv("HOME") ?: getenv("USERPROFILE"))
-    ?.let { SystemFileSystem.resolve(Path(it)) }
-    ?: throw IllegalStateException("Could not determine user home directory")
-private val navFile = userHome / ".nav-cd"
 
 
 fun main() {
@@ -53,6 +49,9 @@ fun main() {
     }
 }
 
+
+private val navFile = userHome / ".nav-cd"
+
 fun broadcastChangeDirectory(path: Path) {
     if (SystemFileSystem.exists(navFile)) {
         terminal.danger("$navFile already exists")
@@ -63,31 +62,6 @@ fun broadcastChangeDirectory(path: Path) {
     }
 }
 
-expect fun getenv(key: String): String?
-
-expect fun changeDirectory(path: Path): Boolean
-
-
-private data class Config(
-    val limit: Int = 32,
-    val clearOnExit: Boolean = true,
-
-    val cursorMarker: String? = null,
-    val selectedStyle: TextStyle? = null,
-    val unselectedTitleStyle: TextStyle? = null,
-
-    val keyNext: KeyboardEvent = KeyboardEvent("ArrowDown"),
-    val keyPrev: KeyboardEvent = KeyboardEvent("ArrowUp"),
-    val keyNavUp: KeyboardEvent = KeyboardEvent("ArrowLeft"),
-    val keyNavDown: KeyboardEvent = KeyboardEvent("ArrowRight"),
-
-    val keySubmit: KeyboardEvent = KeyboardEvent("Enter"),
-
-    val keyAutocompleteFilter: KeyboardEvent = KeyboardEvent("Tab"),
-    val keyClearFilter: KeyboardEvent = KeyboardEvent("Escape"),
-
-    val showInstructions: Boolean = true,
-)
 
 data class Entry(
     val path: Path,
@@ -116,9 +90,9 @@ private class SelectInputAnimation(
         val exit: Path? = null,
     ) {
         val filteredItems: List<Entry> by lazy {
-            if (filter.isEmpty()) items else items.filter {
-                filter.lowercase() in it.path.name.lowercase()
-            }
+            if (filter.isEmpty()) return@lazy items
+            items.filter { filter.lowercase() in it.path.name.lowercase() }
+                .sortedByDescending { it.path.name.startsWith(filter) }
         }
         val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
 
@@ -176,59 +150,60 @@ private class SelectInputAnimation(
         config: Config
     ) {
         val cursorUp = KeyAction(
-            key = config.keyPrev,
+            key = config.keys.cursor.up,
             condition = { filteredItems.isNotEmpty() },
             action = { withCursor(cursor - 1) }
         )
         val cursorDown = KeyAction(
-            key = config.keyNext,
+            key = config.keys.cursor.down,
             condition = { filteredItems.isNotEmpty() },
             action = { withCursor(cursor + 1) }
         )
         val cursorHome = KeyAction(
-            key = KeyboardEvent("Home"),
+            key = config.keys.cursor.home,
             condition = { filteredItems.isNotEmpty() },
             action = { withCursor(0) }
         )
         val cursorEnd = KeyAction(
-            key = KeyboardEvent("End"),
+            key = config.keys.cursor.end,
             condition = { filteredItems.isNotEmpty() },
             action = { withCursor(filteredItems.lastIndex) }
         )
 
         val navigateUp = KeyAction(
-            key = config.keyNavUp,
+            key = config.keys.nav.up,
             condition = { directory.parent != null },
             action = { navigatedUp() }
         )
         val navigateInto = KeyAction(
-            key = config.keyNavDown,
+            key = config.keys.nav.into,
             condition = { currentEntry?.isDirectory == true },
             action = { navigatedInto(currentEntry) }
         )
         val navigateOpen = KeyAction(
-            key = config.keyNavDown,
+            key = config.keys.nav.open,
             description = "open file",
+            style = rgb(config.colors.file),
             condition = { currentEntry?.isRegularFile == true },
             action = { exit(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
         )
 
         val exitCD = KeyAction(
-            key = config.keySubmit,
-            description = "cd & exit",
-            style = TextColors.rgb("1dff7b"),
+            key = config.keys.submit,
+            description = "exit here",
+            style = rgb(config.colors.path),
             condition = { directory != workingDirectory && filter.isEmpty() },
             action = { exit(directory) }
         )
         val exit = KeyAction(
-            key = KeyboardEvent("Escape"),
-            description = "exit",
+            key = config.keys.cancel,
+            description = "cancel",
             condition = { filter.isEmpty() },
             action = { exit() }
         )
 
         val autocompleteFilter = KeyAction(
-            key = config.keyAutocompleteFilter,
+            key = config.keys.filter.autocomplete,
             description = "autocomplete",
             condition = { filter.isNotEmpty() && items.isNotEmpty() },
             action = {
@@ -240,7 +215,7 @@ private class SelectInputAnimation(
             }
         )
         val clearFilter = KeyAction(
-            key = config.keyClearFilter,
+            key = config.keys.filter.clear,
             description = "clear filter",
             condition = { filter.isNotEmpty() },
             action = { filtered("") }
@@ -277,22 +252,24 @@ private class SelectInputAnimation(
 
 
     private val animation = terminal.animation<State> { s ->
+
+        val filterStyle = rgb(config.colors.filter) + TextStyles.bold
+        val filterMarkerStyle = rgb(config.colors.filterMarker) + TextStyles.bold
+        val dirStyle = rgb(config.colors.directory)
+        val fileStyle = rgb(config.colors.file)
+        val linkStyle = rgb(config.colors.link)
+
+
         val entries = s.filteredItems
         val selectedIndex = s.cursor
 
-        val filterPrompt = terminal.theme.style("select.cursor")("$RealSystemPathSeparator")
-        val titleStyle = TextColors.rgb("1dff7b")
-        val filterStyle = TextStyle(TextColors.brightWhite)
         val title = Text(when {
-            s.filter.isNotEmpty() -> "${titleStyle("${s.directory}")} $filterPrompt ${filterStyle(s.filter)}"
-            else -> titleStyle("${s.directory}")
+            s.filter.isNotEmpty() -> "${renderPath(s.directory)} $RealSystemPathSeparator ${filterStyle(s.filter)}"
+            else -> renderPath(s.directory)
         })
 
-        val bottom = if (config.showInstructions) Text(buildInstructions(s)) else null
+        val bottom = if (config.hideHints) null else Text(renderHints(s))
 
-        val dirStyle = TextColors.rgb("2fa2ff")
-        val fileStyle = TextStyle(TextColors.brightWhite)
-        val linkStyle = TextStyle(TextColors.brightCyan)
 
         val highlighted = TextStyle(inverse = true)
 
@@ -300,6 +277,7 @@ private class SelectInputAnimation(
             captionTop(title)
             if (bottom != null) captionBottom(bottom)
 
+            overflowWrap = OverflowWrap.ELLIPSES
             cellBorders = Borders.LEFT_RIGHT
             tableBorders = Borders.NONE
             borderType = BorderType.BLANK
@@ -313,13 +291,13 @@ private class SelectInputAnimation(
                     cell("Size") {
                         align = TextAlign.RIGHT
                     }
-                    cell("Last Modified")
+                    cell(Text("Last Modified", overflowWrap = OverflowWrap.ELLIPSES))
                     cell("Name")
                 }
             }
             body {
-                val padding = config.limit / 2 - 1
-                val firstVisible = (s.cursor - padding).coerceAtMost(entries.size - config.limit).coerceAtLeast(0)
+                val padding = config.maxVisibleEntries / 2 - 1
+                val firstVisible = (s.cursor - padding).coerceAtMost(entries.size - config.maxVisibleEntries).coerceAtLeast(0)
 
                 for ((i, entry) in entries.withIndex()) {
                     if (i < firstVisible) continue
@@ -339,20 +317,25 @@ private class SelectInputAnimation(
                         more(firstVisible + 1)
                         continue
                     }
-                    if (i == firstVisible + config.limit - 1 && firstVisible + config.limit < entries.size) {
-                        more(entries.size - (firstVisible + config.limit) + 1)
+                    if (i == firstVisible + config.maxVisibleEntries - 1 && firstVisible + config.maxVisibleEntries < entries.size) {
+                        more(entries.size - (firstVisible + config.maxVisibleEntries) + 1)
                         break
                     }
 
                     row {
 
-                        cell(renderPermissions(entry.stat))
+                        cell(Text(renderPermissions(entry.stat), width = 9))
 
-                        cell(entry.size?.let { renderFileSize(it) } ?: "") {
-                            align = TextAlign.RIGHT
-                        }
+                        cell(Text(
+                            text = entry.size?.let { renderFileSize(it) } ?: "",
+                            align = TextAlign.RIGHT,
+                            width = 4
+                        ))
 
-                        cell(renderTime(entry.stat.lastModificationTime))
+                        cell(Text(
+                            renderTime(entry.stat.lastModificationTime),
+                            width = 12
+                        ))
 
                         val name = entry.path.name
                             .let {
@@ -369,7 +352,7 @@ private class SelectInputAnimation(
                                         result += it.substring(index, found)
                                         index = found
 
-                                        result += TextColors.brightRed(it.substring(index, index + s.filter.length))
+                                        result += filterMarkerStyle(it.substring(index, index + s.filter.length))
                                         index += s.filter.length
                                     }
                                     result
@@ -406,14 +389,35 @@ private class SelectInputAnimation(
             else -> actions.tryHandle(event, state) ?: state
         }
         animation.update(state)
-        return when {
-            state.exit != null -> {
-                if (config.clearOnExit) animation.clear()
-                else animation.stop()
-                Status.Finished(state.exit.takeUnless { it == workingDirectory })
-            }
-            else -> Status.Continue
+
+        if (state.exit == null)  return Status.Continue
+
+
+
+        if (config.clearOnExit) animation.clear()
+        else animation.stop()
+        return Status.Finished(state.exit.takeUnless { it == workingDirectory })
+    }
+
+    private fun renderPath(path: Path): String {
+        val style = rgb(config.colors.path)
+        val elements = buildList {
+            var p = path
+            do {
+                if (p == userHome) {
+                    add(" ~")
+                    break
+                }
+                add(p.name)
+                p = p.parent ?: break
+            } while (true)
+        }.asReversed().let {
+            if (it.size > config.maxVisiblePathElements) {
+                it.subList(0, 1) + listOf("…") + it.subList(it.size - (config.maxVisiblePathElements - 2), it.size)
+            } else it
         }
+
+        return style(elements.joinToString(" $RealSystemPathSeparator "))
     }
 
     private fun keyName(key: KeyboardEvent): String {
@@ -428,15 +432,15 @@ private class SelectInputAnimation(
             else -> key.key
         }
         if (key.alt) k = "alt+$k"
-        if (key.ctrl) k = "ctrl+$k"
         if (key.shift && key.key.length > 1) k = "shift+$k"
+        if (key.ctrl) k = "ctrl+$k"
         return k
     }
 
-    private fun buildInstructions(
+    private fun renderHints(
         state: State
     ): String {
-        val styleKey = TextStyle(TextColors.brightWhite, bold = true)
+        val styleKey = rgb(config.colors.keyHints) + TextStyles.bold
 
         fun MutableList<String>.render(action: KeyAction) {
             if (!action.available(state)) return
@@ -472,24 +476,23 @@ private class SelectInputAnimation(
     }
 
     private fun renderPermissions(stat: Stat): String {
-        val mode = stat.mode
-        val user = mode.user
-        val group = mode.group
-        val others = mode.others
+        val styleRead = rgb(config.colors.permissionRead)
+        val styleWrite = rgb(config.colors.permissionWrite)
+        val styleExecute = rgb(config.colors.permissionExecute)
 
         fun render(perm: Stat.Mode.Permissions): String {
-            val r = if (perm.canRead) TextColors.red("r") else dim("-")
-            val w = if (perm.canWrite) TextColors.green("w") else dim("-")
-            val x = if (perm.canExecute) TextColors.brightBlue("x") else dim("-")
+            val r = if (perm.canRead) styleRead("r") else dim("-")
+            val w = if (perm.canWrite) styleWrite("w") else dim("-")
+            val x = if (perm.canExecute) styleExecute("x") else dim("-")
             return "$r$w$x"
         }
 
-        return "${render(user)}${render(group)}${render(others)}"
+        return "${render(stat.mode.user)}${render(stat.mode.group)}${render(stat.mode.others)}"
     }
 
     private fun renderFileSize(bytes: Long): String {
-        val numStyle = TextStyle(TextColors.brightYellow)
-        val unitStyle = TextStyle(TextColors.brightYellow, dim = true)
+        val numStyle = rgb(config.colors.entrySize)
+        val unitStyle = numStyle + dim
 
         val units = listOf("k", "M", "G", "T", "P")
 
@@ -535,33 +538,12 @@ private class SelectInputAnimation(
 
         val halfBrightnessAtHours = 6L
         val brightness = 1L / ((duration.inWholeMinutes / (halfBrightnessAtHours * 60L)) + 1)
-        val color = TextColors.hsv(120, 1, brightness * 0.6 + 0.4)
-        return color(instant.format(format))
+
+        val rgb = RGB(config.colors.modificationTime)
+        val style = color(rgb.toHSV().copy(v = (brightness * 0.6 + 0.4).toFloat()))
+        return style(instant.format(format))
     }
 }
-
-
-
-fun Iterable<String>.commonPrefix(): String {
-    val iter = iterator()
-    if (!iter.hasNext()) return ""
-    var prefix = iter.next()
-    while (iter.hasNext()) {
-        val next = iter.next()
-        prefix = prefix.commonPrefixWith(next)
-    }
-    return prefix
-}
-
-
-operator fun Path.div(child: String) = Path(this, child).cleaned()
-
-fun Path.cleaned() = Path("$this".replace(SystemPathSeparator, RealSystemPathSeparator))
-
-expect val RealSystemPathSeparator: Char
-
-
-
 
 
 expect val platformName: String
