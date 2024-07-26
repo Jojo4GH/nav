@@ -131,7 +131,8 @@ private class SelectInputAnimation(
 
         fun filtered(filter: String): State {
             val tmp = copy(filter = filter)
-            return tmp.copy(items = tmp.items, cursor = tmp.cursor.coerceAtMost(tmp.filteredItems.lastIndex).coerceAtLeast(0))
+            val newCursor = if (tmp.filteredItems.size < filteredItems.size) 0 else tmp.cursor
+            return tmp.copy(items = tmp.items, cursor = newCursor)
         }
 
         fun navigatedUp(): State {
