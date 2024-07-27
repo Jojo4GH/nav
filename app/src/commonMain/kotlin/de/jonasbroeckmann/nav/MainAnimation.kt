@@ -87,13 +87,8 @@ class MainAnimation(
     private var state = State(directory = startingDirectory, cursor = startingCursorIndex)
 
 
-
-
     private val actions = Actions(config)
-
-    private class Actions(
-        config: Config
-    ) {
+    private class Actions(config: Config) {
         val cursorUp = KeyAction(
             key = config.keys.cursor.up,
             condition = { filteredItems.isNotEmpty() },
@@ -127,7 +122,7 @@ class MainAnimation(
         )
         val navigateOpen = KeyAction(
             key = config.keys.nav.open,
-            description = "open file",
+            description = "open in ${config.editor}",
             style = TextColors.rgb(config.colors.file),
             condition = { currentEntry?.isRegularFile == true },
             action = { exit(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }

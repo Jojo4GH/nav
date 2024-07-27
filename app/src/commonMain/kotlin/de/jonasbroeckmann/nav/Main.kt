@@ -1,5 +1,9 @@
 package de.jonasbroeckmann.nav
 
+import com.github.ajalt.clikt.completion.CompletionCandidates
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.*
+import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.mordant.input.*
 import com.github.ajalt.mordant.terminal.Terminal
 import kotlinx.io.buffered
@@ -11,33 +15,50 @@ private val terminal = Terminal()
 
 
 
-fun main() {
-    val config = Config()
-    val animation = MainAnimation(
-        terminal = terminal,
-        config = config,
-        startingDirectory = workingDirectory,
-        startingCursorIndex = 0
+fun main(args: Array<String>) = Nav().main(args)
+
+class Nav : CliktCommand() {
+    private val startingDirectory by argument(
+        "directory",
+        help = "The directory to start in",
+        completionCandidates = CompletionCandidates.Path
     )
+        .convert { SystemFileSystem.resolve(Path(it)) }
+        .optional()
+        .validate {
+            val metadata = SystemFileSystem.metadataOrNull(it)
+                ?: fail("\"$it\": No such file or directory")
+            require(metadata.isDirectory) { "\"$it\": Not a directory" }
+        }
 
-    while (true) {
-        val selection = animation.receiveEvents()
+    override fun run() {
+        val config = Config()
+        val animation = MainAnimation(
+            terminal = terminal,
+            config = config,
+            startingDirectory = startingDirectory ?: workingDirectory,
+            startingCursorIndex = 0
+        )
 
-        if (selection == null) break
+        while (true) {
+            val selection = animation.receiveEvents()
 
-        val metadata = SystemFileSystem.metadataOrNull(selection)
-        if (metadata?.isDirectory == true) {
-            broadcastChangeDirectory(selection)
-            break
-        } else if (metadata?.isRegularFile == true) {
-            val exitCode = execute(config.editor, selection.toString())
-            if (exitCode != 0) {
-                terminal.danger("Received exit code $exitCode")
+            if (selection == null) break
+
+            val metadata = SystemFileSystem.metadataOrNull(selection)
+            if (metadata?.isDirectory == true) {
+                broadcastChangeDirectory(selection)
+                break
+            } else if (metadata?.isRegularFile == true) {
+                val exitCode = execute(config.editor, selection.toString())
+                if (exitCode != 0) {
+                    terminal.danger("Received exit code $exitCode")
+                }
             }
         }
-    }
 
-    animation.terminate()
+        animation.terminate()
+    }
 }
 
 

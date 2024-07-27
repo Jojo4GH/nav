@@ -1,5 +1,5 @@
 
-"app/build/bin/linuxX64/debugExecutable/app.kexe"
+"app/build/bin/linuxX64/debugExecutable/app.kexe" "$@"
 
 navFile="$HOME/.nav-cd"
 if [ -f "$navFile" ]; then

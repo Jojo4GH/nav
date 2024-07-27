@@ -1,5 +1,5 @@
 
-& "$PSScriptRoot\app\build\bin\mingwX64\debugExecutable\app.exe"
+& "$PSScriptRoot\app\build\bin\mingwX64\debugExecutable\app.exe" @args
 
 $navFile = "$HOME\.nav-cd"
 if (Test-Path $navFile) {
