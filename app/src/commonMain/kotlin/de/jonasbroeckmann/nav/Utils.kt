@@ -15,8 +15,9 @@ val userHome: Path = (getenv("HOME") ?: getenv("USERPROFILE"))
 
 expect fun getenv(key: String): String?
 
-expect val RealSystemPathSeparator: Char
+expect val PathsSeparator: Char
 
+expect val RealSystemPathSeparator: Char
 
 fun Iterable<String>.commonPrefix(): String {
     val iter = iterator()

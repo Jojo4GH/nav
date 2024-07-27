@@ -19,6 +19,7 @@ data class Config(
     val maxVisiblePathElements: Int = 6,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
+    val editor: String = "nano",
 
     val keys: Keys = Keys(),
 
