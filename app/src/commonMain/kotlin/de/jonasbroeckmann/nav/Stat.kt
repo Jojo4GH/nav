@@ -4,6 +4,8 @@ import kotlinx.datetime.Instant
 import kotlinx.io.files.Path
 
 
+fun Path.stat(): Stat = stat(this)
+
 expect fun stat(path: Path): Stat
 
 

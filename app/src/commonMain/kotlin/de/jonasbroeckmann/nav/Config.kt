@@ -2,6 +2,10 @@
 package de.jonasbroeckmann.nav
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.terminal.Terminal
+import kotlinx.io.files.FileNotFoundException
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -22,7 +26,8 @@ data class Config(
 
     val keys: Keys = Keys(),
 
-    val colors: Colors = Colors.Retro
+    val colors: Colors = Colors.Retro,
+    val modificationTime: ModificationTime = ModificationTime()
 ) {
     @Serializable
     data class Keys(
@@ -114,6 +119,31 @@ data class Config(
                 color3 = "009FFD"
             )
         }
+    }
+    @Serializable
+    data class ModificationTime(
+        val minimumBrightness: Double = 0.4,
+        val halfBrightnessAtHours: Double = 12.0
+    )
+
+    companion object {
+        val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
+        const val ENV_VAR_NAME = "NAV_CONFIG"
+
+        fun load(terminal: Terminal): Config = with(SystemFileSystem) {
+            return Config()
+//            val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
+//                ?: DefaultPath.takeIf { it.exists() }?.toString()
+//                ?: return Config()
+//            try {
+//                return TomlFileReader.decodeFromFile(serializer(), path)
+//            } catch (e: Exception) {
+//                terminal.danger("Could not load config: ${e.message}")
+//                terminal.info("Using default config")
+//                return Config()
+//            }
+        }
+
     }
 }
 

@@ -16,7 +16,7 @@ import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
+import kotlin.math.pow
 import kotlin.time.Duration.Companion.days
 
 class MainAnimation(
@@ -71,13 +71,13 @@ class MainAnimation(
             )
         }
 
-        fun exit(at: Path = workingDirectory) = copy(exit = at)
+        fun exit(at: Path = WorkingDirectory) = copy(exit = at)
         fun resetExit() = if (exit != null) copy(exit = null) else this
 
         companion object {
-            private fun Path.entries(): List<Entry> = SystemFileSystem.list(this)
+            private fun Path.entries(): List<Entry> = children()
                 .map { it.cleaned() } // fix broken paths
-                .map { Entry(it, stat(it)) }
+                .map { Entry(it, it.stat()) }
                 .sortedBy { it.path.name }
                 .sortedByDescending { it.isDirectory }
         }
@@ -132,7 +132,7 @@ class MainAnimation(
             key = config.keys.submit,
             description = "exit here",
             style = TextColors.rgb(config.colors.path),
-            condition = { directory != workingDirectory && filter.isEmpty() },
+            condition = { directory != WorkingDirectory && filter.isEmpty() },
             action = { exit(directory) }
         )
         val exit = KeyAction(
@@ -277,7 +277,7 @@ class MainAnimation(
 
                         cell(
                             Text(
-                                renderTime(entry.stat.lastModificationTime),
+                                renderModificationTime(entry.stat.lastModificationTime),
                                 width = 12
                             )
                         )
@@ -327,9 +327,19 @@ class MainAnimation(
     override fun stop() = animation.stop()
     override fun clear() = animation.clear()
 
+    fun main(): Path? {
+        animation.update(state)
+        return receiveEvents()
+    }
+
     fun terminate() {
-        if (config.clearOnExit) animation.clear()
-        else animation.stop()
+        if (!config.clearOnExit) {
+            // draw one last frame
+            animation.update(state)
+            animation.stop()
+        } else {
+            animation.clear()
+        }
     }
 
     override fun receiveEvent(event: InputEvent): InputReceiver.Status<Path?> {
@@ -341,8 +351,9 @@ class MainAnimation(
         animation.update(state)
 
         val exit = state.exit ?: return InputReceiver.Status.Continue
+        animation.clear()
         state = state.resetExit()
-        return InputReceiver.Status.Finished(exit.takeUnless { it == workingDirectory })
+        return InputReceiver.Status.Finished(exit.takeUnless { it == WorkingDirectory })
     }
 
     private fun renderPath(path: Path): String {
@@ -350,7 +361,7 @@ class MainAnimation(
         val elements = buildList {
             var p = path
             do {
-                if (p == userHome) {
+                if (p == UserHome) {
                     add(" ~")
                     break
                 }
@@ -463,7 +474,7 @@ class MainAnimation(
         return "${numStyle(value.format())}${unitStyle(units[i])}"
     }
 
-    private fun renderTime(instant: Instant): String {
+    private fun renderModificationTime(instant: Instant): String {
         val now = Clock.System.now()
         val duration = now - instant
         val format = if (duration > 365.days) DateTimeComponents.Format {
@@ -482,11 +493,15 @@ class MainAnimation(
             minute()
         }
 
-        val halfBrightnessAtHours = 6L
-        val brightness = 1L / ((duration.inWholeMinutes / (halfBrightnessAtHours * 60L)) + 1)
+        val hours = duration.inWholeMinutes / 60.0
+//        val factor = 1.0 / ((hours / config.modificationTime.halfBrightnessAtHours) + 1)
+        val factor = 2.0.pow(-hours / config.modificationTime.halfBrightnessAtHours)
+
+        val brightnessRange = config.modificationTime.minimumBrightness..1.0
+        val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
 
         val rgb = RGB(config.colors.modificationTime)
-        val style = TextColors.color(rgb.toHSV().copy(v = (brightness * 0.6 + 0.4).toFloat()))
+        val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
         return style(instant.format(format))
     }
 }

@@ -55,13 +55,15 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io)
 
-//                implementation("com.akuleshov7:ktoml-core:0.5.1")
-//                implementation("com.akuleshov7:ktoml-file:0.5.1")
+//                implementation("com.akuleshov7:ktoml-core:0.5.2")
+//                implementation("com.akuleshov7:ktoml-file:0.5.2")
 
                 implementation(libs.clikt)
 
                 implementation(libs.mordant)
                 implementation(libs.mordant.coroutines)
+
+                implementation(libs.kommand)
             }
         }
         nativeMain {
