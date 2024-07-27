@@ -1,6 +1,7 @@
 @file:UseSerializers(KeyboardEventAsStringSerializer::class)
 package de.jonasbroeckmann.nav
 
+import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
 import kotlinx.io.files.FileNotFoundException
@@ -58,39 +59,39 @@ data class Config(
     }
     @Serializable
     data class Colors(
-        val path: String = "1dff7b",
-        val filter: String = "ffffff",
-        val filterMarker: String = "ff0000",
-        val keyHints: String = "ffffff",
+        val path: String = Retro.path,
+        val filter: String = Retro.filter,
+        val filterMarker: String = Retro.filterMarker,
+        val keyHints: String = Retro.keyHints,
 
-        val permissionRead: String = "c50f1f",
-        val permissionWrite: String = "13a10e",
-        val permissionExecute: String = "3b78ff",
-        val entrySize: String = "ffff00",
-        val modificationTime: String = "00ff00",
+        val permissionRead: String = Retro.permissionRead,
+        val permissionWrite: String = Retro.permissionWrite,
+        val permissionExecute: String = Retro.permissionExecute,
+        val entrySize: String = Retro.entrySize,
+        val modificationTime: String = Retro.modificationTime,
 
-        val directory: String = "2fa2ff",
-        val file: String = "ffffff",
-        val link: String = "00ffff",
+        val directory: String = Retro.directory,
+        val file: String = Retro.file,
+        val link: String = Retro.link,
 
     ) {
         companion object {
             @Suppress("unused")
             val Original = Colors(
-                path = "1dff7b",
-                filter = "ffffff",
-                filterMarker = "ff0000",
-                keyHints = "ffffff",
+                path = "1DFF7B",
+                filter = "FFFFFF",
+                filterMarker = "FF0000",
+                keyHints = "FFFFFF",
 
-                permissionRead = "c50f1f",
-                permissionWrite = "13a10e",
-                permissionExecute = "3b78ff",
-                entrySize = "ffff00",
-                modificationTime = "00ff00",
+                permissionRead = "C50F1F",
+                permissionWrite = "13A10E",
+                permissionExecute = "3B78FF",
+                entrySize = "FFFF00",
+                modificationTime = "00FF00",
 
-                directory = "2fa2ff",
-                file = "ffffff",
-                link = "00ffff"
+                directory = "2FA2FF",
+                file = "FFFFFF",
+                link = "00FFFF"
             )
 
             fun themed(
@@ -102,6 +103,7 @@ data class Config(
                 path = main,
                 filter = main,
                 filterMarker = main,
+                keyHints = "FFFFFF",
                 permissionRead = color1,
                 permissionWrite = color2,
                 permissionExecute = color3,
@@ -130,18 +132,17 @@ data class Config(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun load(terminal: Terminal): Config = with(SystemFileSystem) {
-            return Config()
-//            val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
-//                ?: DefaultPath.takeIf { it.exists() }?.toString()
-//                ?: return Config()
-//            try {
-//                return TomlFileReader.decodeFromFile(serializer(), path)
-//            } catch (e: Exception) {
-//                terminal.danger("Could not load config: ${e.message}")
-//                terminal.info("Using default config")
-//                return Config()
-//            }
+        fun load(terminal: Terminal): Config {
+            val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
+                ?: DefaultPath.takeIf { it.exists() }?.toString()
+                ?: return Config()
+            try {
+                return TomlFileReader.decodeFromFile(serializer(), path)
+            } catch (e: Exception) {
+                terminal.danger("Could not load config: ${e.message}")
+                terminal.info("Using default config")
+                return Config()
+            }
         }
 
     }

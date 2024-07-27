@@ -2,10 +2,13 @@ package de.jonasbroeckmann.nav
 
 import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.mordant.terminal.Terminal
 import com.kgit2.kommand.process.Command
 import kotlinx.io.buffered
@@ -17,9 +20,12 @@ import kotlinx.io.writeString
 
 fun main(args: Array<String>) = Nav().main(args)
 
+val NavFileInUserHome = Path(".nav-cd")
+val NavFile = UserHome / NavFileInUserHome
+
 class Nav : CliktCommand() {
     private val startingDirectory by argument(
-        "directory",
+        "DIRECTORY",
         help = "The directory to start in",
         completionCandidates = CompletionCandidates.Path
     )
@@ -31,10 +37,22 @@ class Nav : CliktCommand() {
             require(metadata.isDirectory) { "\"$it\": Not a directory" }
         }
 
+    private val init by option(
+        "--init",
+        metavar = "SHELL",
+        help = "Prints the initialization script for the specified shell"
+    )
+
     override fun run() {
+        init?.let {
+            val shell = Shells.entries.firstOrNull { shell -> shell.shell.equals(it, ignoreCase = true) }
+                ?: error("Unknown shell: $init")
+            shell.printInitScript()
+            return
+        }
+
         val terminal = Terminal()
-//        val config = Config.load(terminal)
-        val config = Config()
+        val config = Config.load(terminal)
         val animation = MainAnimation(
             terminal = terminal,
             config = config,
@@ -66,15 +84,13 @@ class Nav : CliktCommand() {
 }
 
 
-private val navFile = UserHome / ".nav-cd"
-
 fun broadcastChangeDirectory(path: Path) {
-    if (navFile.exists()) {
-//        terminal.danger("$navFile already exists")
+    if (NavFile.exists()) {
+//        terminal.danger("$NavFile already exists")
 //        return
-        navFile.delete()
+        NavFile.delete()
     }
-    navFile.sink().buffered().use {
+    NavFile.sink().buffered().use {
         it.writeString(path.toString())
     }
 }
