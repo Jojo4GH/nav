@@ -2,7 +2,6 @@
 package de.jonasbroeckmann.nav
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.rendering.TextStyle
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

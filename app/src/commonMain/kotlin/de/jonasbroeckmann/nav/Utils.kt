@@ -1,10 +1,8 @@
 package de.jonasbroeckmann.nav
 
-import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemPathSeparator
-import kotlinx.io.writeString
 
 val workingDirectory: Path = SystemFileSystem.resolve(Path("."))
 val userHome: Path = (getenv("HOME") ?: getenv("USERPROFILE"))

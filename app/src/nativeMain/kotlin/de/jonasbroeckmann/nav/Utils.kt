@@ -1,8 +1,7 @@
 package de.jonasbroeckmann.nav
 
-import kotlinx.cinterop.*
-import kotlinx.io.files.Path
-import platform.posix.chdir
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.toKString
 import kotlin.experimental.ExperimentalNativeApi
 
 @OptIn(ExperimentalForeignApi::class)

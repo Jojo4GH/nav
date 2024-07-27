@@ -2,9 +2,11 @@ package de.jonasbroeckmann.nav
 
 import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.arguments.*
-import com.github.ajalt.clikt.parameters.options.versionOption
-import com.github.ajalt.mordant.input.*
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.convert
+import com.github.ajalt.clikt.parameters.arguments.optional
+import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.mordant.input.receiveEvents
 import com.github.ajalt.mordant.terminal.Terminal
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
