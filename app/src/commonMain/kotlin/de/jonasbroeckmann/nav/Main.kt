@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.mordant.terminal.Terminal
 import com.kgit2.kommand.process.Command
@@ -45,10 +46,10 @@ class Nav : CliktCommand() {
     private val version by option(
         "--version",
         help = "Print version"
-    )
+    ).flag()
 
     override fun run() {
-        version?.let {
+        if (version) {
             println("nav ${BuildConfig.VERSION}")
             return
         }
