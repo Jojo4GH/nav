@@ -45,7 +45,7 @@ enum class Shells(
             }
             """.trimIndent()
         },
-        profileScript = "Invoke-Expression ($NAV --init powershell | Out-String)"
+        profileScript = "Invoke-Expression (& $NAV --init powershell | Out-String)"
     );
 
     fun printInitScript() {

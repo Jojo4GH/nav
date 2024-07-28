@@ -1,6 +1,6 @@
 @echo off
 
-%~dp0app\build\bin\mingwX64\debugExecutable\app.exe %*
+%NAV_BINARY% %*
 
 set navFile=%USERPROFILE%\.nav-cd
 if exist "%navFile%" call :handleNavFile
