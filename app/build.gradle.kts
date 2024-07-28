@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinx.serialization)
@@ -21,6 +23,7 @@ kotlin {
     linuxX64 {
         binaries {
             executable {
+                baseName = "nav"
                 entryPoint = "$group.main"
             }
         }
@@ -28,6 +31,7 @@ kotlin {
     linuxArm64 {
         binaries {
             executable {
+                baseName = "nav"
                 entryPoint = "$group.main"
             }
         }
@@ -35,6 +39,7 @@ kotlin {
     mingwX64 {
         binaries {
             executable {
+                baseName = "nav"
                 entryPoint = "$group.main"
             }
         }
@@ -75,3 +80,30 @@ kotlin {
         }
     }
 }
+
+
+tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
+    val targetName = linkTask.target.split("_").joinToString("") { part ->
+        part.replaceFirstChar { it.uppercase() }
+    }.replaceFirstChar { it.lowercase() }
+    tasks.register<Zip>("package${linkTask.name.removePrefix("link")}") {
+        group = "distribution"
+        dependsOn(linkTask)
+        from(linkTask.outputFile) {
+            rename("nav\\.kexe", "nav")
+        }
+        destinationDirectory.set(layout.buildDirectory.dir("packaged"))
+        archiveFileName.set(listOfNotNull(
+            "nav",
+            "v$version",
+            targetName,
+            if (!linkTask.optimized) "debug" else null
+        ).joinToString("-", postfix = ".zip"))
+    }
+}
+
+tasks.register("packageAll") {
+    group = "distribution"
+    dependsOn(tasks.withType<Zip>().filter { it.name.startsWith("package") })
+}
+
