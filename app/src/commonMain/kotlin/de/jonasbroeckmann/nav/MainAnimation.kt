@@ -360,24 +360,24 @@ class MainAnimation(
     }
 
     private fun renderPath(path: Path): String {
-        val style = TextColors.rgb(config.colors.path)
-        val elements = buildList {
-            var p = path
-            do {
-                if (p == UserHome) {
-                    add(" ~")
-                    break
-                }
-                add(p.name)
-                p = p.parent ?: break
-            } while (true)
-        }.asReversed().let {
-            if (it.size > config.maxVisiblePathElements) {
-                it.subList(0, 1) + listOf("…") + it.subList(it.size - (config.maxVisiblePathElements - 2), it.size)
-            } else it
+        val pathString = path.toString().let {
+            val home = UserHome.toString().removeSuffix("$RealSystemPathSeparator")
+            if (it.startsWith(home)) " ~${it.removePrefix(home)}" else it
+        }
+        val elements = pathString.split(RealSystemPathSeparator)
+
+        val max = config.maxVisiblePathElements
+        val shortened = when {
+            elements.size > max -> {
+                elements.subList(0, 1) + listOf("…") + elements.subList(elements.size - (max - 2), elements.size)
+            }
+            else -> elements
         }
 
-        return style(elements.joinToString(" $RealSystemPathSeparator "))
+        val style = TextColors.rgb(config.colors.path)
+        return style(shortened.joinToString(" $RealSystemPathSeparator ")).let {
+            if (debugMode) "$path\n$it" else it
+        }
     }
 
     private fun keyName(key: KeyboardEvent): String {

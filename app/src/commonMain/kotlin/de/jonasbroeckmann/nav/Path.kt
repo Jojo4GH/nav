@@ -30,7 +30,10 @@ fun Path.source() = SystemFileSystem.source(this)
 operator fun Path.div(child: String) = Path(this, child).cleaned()
 operator fun Path.div(child: Path) = this / child.toString()
 
-fun Path.cleaned() = Path("$this".replace(SystemPathSeparator, RealSystemPathSeparator))
+fun Path.cleaned() = Path("$this"
+    .replace(SystemPathSeparator, RealSystemPathSeparator)
+    .replace("$RealSystemPathSeparator$RealSystemPathSeparator", "$RealSystemPathSeparator")
+)
 
 
 expect val PathsSeparator: Char
