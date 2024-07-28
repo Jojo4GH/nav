@@ -148,6 +148,12 @@ halfBrightnessAtHours = 12.0
 
 For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
 
+## Known Issues
+
+On Linux terminals the *escape* key is send as `ESC` which can also be the start of escape sequences to define other keys (e.g. arrow keys).
+This has the effect that the escape key can not be distinguished and will not work as intended on those platforms (may get resolved with [this issue](https://github.com/ajalt/mordant/issues/193)).
+For those terminals the default for exiting nav will be changed to *delete* until a solution is found.
+
 ## ❤️ Powered by
 
 - UI: [Mordant](https://github.com/ajalt/mordant)
