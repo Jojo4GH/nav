@@ -43,6 +43,11 @@ class Nav : CliktCommand() {
         help = "Prints the initialization script for the specified shell"
     )
 
+    private val debugMode by option(
+        "--debug",
+        help = "Enables debug mode"
+    ).flag()
+
     private val version by option(
         "--version",
         help = "Print version"
@@ -67,7 +72,8 @@ class Nav : CliktCommand() {
             terminal = terminal,
             config = config,
             startingDirectory = startingDirectory ?: WorkingDirectory,
-            startingCursorIndex = 0
+            startingCursorIndex = 0,
+            debugMode = debugMode
         )
 
         while (true) {

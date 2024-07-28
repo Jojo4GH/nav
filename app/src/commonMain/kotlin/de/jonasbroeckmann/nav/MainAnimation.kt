@@ -23,7 +23,8 @@ class MainAnimation(
     override val terminal: Terminal,
     private val config: Config,
     startingDirectory: Path,
-    startingCursorIndex: Int
+    startingCursorIndex: Int,
+    private val debugMode: Boolean = false
 ) : InputReceiverAnimation<Path?> {
 
     private data class State(
@@ -32,6 +33,7 @@ class MainAnimation(
         val cursor: Int,
         val filter: String = "",
         val exit: Path? = null,
+        val lastReceivedEvent: KeyboardEvent? = null
     ) {
         val filteredItems: List<Entry> by lazy {
             if (filter.isEmpty()) return@lazy items
@@ -348,6 +350,7 @@ class MainAnimation(
             event.isCtrlC -> state.exit()
             else -> actions.tryHandle(event, state) ?: state
         }
+        state = state.copy(lastReceivedEvent = event)
         animation.update(state)
 
         val exit = state.exit ?: return InputReceiver.Status.Continue
@@ -429,6 +432,9 @@ class MainAnimation(
             render(actions.exitCD)
             render(actions.exit)
 
+            if (debugMode && state.lastReceivedEvent != null) {
+                add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
+            }
         }.joinToString(TextStyles.dim(" • "))
     }
 
