@@ -40,6 +40,8 @@ TODO
 <details>
 <summary>Windows</summary>
 
+On Windows, you can use [scoop](https://scoop.sh) to install nav:
+
 ```powershell
 scoop bucket add JojoIV "https://github.com/Jojo4GH/scoop-JojoIV"
 scoop install nav
@@ -106,7 +108,6 @@ clearOnExit = true
 editor = "nano"
 
 [keys]
-# See https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
 
 submit = "Enter"
 cancel = "Escape"
@@ -144,4 +145,6 @@ link = "009FFD"
 minimumBrightness = 0.4
 halfBrightnessAtHours = 12.0
 ```
+
+For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
 
