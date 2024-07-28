@@ -16,6 +16,7 @@ mordant = "2.7.1"
 ktor = "2.3.12"
 skrapeit = "1.2.2"
 kommand = "2.1.2"
+gmazzo-buildconfig = "5.4.0"
 
 [plugins]
 
@@ -27,6 +28,8 @@ compose-plugin = { id = "org.jetbrains.compose", version.ref = "compose-plugin" 
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+gmazzo-buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "gmazzo-buildconfig" }
 
 [libraries]
 
