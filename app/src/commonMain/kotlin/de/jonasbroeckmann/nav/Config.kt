@@ -12,6 +12,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlin.experimental.ExperimentalNativeApi
 
 
 @Serializable
@@ -32,7 +33,7 @@ data class Config(
         val cursor: Cursor = Cursor(),
         val nav: Nav = Nav(),
         val submit: KeyboardEvent = KeyboardEvent("Enter"),
-        val cancel: KeyboardEvent = KeyboardEvent("Escape"),
+        val cancel: KeyboardEvent = EscapeOrDelete,
         val filter: Filter = Filter()
     ) {
         @Serializable
@@ -51,7 +52,7 @@ data class Config(
         @Serializable
         data class Filter(
             val autocomplete: KeyboardEvent = KeyboardEvent("Tab"),
-            val clear: KeyboardEvent = KeyboardEvent("Escape")
+            val clear: KeyboardEvent = EscapeOrDelete
         )
     }
     @Serializable
@@ -168,3 +169,6 @@ object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
         }
     }
 }
+
+@OptIn(ExperimentalNativeApi::class)
+private val EscapeOrDelete get() = if (Platform.osFamily.isUnix) KeyboardEvent("Delete") else KeyboardEvent("Escape")
