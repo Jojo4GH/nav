@@ -47,6 +47,12 @@ scoop bucket add JojoIV "https://github.com/Jojo4GH/scoop-JojoIV"
 scoop install nav
 ```
 
+Or without adding the bucket:
+
+```powershell
+scoop install "https://raw.githubusercontent.com/Jojo4GH/scoop-JojoIV/master/bucket/nav.json"
+```
+
 </details>
 
 ### 2. Set up your shell
