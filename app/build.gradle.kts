@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
+import org.jetbrains.kotlin.konan.target.*
+import org.jetbrains.kotlin.konan.target.Architecture
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -83,9 +85,6 @@ kotlin {
 
 
 tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
-    val targetName = linkTask.target.split("_").joinToString("") { part ->
-        part.replaceFirstChar { it.uppercase() }
-    }.replaceFirstChar { it.lowercase() }
     tasks.register<Zip>("package${linkTask.name.removePrefix("link")}") {
         group = "distribution"
         dependsOn(linkTask)
@@ -95,8 +94,7 @@ tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
         destinationDirectory.set(layout.buildDirectory.dir("packaged"))
         archiveFileName.set(listOfNotNull(
             "nav",
-            "v$version",
-            targetName,
+            linkTask.binary.compilation.konanTarget.targetTriple,
             if (!linkTask.optimized) "debug" else null
         ).joinToString("-", postfix = ".zip"))
     }
@@ -106,4 +104,44 @@ tasks.register("packageAll") {
     group = "distribution"
     dependsOn(tasks.withType<Zip>().filter { it.name.startsWith("package") })
 }
+
+
+val KonanTarget.targetTriple: String get() = listOfNotNull(
+    when (architecture) {
+        Architecture.X64 -> "x86_64"
+        Architecture.X86 -> "i686"
+        Architecture.ARM64 -> "aarch64"
+        Architecture.ARM32 -> "armv7k"
+    },
+    when (family) {
+        Family.OSX -> "apple"
+        Family.IOS -> "apple"
+        Family.TVOS -> "apple"
+        Family.WATCHOS -> "apple"
+        Family.LINUX -> "unknown"
+        Family.MINGW -> "pc"
+        Family.ANDROID -> "unknown"
+    },
+    when (family) {
+        Family.OSX -> "macos"
+        Family.IOS -> "ios"
+        Family.TVOS -> "tvos"
+        Family.WATCHOS -> "watchos"
+        Family.LINUX -> "linux-gnu"
+        Family.MINGW -> "windows-gnu"
+        Family.ANDROID -> when (this) {
+            KonanTarget.ANDROID_ARM32 -> "linux-androideabi"
+            else -> "linux-android"
+        }
+    },
+    when (this) {
+        KonanTarget.IOS_SIMULATOR_ARM64 -> "simulator"
+        KonanTarget.IOS_X64 -> "simulator"
+        KonanTarget.TVOS_SIMULATOR_ARM64 -> "simulator"
+        KonanTarget.TVOS_X64 -> "simulator"
+        KonanTarget.WATCHOS_SIMULATOR_ARM64 -> "simulator"
+        KonanTarget.WATCHOS_X64 -> "simulator"
+        else -> null
+    }
+).joinToString("-")
 
