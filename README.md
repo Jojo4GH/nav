@@ -41,7 +41,7 @@ TODO
 <summary>Windows</summary>
 
 ```powershell
-scoop bucket add JojoIV https://github.com/Jojo4GH/scoop-JojoIV
+scoop bucket add JojoIV "https://github.com/Jojo4GH/scoop-JojoIV"
 scoop install nav
 ```
 
@@ -62,16 +62,21 @@ eval "$(nav --init bash)"
 
 </details>
 
+<details>
+<summary>Powershell</summary>
+
 Add the following to the end of your PowerShell configuration (find it by running `$PROFILE`):
 
 ```powershell
 Invoke-Expression (& nav --init powershell | Out-String)
 ```
 
+</details>
+
 ## 🔧 Configuration
 
 The default location for the configuration file is `~/.config/nav.toml`.
-You can change this by setting the `NAV_CONFIG` environment variable.
+You can change this by setting the `NAV_CONFIG` environment variable:
 
 <details>
 <summary>Linux</summary>
