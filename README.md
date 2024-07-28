@@ -148,3 +148,10 @@ halfBrightnessAtHours = 12.0
 
 For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
 
+## ❤️ Powered by
+
+- UI: [Mordant](https://github.com/ajalt/mordant)
+- CLI: [Clikt](https://github.com/ajalt/clikt)
+- Commands: [Kommand](https://github.com/kgit2/kommand)
+- Config file: [ktoml](https://github.com/orchestr7/ktoml)
+- Kotlin/Native
