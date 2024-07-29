@@ -2,7 +2,7 @@
 
 # 📂 nav 📂
 
-An interactive and stylish replacement for ls & cd.
+The interactive and stylish replacement for ls & cd!
 
 ![nav demo](media/screenshot2.png)
 
@@ -45,6 +45,12 @@ On Windows, you can use [scoop](https://scoop.sh) to install nav:
 ```powershell
 scoop bucket add JojoIV "https://github.com/Jojo4GH/scoop-JojoIV"
 scoop install nav
+```
+
+Or without adding the bucket:
+
+```powershell
+scoop install "https://raw.githubusercontent.com/Jojo4GH/scoop-JojoIV/master/bucket/nav.json"
 ```
 
 </details>
@@ -148,3 +154,16 @@ halfBrightnessAtHours = 12.0
 
 For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
 
+## Known Issues
+
+On Linux terminals the *escape* key is send as `ESC` which can also be the start of escape sequences to define other keys (e.g. arrow keys).
+This has the effect that the escape key can not be distinguished and will not work as intended on those platforms (may get resolved with [this issue](https://github.com/ajalt/mordant/issues/193)).
+For those terminals the default for exiting nav will be changed to *delete* until a solution is found.
+
+## ❤️ Powered by
+
+- UI: [Mordant](https://github.com/ajalt/mordant)
+- CLI: [Clikt](https://github.com/ajalt/clikt)
+- Commands: [Kommand](https://github.com/kgit2/kommand)
+- Config file: [ktoml](https://github.com/orchestr7/ktoml)
+- Kotlin/Native
