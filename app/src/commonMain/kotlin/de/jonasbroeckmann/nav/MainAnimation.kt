@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav
 
 import com.github.ajalt.colormath.model.RGB
+import com.github.ajalt.mordant.animation.StoppableAnimation
 import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.input.*
 import com.github.ajalt.mordant.rendering.*
@@ -18,14 +19,15 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainAnimation(
-    override val terminal: Terminal,
+    terminal: Terminal,
     private val config: Config,
     startingDirectory: Path,
     startingCursorIndex: Int,
     private val debugMode: Boolean = false
-) : InputReceiverAnimation<Path?> {
+) : StoppableAnimation {
 
     private data class State(
         val directory: Path,
@@ -322,30 +324,17 @@ class MainAnimation(
         }
     }
 
-    init {
-        animation.update(state)
-    }
-
     override fun stop() = animation.stop()
     override fun clear() = animation.clear()
 
-    fun main(): Path? {
-        animation.update(state)
-        return receiveEvents()
-    }
 
-    fun terminate() {
-        if (!config.clearOnExit) {
-            // draw one last frame
+    fun update(event: InputEvent? = null): InputReceiver.Status<Path?> {
+        if (event == null) {
             animation.update(state)
-            animation.stop()
-        } else {
-            animation.clear()
+            return InputReceiver.Status.Continue
         }
-    }
-
-    override fun receiveEvent(event: InputEvent): InputReceiver.Status<Path?> {
         if (event !is KeyboardEvent) return InputReceiver.Status.Continue
+        state = state.resetExit()
         state = when {
             event.isCtrlC -> state.exit()
             else -> actions.tryHandle(event, state) ?: state
@@ -354,8 +343,6 @@ class MainAnimation(
         animation.update(state)
 
         val exit = state.exit ?: return InputReceiver.Status.Continue
-        animation.clear()
-        state = state.resetExit()
         return InputReceiver.Status.Finished(exit.takeUnless { it == WorkingDirectory })
     }
 

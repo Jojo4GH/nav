@@ -12,13 +12,13 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlin.experimental.ExperimentalNativeApi
 
 
 @Serializable
 data class Config(
     val maxVisibleEntries: Int = 32,
     val maxVisiblePathElements: Int = 6,
+    val inputTimeoutMillis: Int = 4,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
     val editor: String = "nano",
@@ -170,5 +170,4 @@ object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
     }
 }
 
-@OptIn(ExperimentalNativeApi::class)
-private val EscapeOrDelete get() = if (Platform.osFamily.isUnix) KeyboardEvent("Delete") else KeyboardEvent("Escape")
+private val EscapeOrDelete get() = KeyboardEvent("Escape")
