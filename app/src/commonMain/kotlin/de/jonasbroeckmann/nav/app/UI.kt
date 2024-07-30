@@ -44,6 +44,19 @@ class UI(
         captionTop(renderTitle(data.directory, data.filter, data.debugMode), align = TextAlign.LEFT)
         if (!config.hideHints) captionBottom(renderHints(data), align = TextAlign.LEFT)
 
+        if (data.filteredItems.isEmpty()) {
+            body {
+                row {
+                    if (data.filter.isNotEmpty()) {
+                        cell(Text(TextStyles.dim("No results …")))
+                    } else {
+                        cell(Text(TextStyles.dim("There is nothing here")))
+                    }
+                }
+            }
+            return@table
+        }
+
         header {
             style = TextStyles.dim.style
             row {
@@ -221,7 +234,9 @@ class UI(
         }
 
         fun MutableList<String>.group(block: MutableList<String>.() -> Unit) {
-            add(mutableListOf<String>().apply(block).joinToString(" "))
+            mutableListOf<String>().apply(block).let {
+                if (it.isNotEmpty()) add(it.joinToString(" "))
+            }
         }
 
         return buildList {
@@ -245,6 +260,7 @@ class UI(
             if (state.debugMode && state.lastReceivedEvent != null) {
                 add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
             }
+
         }.joinToString(TextStyles.dim(" • "))
     }
 
