@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
@@ -6,19 +6,19 @@ import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.Terminal
 import com.kgit2.kommand.process.Command
-import kotlinx.io.buffered
+import de.jonasbroeckmann.nav.CDFile
+import de.jonasbroeckmann.nav.Config
 import kotlinx.io.files.Path
-import kotlinx.io.writeString
 import kotlin.system.exitProcess
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class App(
+    private val terminal: Terminal,
+    private val config: Config,
     startingDirectory: Path,
     debugMode: Boolean
 ) {
-    private val terminal = Terminal()
-    private val config = Config.load(terminal)
     private var state = State(
         directory = startingDirectory,
         cursor = 0,
@@ -39,7 +39,7 @@ class App(
             when (event) {
                 Event.Exit -> break
                 is Event.ExitAt -> {
-                    broadcastChangeDirectory(event.directory)
+                    CDFile.broadcastChangeDirectory(event.directory)
                     break
                 }
                 is Event.OpenFile -> {
@@ -119,18 +119,6 @@ class App(
             .args(file.toString())
             .spawn()
             .wait()
-
-
-        private fun broadcastChangeDirectory(path: Path) {
-            if (NavFile.exists()) {
-//        terminal.danger("$NavFile already exists")
-//        return
-                NavFile.delete()
-            }
-            NavFile.sink().buffered().use {
-                it.writeString(path.toString())
-            }
-        }
     }
 
     sealed interface Event {

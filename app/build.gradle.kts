@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
@@ -11,8 +12,11 @@ plugins {
 group = "de.jonasbroeckmann.nav"
 version = "1.0.0"
 
+val binaryName = "nav"
+
 buildConfig {
     buildConfigField("String", "VERSION", "\"$version\"")
+    buildConfigField("String", "BINARY_NAME", "\"$binaryName\"")
 }
 
 kotlin {
@@ -22,42 +26,25 @@ kotlin {
         )
     }
 
-    linuxX64 {
-        binaries {
-            executable {
-                baseName = "nav"
-                entryPoint = "$group.main"
-            }
-        }
-    }
-    linuxArm64 {
-        binaries {
-            executable {
-                baseName = "nav"
-                entryPoint = "$group.main"
-            }
-        }
-    }
+    linuxX64()
+    linuxArm64()
     mingwX64 {
-        binaries {
-            executable {
-                baseName = "nav"
-                entryPoint = "$group.main"
-            }
-        }
         compilerOptions {
             freeCompilerArgs.addAll(
                 "-Xdisable-phases=EscapeAnalysis" // prevent OutOfMemoryError during escape analysis
             )
         }
     }
-//    macosX64 {
-//        binaries {
-//            executable {
-//                entryPoint = "$group.main"
-//            }
-//        }
-//    }
+//    macosX64()
+
+    targets.withType<KotlinNativeTarget> {
+        binaries {
+            executable {
+                baseName = binaryName
+                entryPoint = "$group.main"
+            }
+        }
+    }
 
     sourceSets {
         commonMain {

@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.utils
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.toKString

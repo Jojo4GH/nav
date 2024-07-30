@@ -1,9 +1,12 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.App.Event.*
+import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.app.App.Event.*
+import de.jonasbroeckmann.nav.utils.WorkingDirectory
+import de.jonasbroeckmann.nav.utils.commonPrefix
 
 
 class Actions(config: Config) {

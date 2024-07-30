@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.utils
 
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem

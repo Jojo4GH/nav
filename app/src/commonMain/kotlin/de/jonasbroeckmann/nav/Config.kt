@@ -4,14 +4,9 @@ package de.jonasbroeckmann.nav
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
-import kotlinx.serialization.KSerializer
+import de.jonasbroeckmann.nav.utils.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 
 
 @Serializable
@@ -72,7 +67,7 @@ data class Config(
         val file: String = Retro.file,
         val link: String = Retro.link,
 
-    ) {
+        ) {
         companion object {
             @Suppress("unused")
             val Original = Colors(
@@ -90,6 +85,12 @@ data class Config(
                 directory = "2FA2FF",
                 file = "FFFFFF",
                 link = "00FFFF"
+            )
+            val Retro = themed(
+                main = "00DBB7",
+                color1 = "F71674",
+                color2 = "F5741D",
+                color3 = "009FFD"
             )
 
             fun themed(
@@ -110,13 +111,6 @@ data class Config(
                 directory = color1,
                 file = color2,
                 link = color3
-            )
-
-            val Retro = themed(
-                main = "00DBB7",
-                color1 = "F71674",
-                color2 = "F5741D",
-                color3 = "009FFD"
             )
         }
     }
@@ -143,31 +137,6 @@ data class Config(
             }
         }
 
+        private val EscapeOrDelete get() = KeyboardEvent("Escape")
     }
 }
-
-object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("KeyboardEvent", PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: KeyboardEvent) {
-        encoder.encodeString(listOfNotNull(
-            "ctrl".takeIf { value.ctrl },
-            "shift".takeIf { value.shift },
-            "alt".takeIf { value.alt },
-            value.key
-        ).joinToString("+"))
-    }
-    override fun deserialize(decoder: Decoder): KeyboardEvent {
-        decoder.decodeString().split("+").let {
-            val key = it.last()
-            val modifiers = it.dropLast(1)
-            return KeyboardEvent(
-                key = key,
-                ctrl = "ctrl" in modifiers,
-                shift = "shift" in modifiers,
-                alt = "alt" in modifiers
-            )
-        }
-    }
-}
-
-private val EscapeOrDelete get() = KeyboardEvent("Escape")

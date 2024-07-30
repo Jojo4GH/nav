@@ -1,7 +1,19 @@
 package de.jonasbroeckmann.nav
 
+import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
+import de.jonasbroeckmann.nav.utils.which
 
-enum class Shells(
+
+
+fun runInit(shellName: String) {
+    val shell = Shells.entries
+        .firstOrNull { it.shell.equals(shellName, ignoreCase = true) }
+        ?: error("Unknown shell: $shellName")
+    shell.printInitScript()
+}
+
+
+private enum class Shells(
     val shell: String,
     private val pathSanitizer: (String) -> String,
     private val initScript: (binary: String, navFileInHome: String) -> String,
@@ -25,7 +37,7 @@ enum class Shells(
             }
             """.trimIndent()
         },
-        profileScript = "eval \"\$($NAV --init bash)\""
+        profileScript = "eval \"\$(${NavCommand.BinaryName} --init bash)\""
     ),
     POWERSHELL(
         shell = "powershell",
@@ -45,17 +57,14 @@ enum class Shells(
             }
             """.trimIndent()
         },
-        profileScript = "Invoke-Expression (& $NAV --init powershell | Out-String)"
+        profileScript = "Invoke-Expression (& ${NavCommand.BinaryName} --init powershell | Out-String)"
     );
 
     fun printInitScript() {
-        val binary = which(NAV) ?: error("Could not find $NAV binary")
-        println(initScript(pathSanitizer(binary.toString()), pathSanitizer(NavFileInUserHome.toString())))
+        val binary = which(NavCommand.BinaryName) ?: error("Could not find ${NavCommand.BinaryName} binary")
+        println(initScript(pathSanitizer(binary.toString()), pathSanitizer(CDFile.PathInUserHome.toString())))
     }
 }
-
-
-private const val NAV = "nav"
 
 private val UnixPathSanitizer: (String) -> String = {
     it.replace(RealSystemPathSeparator, '/')

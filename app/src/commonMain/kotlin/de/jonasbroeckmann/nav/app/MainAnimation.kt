@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.colormath.model.RGB
 import com.github.ajalt.mordant.animation.StoppableAnimation
@@ -11,6 +11,10 @@ import com.github.ajalt.mordant.table.table
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
+import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
+import de.jonasbroeckmann.nav.utils.Stat
+import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.format
