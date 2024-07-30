@@ -19,180 +19,13 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.milliseconds
 
 class MainAnimation(
     terminal: Terminal,
     private val config: Config,
-    startingDirectory: Path,
-    startingCursorIndex: Int,
-    private val debugMode: Boolean = false
+    private val actions: Actions
 ) : StoppableAnimation {
 
-    private data class State(
-        val directory: Path,
-        val items: List<Entry> = directory.entries(),
-        val cursor: Int,
-        val filter: String = "",
-        val exit: Path? = null,
-        val lastReceivedEvent: KeyboardEvent? = null
-    ) {
-        val filteredItems: List<Entry> by lazy {
-            if (filter.isEmpty()) return@lazy items
-            items.filter { filter.lowercase() in it.path.name.lowercase() }
-                .sortedByDescending { it.path.name.startsWith(filter) }
-        }
-        val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
-
-        fun withCursor(cursor: Int) = copy(
-            cursor = when {
-                filteredItems.isEmpty() -> 0
-                else -> cursor.mod(filteredItems.size)
-            }
-        )
-
-        fun filtered(filter: String): State {
-            val tmp = copy(filter = filter)
-            val newCursor = if (tmp.filteredItems.size < filteredItems.size) 0 else tmp.cursor
-            return tmp.copy(items = tmp.items, cursor = newCursor)
-        }
-
-        fun navigatedUp(): State {
-            val newDir = directory.parent ?: return this
-            val entries = newDir.entries()
-            return State(
-                directory = newDir,
-                items = entries,
-                cursor = entries.indexOfFirst { it.path.name == directory.name }.coerceAtLeast(0)
-            )
-        }
-
-        fun navigatedInto(entry: Entry?): State {
-            if (entry?.isDirectory != true) return this
-            return State(
-                directory = entry.path,
-                cursor = 0
-            )
-        }
-
-        fun exit(at: Path = WorkingDirectory) = copy(exit = at)
-        fun resetExit() = if (exit != null) copy(exit = null) else this
-
-        companion object {
-            private fun Path.entries(): List<Entry> = children()
-                .map { it.cleaned() } // fix broken paths
-                .map { Entry(it, it.stat()) }
-                .sortedBy { it.path.name }
-                .sortedByDescending { it.isDirectory }
-        }
-    }
-
-
-    private var state = State(directory = startingDirectory, cursor = startingCursorIndex)
-
-
-    private val actions = Actions(config)
-    private class Actions(config: Config) {
-        val cursorUp = KeyAction(
-            key = config.keys.cursor.up,
-            condition = { filteredItems.isNotEmpty() },
-            action = { withCursor(cursor - 1) }
-        )
-        val cursorDown = KeyAction(
-            key = config.keys.cursor.down,
-            condition = { filteredItems.isNotEmpty() },
-            action = { withCursor(cursor + 1) }
-        )
-        val cursorHome = KeyAction(
-            key = config.keys.cursor.home,
-            condition = { filteredItems.isNotEmpty() },
-            action = { withCursor(0) }
-        )
-        val cursorEnd = KeyAction(
-            key = config.keys.cursor.end,
-            condition = { filteredItems.isNotEmpty() },
-            action = { withCursor(filteredItems.lastIndex) }
-        )
-
-        val navigateUp = KeyAction(
-            key = config.keys.nav.up,
-            condition = { directory.parent != null },
-            action = { navigatedUp() }
-        )
-        val navigateInto = KeyAction(
-            key = config.keys.nav.into,
-            condition = { currentEntry?.isDirectory == true },
-            action = { navigatedInto(currentEntry) }
-        )
-        val navigateOpen = KeyAction(
-            key = config.keys.nav.open,
-            description = "open in ${config.editor}",
-            style = TextColors.rgb(config.colors.file),
-            condition = { currentEntry?.isRegularFile == true },
-            action = { exit(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
-        )
-
-        val exitCD = KeyAction(
-            key = config.keys.submit,
-            description = "exit here",
-            style = TextColors.rgb(config.colors.path),
-            condition = { directory != WorkingDirectory && filter.isEmpty() },
-            action = { exit(directory) }
-        )
-        val exit = KeyAction(
-            key = config.keys.cancel,
-            description = "cancel",
-            condition = { filter.isEmpty() },
-            action = { exit() }
-        )
-
-        val autocompleteFilter = KeyAction(
-            key = config.keys.filter.autocomplete,
-            description = "autocomplete",
-            condition = { filter.isNotEmpty() && items.isNotEmpty() },
-            action = {
-                val commonPrefix = items
-                    .map { it.path.name.lowercase() }
-                    .filter { it.startsWith(filter.lowercase()) }
-                    .commonPrefix()
-                filtered(commonPrefix)
-            }
-        )
-        val clearFilter = KeyAction(
-            key = config.keys.filter.clear,
-            description = "clear filter",
-            condition = { filter.isNotEmpty() },
-            action = { filtered("") }
-        )
-
-        fun tryHandle(event: KeyboardEvent, state: State): State? {
-            val actions = listOf(
-                cursorUp, cursorDown, cursorHome, cursorEnd,
-                navigateUp, navigateInto, navigateOpen,
-                exitCD, exit,
-                autocompleteFilter, clearFilter
-            )
-            for (action in actions) {
-                if (action.matches(event, state)) return action.action(state, event)
-            }
-            if (!event.alt && !event.ctrl) when {
-                event == KeyboardEvent("Backspace") -> return state.filtered(state.filter.dropLast(1))
-                event.key.length == 1 -> return state.filtered(state.filter + event.key)
-            }
-            return null
-        }
-    }
-
-    private data class KeyAction(
-        val key: KeyboardEvent,
-        val description: String? = null,
-        val style: TextStyle? = null,
-        private val condition: State.() -> Boolean,
-        val action: State.(KeyboardEvent) -> State
-    ) {
-        fun matches(event: KeyboardEvent, state: State) = key == event && available(state)
-        fun available(state: State) = state.condition()
-    }
 
 
     private val animation = terminal.animation<State> { s ->
@@ -209,8 +42,8 @@ class MainAnimation(
 
         val title = Text(
             when {
-                s.filter.isNotEmpty() -> "${renderPath(s.directory)} $RealSystemPathSeparator ${filterStyle(s.filter)}"
-                else -> renderPath(s.directory)
+                s.filter.isNotEmpty() -> "${renderPath(s.directory, s.debugMode)} $RealSystemPathSeparator ${filterStyle(s.filter)}"
+                else -> renderPath(s.directory, s.debugMode)
             }
         )
 
@@ -327,26 +160,10 @@ class MainAnimation(
     override fun stop() = animation.stop()
     override fun clear() = animation.clear()
 
+    fun update(state: State) = animation.update(state)
 
-    fun update(event: InputEvent? = null): InputReceiver.Status<Path?> {
-        if (event == null) {
-            animation.update(state)
-            return InputReceiver.Status.Continue
-        }
-        if (event !is KeyboardEvent) return InputReceiver.Status.Continue
-        state = state.resetExit()
-        state = when {
-            event.isCtrlC -> state.exit()
-            else -> actions.tryHandle(event, state) ?: state
-        }
-        state = state.copy(lastReceivedEvent = event)
-        animation.update(state)
 
-        val exit = state.exit ?: return InputReceiver.Status.Continue
-        return InputReceiver.Status.Finished(exit.takeUnless { it == WorkingDirectory })
-    }
-
-    private fun renderPath(path: Path): String {
+    private fun renderPath(path: Path, debugMode: Boolean): String {
         val pathString = path.toString().let {
             val home = UserHome.toString().removeSuffix("$RealSystemPathSeparator")
             if (it.startsWith(home)) " ~${it.removePrefix(home)}" else it
@@ -419,7 +236,7 @@ class MainAnimation(
             render(actions.exitCD)
             render(actions.exit)
 
-            if (debugMode && state.lastReceivedEvent != null) {
+            if (state.debugMode && state.lastReceivedEvent != null) {
                 add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
             }
         }.joinToString(TextStyles.dim(" • "))
