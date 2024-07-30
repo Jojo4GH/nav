@@ -3,6 +3,7 @@
 kotlin = "2.0.0"
 compose-plugin = "1.6.11"
 dokka = "1.9.20"
+gradle-checksum = "1.4.0"
 
 kotlinx-coroutines = "1.9.0-RC"
 kotlinx-datetime = "0.6.0"
@@ -17,6 +18,7 @@ ktor = "2.3.12"
 skrapeit = "1.2.2"
 kommand = "2.1.2"
 gmazzo-buildconfig = "5.4.0"
+dorongold-tasktree = "4.0.0"
 
 [plugins]
 
@@ -29,7 +31,9 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
+gradle-checksum = { id = "org.gradle.crypto.checksum", version.ref = "gradle-checksum" }
 gmazzo-buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "gmazzo-buildconfig" }
+dorongold-tasktree = { id = "com.dorongold.task-tree", version.ref = "dorongold-tasktree" }
 
 [libraries]
 

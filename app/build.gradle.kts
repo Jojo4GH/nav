@@ -1,3 +1,4 @@
+import org.gradle.crypto.checksum.Checksum
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
@@ -8,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.gmazzo.buildconfig)
+    alias(libs.plugins.gradle.checksum)
+    alias(libs.plugins.dorongold.tasktree)
 }
 
 group = "de.jonasbroeckmann.nav"
@@ -73,25 +76,37 @@ kotlin {
 }
 
 
+
 tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
-    tasks.register<Zip>("package${linkTask.name.removePrefix("link")}") {
+    val taskName = linkTask.name.removePrefix("link")
+
+    tasks.register<Zip>("package$taskName") {
         group = "distribution"
         dependsOn(linkTask)
         from(linkTask.outputFile) {
             rename("nav\\.kexe", "nav")
         }
-        destinationDirectory.set(layout.buildDirectory.dir("packaged"))
+        destinationDirectory.set(layout.buildDirectory.dir("packages"))
         archiveFileName.set(listOfNotNull(
             "nav",
             linkTask.binary.compilation.konanTarget.targetTriple,
             if (!linkTask.optimized) "debug" else null
         ).joinToString("-", postfix = ".zip"))
+    }.get()
+
+    tasks.register<Checksum>("checksum$taskName") {
+        group = "distribution"
+        val packageTask = tasks.named("package$taskName")
+        mustRunAfter(packageTask)
+        inputFiles.from(packageTask)
+        checksumAlgorithm.set(Checksum.Algorithm.SHA256)
     }
 }
 
 tasks.register("packageAll") {
     group = "distribution"
     dependsOn(tasks.withType<Zip>().filter { it.name.startsWith("package") })
+    dependsOn(tasks.withType<Checksum>().filter { it.name.startsWith("checksum") })
 }
 
 
