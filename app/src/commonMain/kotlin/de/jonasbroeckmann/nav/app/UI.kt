@@ -1,8 +1,7 @@
 package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.colormath.model.RGB
-import com.github.ajalt.mordant.animation.StoppableAnimation
-import com.github.ajalt.mordant.animation.animation
+import com.github.ajalt.mordant.animation.Animation
 import com.github.ajalt.mordant.input.*
 import com.github.ajalt.mordant.rendering.*
 import com.github.ajalt.mordant.table.Borders
@@ -23,149 +22,152 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.days
+import de.jonasbroeckmann.nav.app.State as UIState
 
-class MainAnimation(
+
+class UI(
     terminal: Terminal,
     private val config: Config,
     private val actions: Actions
-) : StoppableAnimation {
+) : Animation<UIState>(
+    trailingLinebreak = true,
+    terminal = terminal
+) {
+    override fun renderData(data: UIState): Widget = table {
+        overflowWrap = OverflowWrap.ELLIPSES
+        cellBorders = Borders.LEFT_RIGHT
+        tableBorders = Borders.NONE
+        borderType = BorderType.BLANK
+        padding = Padding(0)
+        whitespace = Whitespace.PRE_WRAP
 
+        captionTop(renderTitle(data.directory, data.filter, data.debugMode), align = TextAlign.LEFT)
+        if (!config.hideHints) captionBottom(renderHints(data), align = TextAlign.LEFT)
 
-
-    private val animation = terminal.animation<State> { s ->
-
-        val filterStyle = TextColors.rgb(config.colors.filter) + TextStyles.bold
-        val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
-        val dirStyle = TextColors.rgb(config.colors.directory)
-        val fileStyle = TextColors.rgb(config.colors.file)
-        val linkStyle = TextColors.rgb(config.colors.link)
-
-
-        val entries = s.filteredItems
-        val selectedIndex = s.cursor
-
-        val title = Text(
-            when {
-                s.filter.isNotEmpty() -> "${renderPath(s.directory, s.debugMode)} $RealSystemPathSeparator ${filterStyle(s.filter)}"
-                else -> renderPath(s.directory, s.debugMode)
-            }
-        )
-
-        val bottom = if (config.hideHints) null else Text(renderHints(s))
-
-
-        val highlighted = TextStyle(inverse = true)
-
-        table {
-            captionTop(title)
-            if (bottom != null) captionBottom(bottom)
-
-            overflowWrap = OverflowWrap.ELLIPSES
-            cellBorders = Borders.LEFT_RIGHT
-            tableBorders = Borders.NONE
-            borderType = BorderType.BLANK
-            padding = Padding(0)
-            whitespace = Whitespace.PRE_WRAP
-
-            header {
-                style = TextStyles.dim.style
-                row {
-                    cell("Permissions")
-                    cell("Size") {
-                        align = TextAlign.RIGHT
-                    }
-                    cell(Text("Last Modified", overflowWrap = OverflowWrap.ELLIPSES))
-                    cell("Name")
+        header {
+            style = TextStyles.dim.style
+            row {
+                cell("Permissions")
+                cell("Size") {
+                    align = TextAlign.RIGHT
                 }
+                cell(Text("Last Modified", overflowWrap = OverflowWrap.ELLIPSES))
+                cell("Name")
             }
-            body {
-                val padding = config.maxVisibleEntries / 2 - 1
-                val firstVisible =
-                    (s.cursor - padding).coerceAtMost(entries.size - config.maxVisibleEntries).coerceAtLeast(0)
-
-                for ((i, entry) in entries.withIndex()) {
-                    if (i < firstVisible) continue
-
-                    fun SectionBuilder.more(n: Int) {
-                        row {
-                            cell("")
-                            cell("")
-                            cell("")
-                            cell("… $n more") {
-                                style = TextStyles.dim.style
-                            }
+        }
+        body {
+            renderEntries(
+                entries = data.filteredItems,
+                cursor = data.cursor,
+                renderMore = { n ->
+                    row {
+                        cell("")
+                        cell("")
+                        cell("")
+                        cell("… $n more") {
+                            style = TextStyles.dim.style
                         }
                     }
-
-                    if (i == firstVisible && firstVisible > 0) {
-                        more(firstVisible + 1)
-                        continue
-                    }
-                    if (i == firstVisible + config.maxVisibleEntries - 1 && firstVisible + config.maxVisibleEntries < entries.size) {
-                        more(entries.size - (firstVisible + config.maxVisibleEntries) + 1)
-                        break
-                    }
-
-                    row {
-
-                        cell(Text(renderPermissions(entry.stat), width = 9))
-
-                        cell(Text(
-                            text = entry.size?.let { renderFileSize(it) } ?: "",
-                            align = TextAlign.RIGHT,
-                            width = 4
-                        ))
-
-                        cell(
-                            Text(
-                                renderModificationTime(entry.stat.lastModificationTime),
-                                width = 12
-                            )
+                }
+            ) { entry, isSelected ->
+                row {
+                    cell(Text(
+                        text = renderPermissions(entry.stat),
+                        width = 9
+                    ))
+                    cell(Text(
+                        text = renderFileSize(entry.size),
+                        align = TextAlign.RIGHT,
+                        width = 4
+                    ))
+                    cell(Text(
+                        text = renderModificationTime(entry.stat.lastModificationTime),
+                        width = 12
+                    ))
+                    cell(Text(
+                        text = renderName(
+                            entry = entry,
+                            isSelected = isSelected,
+                            filter = data.filter
                         )
-
-                        val name = entry.path.name
-                            .let {
-                                if (s.filter.isNotEmpty()) {
-                                    // highlight all filter occurrences
-                                    var index = 0
-                                    var result = ""
-                                    while (index < it.length) {
-                                        val found = it.indexOf(s.filter, index, ignoreCase = true)
-                                        if (found < 0) {
-                                            result += it.substring(index, it.length)
-                                            break
-                                        }
-                                        result += it.substring(index, found)
-                                        index = found
-
-                                        result += filterMarkerStyle(it.substring(index, index + s.filter.length))
-                                        index += s.filter.length
-                                    }
-                                    result
-                                } else it
-                            }
-                            .let { if (i == selectedIndex) highlighted(it) else it }
-                            .let { "\u0006$it" } // prevent filter highlighting from getting removed
-                            .let {
-                                when {
-                                    entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
-                                    entry.isRegularFile -> fileStyle(it)
-                                    entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
-                                    else -> TextColors.magenta(it)
-                                }
-                            }
-                        cell(name)
-                    }
+                    ))
                 }
             }
         }
     }
 
-    override fun stop() = animation.stop()
-    override fun clear() = animation.clear()
+    private fun SectionBuilder.renderEntries(
+        entries: List<UIState.Entry>,
+        cursor: Int,
+        renderMore: SectionBuilder.(Int) -> Unit,
+        renderEntry: SectionBuilder.(UIState.Entry, Boolean) -> Unit
+    ) {
+        val padding = config.maxVisibleEntries / 2 - 1
+        val firstVisible = (cursor - padding)
+            .coerceAtMost(entries.size - config.maxVisibleEntries)
+            .coerceAtLeast(0)
+        for ((i, entry) in entries.withIndex()) {
+            if (i < firstVisible) continue
+            if (i == firstVisible && firstVisible > 0) {
+                renderMore(firstVisible + 1)
+                continue
+            }
+            if (i == firstVisible + config.maxVisibleEntries - 1 && firstVisible + config.maxVisibleEntries < entries.size) {
+                renderMore(entries.size - (firstVisible + config.maxVisibleEntries) + 1)
+                break
+            }
+            renderEntry(entry, i == cursor)
+        }
+    }
 
-    fun update(state: State) = animation.update(state)
+    private fun renderTitle(directory: Path, filter: String, debugMode: Boolean): String {
+        return "${renderPath(directory, debugMode)}${renderFilter(filter)}"
+    }
 
+    private fun renderFilter(filter: String): String {
+        if (filter.isEmpty()) return ""
+        val style = TextColors.rgb(config.colors.filter) + TextStyles.bold
+        return " $RealSystemPathSeparator ${style(filter)}"
+    }
+
+    private fun renderName(entry: UIState.Entry, isSelected: Boolean, filter: String): String {
+        val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
+        val dirStyle = TextColors.rgb(config.colors.directory)
+        val fileStyle = TextColors.rgb(config.colors.file)
+        val linkStyle = TextColors.rgb(config.colors.link)
+        val selectedStyle = TextStyles.inverse
+        return entry.path.name
+            .let {
+                if (filter.isNotEmpty()) {
+                    // highlight all filter occurrences
+                    var index = 0
+                    var result = ""
+                    while (index < it.length) {
+                        val found = it.indexOf(filter, index, ignoreCase = true)
+                        if (found < 0) {
+                            result += it.substring(index, it.length)
+                            break
+                        }
+                        result += it.substring(index, found)
+                        index = found
+
+                        result += filterMarkerStyle(it.substring(index, index + filter.length))
+                        index += filter.length
+                    }
+                    result
+                } else it
+            }
+            .let { if (isSelected) selectedStyle(it) else it }
+            .let { "\u0006$it" } // prevent filter highlighting from getting removed
+            .let {
+                when {
+                    entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
+                    entry.isRegularFile -> fileStyle(it)
+                    entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
+                    else -> TextColors.magenta(it)
+                }
+            }
+    }
 
     private fun renderPath(path: Path, debugMode: Boolean): String {
         val pathString = path.toString().let {
@@ -206,7 +208,7 @@ class MainAnimation(
     }
 
     private fun renderHints(
-        state: State
+        state: UIState
     ): String {
         val styleKey = TextColors.rgb(config.colors.keyHints) + TextStyles.bold
 
@@ -261,7 +263,9 @@ class MainAnimation(
         return "${render(stat.mode.user)}${render(stat.mode.group)}${render(stat.mode.others)}"
     }
 
-    private fun renderFileSize(bytes: Long): String {
+    private fun renderFileSize(bytes: Long?): String {
+        if (bytes == null) return ""
+
         val numStyle = TextColors.rgb(config.colors.entrySize)
         val unitStyle = numStyle + TextStyles.dim
 

@@ -25,7 +25,7 @@ class App(
         debugMode = debugMode
     )
     private val actions = Actions(config)
-    private val animation = MainAnimation(
+    private val ui = UI(
         terminal = terminal,
         config = config,
         actions = actions
@@ -33,17 +33,15 @@ class App(
 
     fun main(): Nothing {
         while (true) {
-            animation.update(state) // update once to show initial state
-            val event: Event.OutsideUI = mainUILoop()
-
-            when (event) {
+            ui.update(state) // update once to show initial state
+            when (val event: Event.OutsideUI = mainUILoop()) {
                 Event.Exit -> break
                 is Event.ExitAt -> {
                     CDFile.broadcastChangeDirectory(event.directory)
                     break
                 }
                 is Event.OpenFile -> {
-                    animation.clear() // hide animation before opening editor
+                    ui.clear() // hide UI before opening editor
                     // open editor
                     val exitCode = openInEditorAndWait(config.editor, event.file)
                     if (exitCode != 0) {
@@ -54,9 +52,9 @@ class App(
         }
 
         if (!config.clearOnExit) {
-            animation.stop()
+            ui.stop()
         } else {
-            animation.clear()
+            ui.clear()
         }
 
         exitProcess(0)
@@ -74,7 +72,7 @@ class App(
             if (event is Event.NewState) {
                 state = event.state
                 if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
-                animation.update(state)
+                ui.update(state)
             }
         }
     }
