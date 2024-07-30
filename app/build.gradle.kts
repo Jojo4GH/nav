@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
@@ -19,6 +20,7 @@ buildConfig {
     buildConfigField("String", "BINARY_NAME", "\"$binaryName\"")
 }
 
+@OptIn(ExperimentalKotlinGradlePluginApi::class)
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(

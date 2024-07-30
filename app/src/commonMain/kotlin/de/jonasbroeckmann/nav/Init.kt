@@ -17,7 +17,7 @@ private enum class Shells(
     val shell: String,
     private val pathSanitizer: (String) -> String,
     private val initScript: (binary: String, navFileInHome: String) -> String,
-    val profileScript: String
+    @Suppress("unused") val profileScript: String
 ) {
     BASH(
         shell = "bash",
