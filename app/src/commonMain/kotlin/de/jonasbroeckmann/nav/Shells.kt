@@ -1,6 +1,8 @@
 package de.jonasbroeckmann.nav
 
+import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.terminal.Terminal
+import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.which
 
@@ -10,6 +12,7 @@ enum class Shells(
     private val pathSanitizer: (String) -> String,
     private val initScript: (binary: String, navFileInHome: String) -> String,
     private val profileLocation: String,
+    private val profileDescription: String? = null,
     private val profileCommand: String
 ) {
     BASH(
@@ -18,7 +21,7 @@ enum class Shells(
         initScript = { binary, navFileInHome ->
             """
             function nav () {
-                "$binary" "${'$'}@"
+                "$binary" --correct-init "${'$'}@"
                 navFile="${'$'}HOME/$navFileInHome"
                 if [ -f "${'$'}navFile" ]; then
                     newDir=${'$'}(cat "${'$'}navFile")
@@ -39,7 +42,7 @@ enum class Shells(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                "$binary" "${'$'}@"
+                "$binary" --correct-init "${'$'}@"
                 navFile="${'$'}HOME/$navFileInHome"
                 if [[ -f "${'$'}navFile" ]]; then
                     newDir=$(cat "${'$'}navFile")
@@ -60,7 +63,7 @@ enum class Shells(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                & "$binary" @args
+                & "$binary" --correct-init @args
                 ${'$'}navFile = "${'$'}HOME\$navFileInHome"
                 if (Test-Path ${'$'}navFile) {
                     ${'$'}newDir = Get-Content ${'$'}navFile
@@ -89,8 +92,23 @@ enum class Shells(
         println(profileCommand)
     }
 
+    fun printInitInfo(terminal: Terminal) {
+        terminal.println(TextStyles.underline(shell))
+        terminal.println(listOfNotNull(
+            "Add the following to the end of $profileLocation:",
+            profileDescription,
+            "",
+            "\t$profileCommand",
+            "",
+        ).joinToString("\n"))
+    }
+
     companion object {
         val available by lazy { entries.associateBy { it.shell } }
+
+        fun printInitInfo(terminal: Terminal) {
+            entries.forEach { it.printInitInfo(terminal) }
+        }
 
         operator fun invoke(shellName: String) = entries
             .firstOrNull { it.shell.equals(shellName, ignoreCase = true) }

@@ -127,6 +127,7 @@ inputTimeoutMillis = 4
 hideHints = false
 clearOnExit = true
 editor = "nano"
+suppressInitCheck = false
 
 [keys]
 

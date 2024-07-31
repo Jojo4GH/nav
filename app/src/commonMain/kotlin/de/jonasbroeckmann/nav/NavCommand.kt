@@ -51,8 +51,18 @@ class NavCommand : CliktCommand() {
             "--profile-command",
             metavar = "SHELL",
             help = "Prints the command that should be added to the profile file for the specified shell"
-        ).choice(Shells.available).convert { it to { printProfileCommand() } }
+        ).choice(Shells.available).convert { it to { printProfileCommand() } },
     ).single()
+
+    private val initInfo by option(
+        "--init-info",
+        help = "Prints information about how to initialize $BinaryName correctly"
+    ).flag()
+
+    private val correctInit by option(
+        "--correct-init",
+        help = "Signals that the initialization script is being used correctly"
+    ).flag()
 
     private val debugMode by option(
         "--debug",
@@ -77,7 +87,19 @@ class NavCommand : CliktCommand() {
             return
         }
 
+        if (initInfo) {
+            terminal.println()
+            Shells.printInitInfo(terminal)
+            terminal.println()
+            return
+        }
+
         val config = Config.load(terminal)
+
+        if (!correctInit && !config.suppressInitCheck) {
+            terminal.danger("The installation is not complete and some feature will not work.")
+            terminal.danger("Use --init-info to get more information.")
+        }
 
         App(
             terminal = terminal,

@@ -17,6 +17,7 @@ data class Config(
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
     val editor: String = "nano",
+    val suppressInitCheck: Boolean = false,
 
     val keys: Keys = Keys(),
 

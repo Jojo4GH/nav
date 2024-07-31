@@ -16,7 +16,6 @@ NO_COLOR="$(tput sgr0 2>/dev/null || printf '')"
 SUPPORTED_TARGETS="x86_64-unknown-linux-gnu \
                   aarch64-unknown-linux-gnu \
                   x86_64-pc-windows-gnu"
-SUPPORTED_SHELLS="bash zsh powershell"
 
 NAV_GITHUB="https://github.com/Jojo4GH/nav"
 
@@ -303,33 +302,6 @@ check_bin_dir() {
   fi
 }
 
-print_install() {
-  printf "\n"
-  for s in $SUPPORTED_SHELLS; do
-    profile_location=$(nav --profile-location "$s")
-    profile_command=$(nav --profile-command "$s")
-    case ${s} in
-      bash|zsh|ion|fish|tcsh|xonsh )
-        title "$s"
-        text "Add the following to the end of ${profile_location}:"
-        printf "\n\t%s\n\n" "$profile_command"
-        ;;
-      powershell )
-        title "PowerShell"
-        text "Add the following to the end of ${profile_location}:"
-        text "Typically the path is ~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 or ~/.config/powershell/Microsoft.PowerShell_profile.ps1 on -Nix."
-        printf "\n\t%s\n\n" "$profile_command"
-        ;;
-      cmd )
-        title "Cmd"
-        text "You need to use Clink (v1.2.30+) with Cmd. Add the following to a file ${profile_location} and place this file in Clink scripts directory:"
-        printf "\n\n\t%s\n\n" "$profile_command"
-        ;;
-    esac
-  done
-  printf "\n"
-}
-
 is_build_available() {
   arch="$1"
   platform="$2"
@@ -495,4 +467,4 @@ completed "nav ${VERSION} installed"
 printf '\n'
 info "Please follow the steps for your shell to complete the installation:"
 
-print_install
+nav --init-info
