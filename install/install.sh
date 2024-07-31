@@ -16,6 +16,7 @@ NO_COLOR="$(tput sgr0 2>/dev/null || printf '')"
 SUPPORTED_TARGETS="x86_64-unknown-linux-gnu \
                   aarch64-unknown-linux-gnu \
                   x86_64-pc-windows-gnu"
+SUPPORTED_SHELLS="bash zsh powershell"
 
 NAV_GITHUB="https://github.com/Jojo4GH/nav"
 
@@ -33,6 +34,18 @@ error() {
 
 completed() {
   printf '%s\n' "${GREEN}✓${NO_COLOR} $*"
+}
+
+title() {
+  printf '%s\n' "  ${UNDERLINE}$*${NO_COLOR}"
+}
+
+text() {
+  printf '%s\n' "  $*"
+}
+
+new_issue() {
+  printf '%s\n' "${BOLD}${UNDERLINE}${NAV_GITHUB}/issues/new/${NO_COLOR}"
 }
 
 has() {
@@ -111,7 +124,7 @@ download() {
   info "This is likely due to nav not yet supporting your configuration."
   info "If you would like to see a build for your configuration,"
   info "please create an issue requesting a build for ${MAGENTA}${TARGET}${NO_COLOR}:"
-  info "${BOLD}${UNDERLINE}${NAV_GITHUB}/issues/new/${NO_COLOR}"
+  new_issue
   return $rc
 }
 
@@ -135,8 +148,8 @@ unpack() {
 
   error "Unknown package extension."
   printf "\n"
-  info "This almost certainly results from a bug in this script--please file a"
-  info "bug report at ${NAV_GITHUB}/issues"
+  info "This almost certainly results from a bug in this script. Please file a bug report:"
+  new_issue
   return 1
 }
 
@@ -292,64 +305,25 @@ check_bin_dir() {
 
 print_install() {
   printf "\n"
-  for s in "bash" "zsh" "powershell"
-  do
+  for s in $SUPPORTED_SHELLS; do
+    profile_location=$(nav --profile-location "$s")
+    profile_command=$(nav --profile-command "$s")
     case ${s} in
       bash|zsh|ion|fish|tcsh|xonsh )
-        # shellcheck disable=SC2088
-        # we don't want these '~' expanding
-        config_file="~/.${s}rc"
-        config_cmd="eval \"\$(nav --init ${s})\""
-        case ${s} in
-          bash )
-            # shellcheck disable=SC2088
-            config_file="~/.bashrc"
-            config_cmd="eval \"\$(nav --init ${s})\""
-            ;;
-          zsh )
-            # shellcheck disable=SC2088
-            config_file="~/.zshrc"
-            config_cmd="eval \"\$(nav --init ${s})\""
-            ;;
-          ion )
-            # shellcheck disable=SC2088
-            config_file="~/.config/ion/initrc"
-            config_cmd="eval \$(nav --init ${s})"
-            ;;
-          fish )
-            # shellcheck disable=SC2088
-            config_file="~/.config/fish/config.fish"
-            config_cmd="nav --init fish | source"
-            ;;
-          tcsh )
-            # shellcheck disable=SC2088
-            config_file="~/tcshrc"
-            config_cmd="eval \`nav --init ${s}\`"
-            ;;
-          xonsh )
-            # shellcheck disable=SC2088
-            config_file="~/.xonshrc"
-            config_cmd="execx(\$(nav --init xonsh))"
-            ;;
-        esac
-        printf "  %s\n  Add the following to the end of %s:\n\n\t%s\n\n" \
-          "${BOLD}${UNDERLINE}${s}${NO_COLOR}" \
-          "${BOLD}${config_file}${NO_COLOR}" \
-          "${config_cmd}"
+        title "$s"
+        text "Add the following to the end of ${profile_location}:"
+        printf "\n\t%s\n\n" "$profile_command"
         ;;
       powershell )
-        printf "  %s\n  Add the following to the end of %s:\n  %s\n  %s\n\n\t%s\n\n" \
-          "${BOLD}${UNDERLINE}PowerShell${NO_COLOR}" \
-          "${BOLD}Microsoft.PowerShell_profile.ps1${NO_COLOR}" \
-          "You can check the location of this file by querying the \$PROFILE variable in PowerShell." \
-          "Typically the path is ~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 or ~/.config/powershell/Microsoft.PowerShell_profile.ps1 on -Nix." \
-          "Invoke-Expression (& nav --init powershell | Out-String)"
+        title "PowerShell"
+        text "Add the following to the end of ${profile_location}:"
+        text "Typically the path is ~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 or ~/.config/powershell/Microsoft.PowerShell_profile.ps1 on -Nix."
+        printf "\n\t%s\n\n" "$profile_command"
         ;;
       cmd )
-        printf "  %s\n  You need to use Clink (v1.2.30+) with Cmd. Add the following to a file %s and place this file in Clink scripts directory:\n\n\t%s\n\n" \
-          "${BOLD}${UNDERLINE}Cmd${NO_COLOR}" \
-          "${BOLD}nav.lua${NO_COLOR}" \
-          "load(io.popen('nav --init cmd'):read(\"*a\"))()"
+        title "Cmd"
+        text "You need to use Clink (v1.2.30+) with Cmd. Add the following to a file ${profile_location} and place this file in Clink scripts directory:"
+        printf "\n\n\t%s\n\n" "$profile_command"
         ;;
     esac
   done
@@ -376,7 +350,7 @@ is_build_available() {
     printf "\n" >&2
     info "If you would like to see a build for your configuration,"
     info "please create an issue requesting a build for ${MAGENTA}${target}${NO_COLOR}:"
-    info "${BOLD}${UNDERLINE}${NAV_GITHUB}/issues/new/${NO_COLOR}"
+    new_issue
     printf "\n"
     exit 1
   fi
@@ -484,7 +458,7 @@ TARGET="$(detect_target "${ARCH}" "${PLATFORM}")"
 
 is_build_available "${ARCH}" "${PLATFORM}" "${TARGET}"
 
-printf "  %s\n" "${UNDERLINE}Configuration${NO_COLOR}"
+title "Configuration"
 info "${BOLD}Bin directory${NO_COLOR}: ${GREEN}${BIN_DIR}${NO_COLOR}"
 info "${BOLD}Platform${NO_COLOR}:      ${GREEN}${PLATFORM}${NO_COLOR}"
 info "${BOLD}Arch${NO_COLOR}:          ${GREEN}${ARCH}${NO_COLOR}"
@@ -515,7 +489,7 @@ info "Tarball URL: ${UNDERLINE}${BLUE}${URL}${NO_COLOR}"
 confirm "Install nav ${GREEN}${VERSION}${NO_COLOR} to ${BOLD}${GREEN}${BIN_DIR}${NO_COLOR}?"
 check_bin_dir "${BIN_DIR}"
 
-# install "${EXT}"
+install "${EXT}"
 completed "nav ${VERSION} installed"
 
 printf '\n'
