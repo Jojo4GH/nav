@@ -99,30 +99,31 @@ inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
     block()
 }
 
-tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
+val packageTasks = tasks.withType<KotlinNativeLink>().filter { it.optimized }.map { linkTask ->
     val konanTarget = linkTask.binary.compilation.konanTarget
     val taskName = linkTask.name.removePrefix("link")
 
-    val packageTask = if (konanTarget.family == Family.MINGW) {
+    if (konanTarget.family == Family.MINGW) {
         tasks.registerPackage<Zip>(linkTask, taskName, ".zip")
     } else {
         tasks.registerPackage<Tar>(linkTask, taskName, ".tar.gz") {
             compression = Compression.GZIP
         }
     }
+}
 
-    tasks.register<Checksum>("checksum$taskName") {
-        group = "distribution"
-        mustRunAfter(packageTask)
-        inputFiles.from(packageTask)
-        checksumAlgorithm.set(Checksum.Algorithm.SHA256)
-    }
+val checksumTask = tasks.register<Checksum>("checksums") {
+    group = "distribution"
+    mustRunAfter(packageTasks)
+    inputFiles.from(packageTasks)
+    outputDirectory.set(layout.buildDirectory.dir("checksums"))
+    checksumAlgorithm.set(Checksum.Algorithm.SHA256)
 }
 
 tasks.register("packageAll") {
     group = "distribution"
-    dependsOn(tasks.withType<Zip>().filter { it.name.startsWith("package") })
-    dependsOn(tasks.withType<Checksum>().filter { it.name.startsWith("checksum") })
+    dependsOn(packageTasks)
+    dependsOn(checksumTask)
 }
 
 
