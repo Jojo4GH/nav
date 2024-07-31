@@ -80,13 +80,14 @@ inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
     linkTask: KotlinNativeLink,
     name: String,
     extension: String,
+    crossinline block: T.() -> Unit = {}
 ) = register<T>("package$name") {
     group = "distribution"
     dependsOn(linkTask)
     from(linkTask.outputFile) {
         rename("nav\\.kexe", "nav")
+        filePermissions { unix("rwxr-xr-x") }
     }
-
     destinationDirectory.set(layout.buildDirectory.dir("packages"))
     archiveFileName.set(
         listOfNotNull(
@@ -95,6 +96,7 @@ inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
             if (!linkTask.optimized) "debug" else null
         ).joinToString("-", postfix = extension)
     )
+    block()
 }
 
 tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
@@ -104,7 +106,9 @@ tasks.withType<KotlinNativeLink>().filter { it.optimized }.forEach { linkTask ->
     val packageTask = if (konanTarget.family == Family.MINGW) {
         tasks.registerPackage<Zip>(linkTask, taskName, ".zip")
     } else {
-        tasks.registerPackage<Tar>(linkTask, taskName, ".tar.gz")
+        tasks.registerPackage<Tar>(linkTask, taskName, ".tar.gz") {
+            compression = Compression.GZIP
+        }
     }
 
     tasks.register<Checksum>("checksum$taskName") {
