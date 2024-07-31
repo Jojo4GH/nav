@@ -45,7 +45,7 @@ text() {
 }
 
 new_issue() {
-  printf '%s\n' "${BOLD}${UNDERLINE}${NAV_GITHUB}/issues/new/${NO_COLOR}"
+  printf '\n\t%s\n\n' "${BOLD}${UNDERLINE}${NAV_GITHUB}/issues/new/${NO_COLOR}"
 }
 
 has() {
