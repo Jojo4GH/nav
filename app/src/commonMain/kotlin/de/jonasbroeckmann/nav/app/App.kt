@@ -6,10 +6,11 @@ import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.Terminal
 import com.kgit2.kommand.process.Command
+import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
 import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.utils.exitProcess
 import kotlinx.io.files.Path
-import kotlin.system.exitProcess
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -62,17 +63,23 @@ class App(
 
 
     private fun mainUILoop(): Event.OutsideUI {
-        terminal.rawInputLoop(
-            sequenceTimout = config.inputTimeoutMillis.let {
-                if (config.inputTimeoutMillis > 0) it.milliseconds else Duration.INFINITE
-            }
-        ) { inputEvent ->
-            val event = inputEvent.process()
-            if (event is Event.OutsideUI) return event
-            if (event is Event.NewState) {
-                state = event.state
-                if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
-                ui.update(state)
+        val sequenceTimout = config.inputTimeoutMillis.let {
+            if (config.inputTimeoutMillis > 0) it.milliseconds else Duration.INFINITE
+        }
+        terminal.enterRawMode().use { rawMode ->
+            while (true) {
+                val inputEvent = try {
+                    rawMode.readEvent(sequenceTimout)
+                } catch (e: RuntimeException) {
+                    continue // on timeout try again
+                }
+                val event = inputEvent.process()
+                if (event is Event.OutsideUI) return event
+                if (event is Event.NewState) {
+                    state = event.state
+                    if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
+                    ui.update(state)
+                }
             }
         }
     }
@@ -98,23 +105,9 @@ class App(
             }
         }
 
-
-        private inline fun Terminal.rawInputLoop(sequenceTimout: Duration, handler: (InputEvent) -> Unit): Nothing {
-            enterRawMode().use { rawMode ->
-                while (true) {
-                    val event = try {
-                        rawMode.readEvent(sequenceTimout)
-                    } catch (e: RuntimeException) {
-                        continue // on timeout try again
-                    }
-                    handler(event)
-                }
-            }
-        }
-
-
         private fun openInEditorAndWait(editor: String, file: Path): Int = Command(editor)
             .args(file.toString())
+            .stdin(Stdio.Inherit)
             .spawn()
             .wait()
     }

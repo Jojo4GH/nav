@@ -7,3 +7,5 @@ import kotlinx.cinterop.toKString
 actual fun getenv(key: String): String? {
     return platform.posix.getenv(key)?.toKString()
 }
+
+actual fun exitProcess(status: Int): Nothing = kotlin.system.exitProcess(status)
