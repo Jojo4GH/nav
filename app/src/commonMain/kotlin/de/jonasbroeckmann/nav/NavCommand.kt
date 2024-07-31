@@ -6,8 +6,12 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
+import com.github.ajalt.clikt.parameters.groups.single
+import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.mordant.terminal.Terminal
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.BuildConfig
@@ -32,11 +36,23 @@ class NavCommand : CliktCommand() {
             require(metadata.isDirectory) { "\"$it\": Not a directory" }
         }
 
-    private val init by option(
-        "--init",
-        metavar = "SHELL",
-        help = "Prints the initialization script for the specified shell"
-    )
+    private val init by mutuallyExclusiveOptions<Pair<Shells, InitAction>>(
+        option(
+            "--init",
+            metavar = "SHELL",
+            help = "Prints the initialization script for the specified shell"
+        ).choice(Shells.available).convert { it to { printInitScript() } },
+        option(
+            "--profile-location",
+            metavar = "SHELL",
+            help = "Prints the typical location of the profile file for the specified shell"
+        ).choice(Shells.available).convert { it to { printProfileLocation() } },
+        option(
+            "--profile-command",
+            metavar = "SHELL",
+            help = "Prints the command that should be added to the profile file for the specified shell"
+        ).choice(Shells.available).convert { it to { printProfileCommand() } }
+    ).single()
 
     private val debugMode by option(
         "--debug",
@@ -56,8 +72,8 @@ class NavCommand : CliktCommand() {
             return
         }
 
-        init?.let {
-            runInit(it)
+        init?.let { (shell, action) ->
+            shell.action(terminal)
             return
         }
 
