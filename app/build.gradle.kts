@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "de.jonasbroeckmann.nav"
-version = "1.0.0"
+version = "1.1.0"
 
 val binaryName = "nav"
 
