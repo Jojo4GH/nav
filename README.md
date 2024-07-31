@@ -31,9 +31,11 @@ Select your operating system
 <details>
 <summary>Linux</summary>
 
+Install (or update) nav with the [installer script](install/install.sh):
 ```sh
-TODO
+curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
 ```
+Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
 </details>
 
@@ -66,6 +68,17 @@ Add the following to the end of `~/.bashrc`:
 
 ```sh
 eval "$(nav --init bash)"
+```
+
+</details>
+
+<details>
+<summary>Zsh</summary>
+
+Add the following to the end of `~/.zshrc`:
+
+```sh
+eval "$(nav --init zsh)"
 ```
 
 </details>
