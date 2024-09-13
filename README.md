@@ -15,7 +15,7 @@ The interactive and stylish replacement for ls & cd!
 Ever tried to find that one config file hidden deep in your directory tree?
 Or maybe you just want to quickly jump to a directory and inspect some files on the way?  
 ✨ **nav** is here to help! ✨  
-Written Kotlin/Native, nav provides a modern and intuitive terminal UI to navigate your filesystem.
+Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to navigate your filesystem.
 
 - ➡️ Use arrow keys to navigate everywhere
 - ⌨️ Type to filter entries, press `Tab` to autocomplete
