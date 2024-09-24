@@ -3,10 +3,13 @@ package de.jonasbroeckmann.nav.app
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
+import com.github.ajalt.mordant.terminal.Terminal
 import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
+import kotlinx.io.IOException
 
 
 class Actions(config: Config) {
@@ -99,4 +102,29 @@ data class KeyAction(
 ) {
     fun matches(event: KeyboardEvent, state: State) = key == event && available(state)
     fun available(state: State) = state.condition()
+}
+
+fun KeyAction.tryAction(event: KeyboardEvent, state: State, terminal: Terminal): App.Event? {
+    try {
+        return state.action(event)
+    } catch (e: IOException) {
+        val msg = e.message
+        when {
+            msg == null -> {
+                terminal.danger("An unknown error occurred")
+                terminal.info("If this should be considered a bug, please report it.")
+                return null
+            }
+            msg.contains("Permission denied", ignoreCase = true) -> {
+                terminal.danger("$msg")
+                terminal.info("Try running ${NavCommand.BinaryName} with elevated permissions :)")
+                return null
+            }
+            else -> {
+                terminal.danger("An unknown error occurred: $msg")
+                terminal.info("If this should be considered a bug, please report it.")
+                return null
+            }
+        }
+    }
 }
