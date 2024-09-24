@@ -98,7 +98,7 @@ class NavCommand : CliktCommand() {
 
         if (!correctInit && !config.suppressInitCheck) {
             terminal.danger("The installation is not complete and some feature will not work.")
-            terminal.danger("Use --init-info to get more information.")
+            terminal.info("Use --init-info to get more information.")
         }
 
         App(

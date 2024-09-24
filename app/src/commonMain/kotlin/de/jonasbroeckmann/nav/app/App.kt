@@ -88,7 +88,8 @@ class App(
         if (this !is KeyboardEvent) return null
         if (isCtrlC) return Event.Exit
         for (action in actions.ordered) {
-            if (action.matches(this, state)) return action.action(state, this)
+            if (!action.matches(this, state)) continue
+            return action.tryAction(this, state, terminal)
         }
         tryUpdateTextField(state.filter)?.let { return Event.NewState(state.filtered(it)) }
         return null
