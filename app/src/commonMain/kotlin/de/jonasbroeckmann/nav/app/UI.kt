@@ -115,9 +115,17 @@ class UI(
         renderMore: SectionBuilder.(Int) -> Unit,
         renderEntry: SectionBuilder.(UIState.Entry, Boolean) -> Unit
     ) {
-        val padding = config.maxVisibleEntries / 2 - 1
+        var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
+        if (config.limitToTerminalHeight) {
+            terminal.info.updateTerminalSize()
+            val otherRows = 3
+            maxVisible = maxVisible.coerceAtMost(terminal.info.height - otherRows)
+        }
+        maxVisible = maxVisible.coerceAtLeast(1)
+
+        val padding = maxVisible / 2 - 1
         val firstVisible = (cursor - padding)
-            .coerceAtMost(entries.size - config.maxVisibleEntries)
+            .coerceAtMost(entries.size - maxVisible)
             .coerceAtLeast(0)
         for ((i, entry) in entries.withIndex()) {
             if (i < firstVisible) continue
@@ -125,8 +133,8 @@ class UI(
                 renderMore(firstVisible + 1)
                 continue
             }
-            if (i == firstVisible + config.maxVisibleEntries - 1 && firstVisible + config.maxVisibleEntries < entries.size) {
-                renderMore(entries.size - (firstVisible + config.maxVisibleEntries) + 1)
+            if (i == firstVisible + maxVisible - 1 && firstVisible + maxVisible < entries.size) {
+                renderMore(entries.size - (firstVisible + maxVisible) + 1)
                 break
             }
             renderEntry(entry, i == cursor)
