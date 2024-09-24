@@ -11,12 +11,14 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable
 data class Config(
-    val maxVisibleEntries: Int = 32,
-    val maxVisiblePathElements: Int = 6,
-    val inputTimeoutMillis: Int = 4,
+    val editor: String = "nano",
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
-    val editor: String = "nano",
+
+    val limitToTerminalHeight: Boolean = true,
+    val maxVisibleEntries: Int = 20,
+    val maxVisiblePathElements: Int = 6,
+    val inputTimeoutMillis: Int = 4,
     val suppressInitCheck: Boolean = false,
 
     val keys: Keys = Keys(),
