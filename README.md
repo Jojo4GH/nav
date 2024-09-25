@@ -145,6 +145,9 @@ nav.up = "ArrowLeft"
 nav.into = "ArrowRight"
 nav.open = "ArrowRight"
 
+menu.up = "PageUp"
+menu.down = "PageDown"
+
 filter.autocomplete = "Tab"
 filter.clear = "Escape"
 

@@ -20,12 +20,13 @@ class App(
     startingDirectory: Path,
     debugMode: Boolean
 ) {
+    private val actions = Actions(config)
     private var state = State(
         directory = startingDirectory,
         cursor = 0,
-        debugMode = debugMode
+        debugMode = debugMode,
+        allMenuActions = { actions.menuActions }
     )
-    private val actions = Actions(config)
     private val ui = UI(
         terminal = terminal,
         config = config,
@@ -73,12 +74,14 @@ class App(
                 } catch (e: RuntimeException) {
                     continue // on timeout try again
                 }
-                val event = inputEvent.process()
-                if (event is Event.OutsideUI) return event
-                if (event is Event.NewState) {
-                    state = event.state
-                    if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
-                    ui.update(state)
+                when (val event = inputEvent.process()) {
+                    is Event.OutsideUI -> return event
+                    is Event.NewState -> {
+                        state = event.state
+                        if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
+                        ui.update(state)
+                    }
+                    null -> { }
                 }
             }
         }
@@ -88,8 +91,8 @@ class App(
         if (this !is KeyboardEvent) return null
         if (isCtrlC) return Event.Exit
         for (action in actions.ordered) {
-            if (!action.matches(this, state)) continue
-            return action.tryAction(this, state, terminal)
+            if (!action.matches(state, this)) continue
+            return action.tryPerform(state, this, terminal)
         }
         tryUpdateTextField(state.filter)?.let { return Event.NewState(state.filtered(it)) }
         return null

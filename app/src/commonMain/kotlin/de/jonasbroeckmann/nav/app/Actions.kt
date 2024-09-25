@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.app
 
+import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
@@ -9,7 +10,9 @@ import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
+import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.IOException
+import kotlinx.io.files.SystemFileSystem
 
 
 class Actions(config: Config) {
@@ -46,7 +49,7 @@ class Actions(config: Config) {
     )
     val navigateOpen = KeyAction(
         key = config.keys.nav.open,
-        description = "open in ${config.editor}",
+        description = { "open in ${config.editor}" },
         style = TextColors.rgb(config.colors.file),
         condition = { currentEntry?.isRegularFile == true },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
@@ -54,21 +57,21 @@ class Actions(config: Config) {
 
     val exitCD = KeyAction(
         key = config.keys.submit,
-        description = "exit here",
+        description = { "exit here" },
         style = TextColors.rgb(config.colors.path),
-        condition = { directory != WorkingDirectory && filter.isEmpty() },
+        condition = { directory != WorkingDirectory && filter.isEmpty() && !isMenuOpen },
         action = { ExitAt(directory) }
     )
     val exit = KeyAction(
         key = config.keys.cancel,
-        description = "cancel",
+        description = { "exit" },
         condition = { filter.isEmpty() },
         action = { Exit }
     )
 
     val autocompleteFilter = KeyAction(
         key = config.keys.filter.autocomplete,
-        description = "autocomplete",
+        description = { "autocomplete" },
         condition = { filter.isNotEmpty() && items.isNotEmpty() },
         action = {
             val commonPrefix = items
@@ -80,33 +83,141 @@ class Actions(config: Config) {
     )
     val clearFilter = KeyAction(
         key = config.keys.filter.clear,
-        description = "clear filter",
+        description = { "clear filter" },
         condition = { filter.isNotEmpty() },
         action = { NewState(filtered("")) }
+    )
+
+    val openMenu = KeyAction(
+        key = config.keys.menu.down,
+        description = { "more" },
+        condition = { !isMenuOpen },
+        action = { NewState(withMenuCursor(0)) }
+    )
+    val closeMenu = KeyAction(
+        key = config.keys.menu.up,
+        description = { "close menu" },
+        condition = { isMenuOpen && coercedMenuCursor == 0 },
+        action = { NewState(withMenuCursor(null)) }
+    )
+    val menuDown = KeyAction(
+        key = config.keys.menu.down,
+        condition = { isMenuOpen && coercedMenuCursor < availableMenuActions.lastIndex },
+        action = { NewState(withMenuCursor(coercedMenuCursor + 1)) }
+    )
+    val menuUp = KeyAction(
+        key = config.keys.menu.up,
+        condition = { isMenuOpen && coercedMenuCursor > 0 },
+        action = { NewState(withMenuCursor(coercedMenuCursor - 1)) }
+    )
+
+    val menuActions = listOf(
+        MenuAction(
+            description = { "New file: \"${filter}\"" },
+            style = TextColors.rgb(config.colors.file),
+            condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
+            action = {
+                SystemFileSystem.sink(directory / filter).close()
+                NewState(updatedEntries(filter))
+            }
+        ),
+        MenuAction(
+            description = { "New directory: \"${filter}\"" },
+            style = TextColors.rgb(config.colors.directory),
+            condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
+            action = {
+                SystemFileSystem.createDirectories(directory / filter)
+                NewState(updatedEntries(filter))
+            }
+        ),
+        MenuAction(
+            description = { "Run command here" },
+            style = TextColors.rgb(config.colors.path),
+            condition = { true },
+            action = {
+                TODO()
+                NewState(updatedEntries())
+            }
+        ),
+        MenuAction(
+            description = {
+                val currentEntry = currentEntry
+                requireNotNull(currentEntry)
+                val style = when {
+                    currentEntry.isDirectory -> TextColors.rgb(config.colors.directory)
+                    currentEntry.isRegularFile -> TextColors.rgb(config.colors.file)
+                    currentEntry.isSymbolicLink -> TextColors.rgb(config.colors.link)
+                    else -> TextColors.magenta
+                }
+                style("Delete: ${currentEntry.path.name}")
+            },
+            condition = { currentEntry.let { it != null && !it.isDirectory } },
+            action = {
+                val currentEntry = currentEntry
+                requireNotNull(currentEntry)
+                when {
+                    currentEntry.isDirectory -> TODO()
+                    currentEntry.isRegularFile -> SystemFileSystem.delete(currentEntry.path)
+                    currentEntry.isSymbolicLink -> SystemFileSystem.delete(currentEntry.path)
+                }
+                NewState(updatedEntries())
+            }
+        ),
+    )
+
+    val menuSubmit = KeyAction(
+        key = config.keys.submit,
+        condition = { isMenuOpen },
+        action = { currentMenuAction?.perform(this, null) }
     )
 
     val ordered = listOf(
         cursorUp, cursorDown, cursorHome, cursorEnd,
         navigateUp, navigateInto, navigateOpen,
         exitCD, exit,
-        autocompleteFilter, clearFilter
+        autocompleteFilter, clearFilter,
+        menuDown, menuUp, openMenu, closeMenu, menuSubmit,
     )
+}
+
+sealed interface Action<Event : InputEvent?> {
+    val description: State.() -> String?
+    val style: TextStyle?
+
+    fun matches(state: State, input: Event): Boolean
+    fun isAvailable(state: State): Boolean
+
+    fun perform(state: State, input: Event): App.Event?
+}
+
+data class MenuAction(
+    override val description: State.() -> String,
+    override val style: TextStyle? = null,
+    private val condition: State.() -> Boolean,
+    private val action: State.() -> App.Event?
+) : Action<Nothing?> {
+    override fun matches(state: State, input: Nothing?) = isAvailable(state)
+    override fun isAvailable(state: State) = state.condition()
+
+    override fun perform(state: State, input: Nothing?) = state.action()
 }
 
 data class KeyAction(
     val key: KeyboardEvent,
-    val description: String? = null,
-    val style: TextStyle? = null,
+    override val description: State.() -> String? = { null },
+    override val style: TextStyle? = null,
     private val condition: State.() -> Boolean,
-    val action: State.(KeyboardEvent) -> App.Event
-) {
-    fun matches(event: KeyboardEvent, state: State) = key == event && available(state)
-    fun available(state: State) = state.condition()
+    private val action: State.(KeyboardEvent) -> App.Event?
+) : Action<KeyboardEvent> {
+    override fun matches(state: State, input: KeyboardEvent) = key == input && isAvailable(state)
+    override fun isAvailable(state: State) = state.condition()
+
+    override fun perform(state: State, input: KeyboardEvent) = state.action(input)
 }
 
-fun KeyAction.tryAction(event: KeyboardEvent, state: State, terminal: Terminal): App.Event? {
+fun <E : InputEvent?> Action<E>.tryPerform(state: State, input: E, terminal: Terminal): App.Event? {
     try {
-        return state.action(event)
+        return perform(state, input)
     } catch (e: IOException) {
         val msg = e.message
         when {
