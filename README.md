@@ -36,6 +36,13 @@ Install (or update) nav with the [installer script](install/install.sh):
 ```sh
 curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
 ```
+Or install with any of the following package managers:
+| Distribution | Repository | Instructions                               |
+| ------------ | ---------- | ------------------------------------------ |
+| Arch Linux   | [AUR]      | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
+
+[AUR]: https://aur.archlinux.org/packages/nav-cli
+
 Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
 </details>
