@@ -36,22 +36,22 @@ class NavCommand : CliktCommand() {
             require(metadata.isDirectory) { "\"$it\": Not a directory" }
         }
 
-    private val init by mutuallyExclusiveOptions<Pair<Shells, InitAction>>(
+    private val init by mutuallyExclusiveOptions<Pair<Shell, InitAction>>(
         option(
             "--init",
             metavar = "SHELL",
             help = "Prints the initialization script for the specified shell"
-        ).choice(Shells.available).convert { it to { printInitScript() } },
+        ).choice(Shell.available).convert { it to { printInitScript() } },
         option(
             "--profile-location",
             metavar = "SHELL",
             help = "Prints the typical location of the profile file for the specified shell"
-        ).choice(Shells.available).convert { it to { printProfileLocation() } },
+        ).choice(Shell.available).convert { it to { printProfileLocation() } },
         option(
             "--profile-command",
             metavar = "SHELL",
             help = "Prints the command that should be added to the profile file for the specified shell"
-        ).choice(Shells.available).convert { it to { printProfileCommand() } },
+        ).choice(Shell.available).convert { it to { printProfileCommand() } },
     ).single()
 
     private val initInfo by option(
@@ -61,8 +61,9 @@ class NavCommand : CliktCommand() {
 
     private val correctInit by option(
         "--correct-init",
-        help = "Signals that the initialization script is being used correctly"
-    ).flag()
+        metavar = "SHELL",
+        help = "Signals that the initialization script is being used correctly from the specified shell"
+    ).choice(Shell.available)
 
     private val debugMode by option(
         "--debug",
@@ -89,14 +90,14 @@ class NavCommand : CliktCommand() {
 
         if (initInfo) {
             terminal.println()
-            Shells.printInitInfo(terminal)
+            Shell.printInitInfo(terminal)
             terminal.println()
             return
         }
 
         val config = Config.load(terminal)
 
-        if (!correctInit && !config.suppressInitCheck) {
+        if (correctInit == null && !config.suppressInitCheck) {
             terminal.danger("The installation is not complete and some feature will not work.")
             terminal.info("Use --init-info to get more information.")
         }
@@ -105,6 +106,7 @@ class NavCommand : CliktCommand() {
             terminal = terminal,
             config = config,
             startingDirectory = startingDirectory ?: WorkingDirectory,
+            initShell = correctInit,
             debugMode = debugMode
         ).main()
     }

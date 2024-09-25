@@ -9,6 +9,7 @@ import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
 import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.Shell
 import de.jonasbroeckmann.nav.utils.exitProcess
 import kotlinx.io.files.Path
 import kotlin.time.Duration
@@ -18,6 +19,7 @@ class App(
     private val terminal: Terminal,
     private val config: Config,
     startingDirectory: Path,
+    private val initShell: Shell?,
     debugMode: Boolean
 ) {
     private val actions = Actions(config)
@@ -45,10 +47,32 @@ class App(
                 is Event.OpenFile -> {
                     ui.clear() // hide UI before opening editor
                     // open editor
-                    val exitCode = openInEditorAndWait(config.editor, event.file)
+                    val exitCode = openInEditorAndWait(config.editor, event.file, state.directory)
                     if (exitCode != 0) {
                         terminal.danger("Received exit code $exitCode from ${config.editor}")
                     }
+                }
+                is Event.RunCommand -> {
+                    ui.clear() // hide UI before running command
+                    val command = state.command ?: continue
+                    val (exe, args) = when (initShell) {
+                        null -> {
+                            val parts = command.split(" ")
+                            parts.first() to parts.drop(1)
+                        }
+                        else -> initShell.shell to initShell.execCommandArgs(command)
+                    }
+                    // run command
+                    val exitCode = Command(exe).args(args)
+                        .cwd(state.directory.toString())
+                        .spawn()
+                        .wait()
+                    if (exitCode != 0) {
+                        terminal.danger("Received exit code $exitCode")
+                    }
+                    state = state
+                        .withCommand(null)  // clear command
+                        .updatedEntries()             // update in case the command changed something
                 }
             }
         }
@@ -94,7 +118,12 @@ class App(
             if (!action.matches(state, this)) continue
             return action.tryPerform(state, this, terminal)
         }
-        tryUpdateTextField(state.filter)?.let { return Event.NewState(state.filtered(it)) }
+        val command = state.command
+        if (command != null) {
+            tryUpdateTextField(command)?.let { return Event.NewState(state.withCommand(it)) }
+        } else {
+            tryUpdateTextField(state.filter)?.let { return Event.NewState(state.filtered(it)) }
+        }
         return null
     }
 
@@ -109,8 +138,9 @@ class App(
             }
         }
 
-        private fun openInEditorAndWait(editor: String, file: Path): Int = Command(editor)
+        private fun openInEditorAndWait(editor: String, file: Path, cwd: Path): Int = Command(editor)
             .args(file.toString())
+            .cwd(cwd.toString())
             .stdin(Stdio.Inherit)
             .spawn()
             .wait()
@@ -121,6 +151,7 @@ class App(
 
         data class NewState(val state: State) : Event
         data class OpenFile(val file: Path) : OutsideUI
+        data object RunCommand : OutsideUI
         data class ExitAt(val directory: Path) : OutsideUI
         data object Exit : OutsideUI
     }

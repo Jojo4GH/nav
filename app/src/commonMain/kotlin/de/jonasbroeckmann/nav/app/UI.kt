@@ -46,9 +46,7 @@ class UI(
         captionTop(renderTitle(data.directory, data.filter, data.debugMode), align = TextAlign.LEFT)
         collectAdditionalRows(1)
 
-        if (!config.hideHints) {
-            captionBottom(renderBottom(data, collectAdditionalRows))
-        }
+        captionBottom(renderBottom(data, collectAdditionalRows))
 
         if (data.filteredItems.isEmpty()) {
             body {
@@ -254,14 +252,17 @@ class UI(
 //        }
         state.availableMenuActions.forEachIndexed { i, item ->
             row {
-                cell(TextStyles.dim("•"))
+                cell(TextStyles.dim("│"))
                 val isSelected = i == state.coercedMenuCursor
                 if (isSelected) {
                     cell(renderAction(state, actions.menuSubmit))
+                    cell(renderAction(state, item).let { rendered ->
+                        item.selectedStyle?.let { it(rendered) + " " } ?: rendered
+                    })
                 } else {
                     cell("")
+                    cell(renderAction(state, item))
                 }
-                cell(renderAction(state, item))
             }
         }
         collectAdditionalRows(state.availableMenuActions.size)
@@ -284,25 +285,6 @@ class UI(
         ).joinToString(" ")
         action.style?.let { return it(str) }
         return str
-    }
-
-    private fun keyName(key: KeyboardEvent): String {
-        var k = when (key.key) {
-            "Enter" -> "enter"
-            "Escape" -> "esc"
-            "Tab" -> "tab"
-            "ArrowUp" -> "↑"
-            "ArrowDown" -> "↓"
-            "ArrowLeft" -> "←"
-            "ArrowRight" -> "→"
-            "PageUp" -> "page↑"
-            "PageDown" -> "page↓"
-            else -> key.key
-        }
-        if (key.alt) k = "alt+$k"
-        if (key.shift && key.key.length > 1) k = "shift+$k"
-        if (key.ctrl) k = "ctrl+$k"
-        return k
     }
 
     private fun renderHints(
@@ -428,5 +410,26 @@ class UI(
         val rgb = RGB(config.colors.modificationTime)
         val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
         return style(instant.format(format))
+    }
+
+    companion object {
+        fun keyName(key: KeyboardEvent): String {
+            var k = when (key.key) {
+                "Enter" -> "enter"
+                "Escape" -> "esc"
+                "Tab" -> "tab"
+                "ArrowUp" -> "↑"
+                "ArrowDown" -> "↓"
+                "ArrowLeft" -> "←"
+                "ArrowRight" -> "→"
+                "PageUp" -> "page↑"
+                "PageDown" -> "page↓"
+                else -> key.key
+            }
+            if (key.alt) k = "alt+$k"
+            if (key.shift && key.key.length > 1) k = "shift+$k"
+            if (key.ctrl) k = "ctrl+$k"
+            return k
+        }
     }
 }

@@ -2,18 +2,18 @@ package de.jonasbroeckmann.nav
 
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.terminal.Terminal
-import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.which
 
 
-enum class Shells(
+enum class Shell(
     val shell: String,
     private val pathSanitizer: (String) -> String,
     private val initScript: (binary: String, navFileInHome: String) -> String,
     private val profileLocation: String,
     private val profileDescription: String? = null,
-    private val profileCommand: String
+    private val profileCommand: String,
+    val execCommandArgs: (String) -> List<String>
 ) {
     BASH(
         shell = "bash",
@@ -21,7 +21,7 @@ enum class Shells(
         initScript = { binary, navFileInHome ->
             """
             function nav () {
-                "$binary" --correct-init "${'$'}@"
+                "$binary" --correct-init bash "${'$'}@"
                 navFile="${'$'}HOME/$navFileInHome"
                 if [ -f "${'$'}navFile" ]; then
                     newDir=${'$'}(cat "${'$'}navFile")
@@ -34,7 +34,8 @@ enum class Shells(
             """.trimIndent()
         },
         profileLocation = "~/.bashrc",
-        profileCommand = "eval \"\$(${NavCommand.BinaryName} --init bash)\""
+        profileCommand = "eval \"\$(${NavCommand.BinaryName} --init bash)\"",
+        execCommandArgs = { listOf("-c", it) }
     ),
     ZSH(
         shell = "zsh",
@@ -42,7 +43,7 @@ enum class Shells(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                "$binary" --correct-init "${'$'}@"
+                "$binary" --correct-init zsh "${'$'}@"
                 navFile="${'$'}HOME/$navFileInHome"
                 if [[ -f "${'$'}navFile" ]]; then
                     newDir=$(cat "${'$'}navFile")
@@ -55,7 +56,8 @@ enum class Shells(
             """.trimIndent()
         },
         profileLocation = "~/.zshrc",
-        profileCommand = "eval \"\$(${NavCommand.BinaryName} --init zsh)\""
+        profileCommand = "eval \"\$(${NavCommand.BinaryName} --init zsh)\"",
+        execCommandArgs = { listOf("-c", it) }
     ),
     POWERSHELL(
         shell = "powershell",
@@ -63,7 +65,7 @@ enum class Shells(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                & "$binary" --correct-init @args
+                & "$binary" --correct-init powershell @args
                 ${'$'}navFile = "${'$'}HOME\$navFileInHome"
                 if (Test-Path ${'$'}navFile) {
                     ${'$'}newDir = Get-Content ${'$'}navFile
@@ -76,7 +78,30 @@ enum class Shells(
             """.trimIndent()
         },
         profileLocation = "\$PROFILE",
-        profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init powershell | Out-String)"
+        profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init powershell | Out-String)",
+        execCommandArgs = { listOf("-NoProfile", "-c", it) }
+    ),
+    PWSH(
+        shell = "pwsh",
+        pathSanitizer = WindowsPathSanitizer,
+        initScript = { binary, navFileInHome ->
+            """
+            function nav {
+                & "$binary" --correct-init pwsh @args
+                ${'$'}navFile = "${'$'}HOME\$navFileInHome"
+                if (Test-Path ${'$'}navFile) {
+                    ${'$'}newDir = Get-Content ${'$'}navFile
+                    if (${'$'}newDir) {
+                        Set-Location ${'$'}newDir
+                        Remove-Item ${'$'}navFile
+                    }
+                }
+            }
+            """.trimIndent()
+        },
+        profileLocation = "\$PROFILE",
+        profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init pwsh | Out-String)",
+        execCommandArgs = { listOf("-NoProfile", "-c", it) }
     );
 
     fun printInitScript() {
@@ -104,7 +129,7 @@ enum class Shells(
     }
 
     companion object {
-        val available by lazy { entries.associateBy { it.shell } }
+        val available: Map<String, Shell> by lazy { entries.associateBy { it.shell } }
 
         fun printInitInfo(terminal: Terminal) {
             entries.forEach { it.printInitInfo(terminal) }
@@ -116,7 +141,7 @@ enum class Shells(
     }
 }
 
-typealias InitAction = Shells.(Terminal) -> Unit
+typealias InitAction = Shell.(Terminal) -> Unit
 
 private val UnixPathSanitizer: (String) -> String = {
     it.replace(RealSystemPathSeparator, '/')

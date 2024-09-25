@@ -74,9 +74,8 @@ data class Config(
 
         val directory: String = Retro.directory,
         val file: String = Retro.file,
-        val link: String = Retro.link,
-
-        ) {
+        val link: String = Retro.link
+    ) {
         companion object {
             @Suppress("unused")
             val Original = Colors(

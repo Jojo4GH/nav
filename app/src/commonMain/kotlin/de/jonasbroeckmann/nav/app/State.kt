@@ -12,9 +12,12 @@ data class State(
     val items: List<Entry> = directory.entries(),
     val cursor: Int,
     val filter: String = "",
+
     private val menuCursor: Int = -1,
     private val allMenuActions: () -> List<MenuAction>,
-//    val exit: Path? = null,
+
+    val command: String? = null,
+
     val debugMode: Boolean = false,
     val lastReceivedEvent: KeyboardEvent? = null
 ) {
@@ -30,7 +33,11 @@ data class State(
     val isMenuOpen get() = menuCursor >= 0
     val currentMenuAction get() = availableMenuActions.getOrNull(coercedMenuCursor)
 
+    val isTypingCommand get() = command != null
+
     fun withMenuCursor(cursor: Int?) = copy(menuCursor = cursor?.coerceAtLeast(0) ?: -1)
+
+    fun withCommand(command: String?) = copy(command = command)
 
     fun withCursor(cursor: Int) = copy(
         cursor = when {

@@ -4,6 +4,7 @@ import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
+import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.terminal.Terminal
 import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.NavCommand
@@ -118,7 +119,7 @@ class Actions(config: Config) {
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.sink(directory / filter).close()
-                NewState(updatedEntries(filter))
+                NewState(filtered("").updatedEntries(filter))
             }
         ),
         MenuAction(
@@ -127,16 +128,29 @@ class Actions(config: Config) {
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.createDirectories(directory / filter)
-                NewState(updatedEntries(filter))
+                NewState(filtered("").updatedEntries(filter))
             }
         ),
         MenuAction(
             description = { "Run command here" },
             style = TextColors.rgb(config.colors.path),
-            condition = { true },
+            condition = { !isTypingCommand },
+            action = { NewState(withCommand("")) }
+        ),
+        MenuAction(
+            description = {
+                val cmdStr = if (command.isNullOrBlank()) {
+                    if (config.hideHints) ""
+                    else TextStyles.dim("type command or press ${UI.keyName(config.keys.submit)} to cancel")
+                } else {
+                    TextColors.rgb("FFFFFF")(command)
+                }
+                "${TextColors.rgb(config.colors.path)("❯")} $cmdStr"
+            },
+            selectedStyle = null,
+            condition = { isTypingCommand },
             action = {
-                TODO()
-                NewState(updatedEntries())
+                if (command.isNullOrBlank()) NewState(withCommand(null)) else RunCommand
             }
         ),
         MenuAction(
@@ -193,6 +207,7 @@ sealed interface Action<Event : InputEvent?> {
 data class MenuAction(
     override val description: State.() -> String,
     override val style: TextStyle? = null,
+    val selectedStyle: TextStyle? = TextStyles.inverse.style,
     private val condition: State.() -> Boolean,
     private val action: State.() -> App.Event?
 ) : Action<Nothing?> {
