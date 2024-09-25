@@ -86,10 +86,14 @@ eval "$(nav --init zsh)"
 <details>
 <summary>Powershell</summary>
 
-Add the following to the end of your PowerShell configuration (find it by running `$PROFILE`):
+Add one of the following to the end of your PowerShell configuration (find it by running `$PROFILE`):
 
 ```powershell
 Invoke-Expression (& nav --init powershell | Out-String)
+```
+
+```powershell
+Invoke-Expression (& nav --init pwsh | Out-String)
 ```
 
 </details>
@@ -144,6 +148,9 @@ cursor.end = "End"
 nav.up = "ArrowLeft"
 nav.into = "ArrowRight"
 nav.open = "ArrowRight"
+
+menu.up = "PageUp"
+menu.down = "PageDown"
 
 filter.autocomplete = "Tab"
 filter.clear = "Escape"

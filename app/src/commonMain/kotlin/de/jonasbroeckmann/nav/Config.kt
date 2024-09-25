@@ -30,6 +30,7 @@ data class Config(
     data class Keys(
         val cursor: Cursor = Cursor(),
         val nav: Nav = Nav(),
+        val menu: Menu = Menu(),
         val submit: KeyboardEvent = KeyboardEvent("Enter"),
         val cancel: KeyboardEvent = EscapeOrDelete,
         val filter: Filter = Filter()
@@ -40,6 +41,11 @@ data class Config(
             val down: KeyboardEvent = KeyboardEvent("ArrowDown"),
             val home: KeyboardEvent = KeyboardEvent("Home"),
             val end: KeyboardEvent = KeyboardEvent("End")
+        )
+        @Serializable
+        data class Menu(
+            val up: KeyboardEvent = KeyboardEvent("PageUp"),
+            val down: KeyboardEvent = KeyboardEvent("PageDown"),
         )
         @Serializable
         data class Nav(
@@ -68,9 +74,8 @@ data class Config(
 
         val directory: String = Retro.directory,
         val file: String = Retro.file,
-        val link: String = Retro.link,
-
-        ) {
+        val link: String = Retro.link
+    ) {
         companion object {
             @Suppress("unused")
             val Original = Colors(

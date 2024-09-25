@@ -4,9 +4,7 @@ import com.github.ajalt.colormath.model.RGB
 import com.github.ajalt.mordant.animation.Animation
 import com.github.ajalt.mordant.input.*
 import com.github.ajalt.mordant.rendering.*
-import com.github.ajalt.mordant.table.Borders
-import com.github.ajalt.mordant.table.SectionBuilder
-import com.github.ajalt.mordant.table.table
+import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
@@ -33,6 +31,7 @@ class UI(
     trailingLinebreak = true,
     terminal = terminal
 ) {
+
     override fun renderData(data: UIState): Widget = table {
         overflowWrap = OverflowWrap.ELLIPSES
         cellBorders = Borders.LEFT_RIGHT
@@ -41,17 +40,22 @@ class UI(
         padding = Padding(0)
         whitespace = Whitespace.PRE_WRAP
 
+        var additionalRows = 0
+        val collectAdditionalRows = { rows: Int -> additionalRows += rows }
+
         captionTop(renderTitle(data.directory, data.filter, data.debugMode), align = TextAlign.LEFT)
-        if (!config.hideHints) captionBottom(renderHints(data), align = TextAlign.LEFT)
+        collectAdditionalRows(1)
+
+        captionBottom(renderBottom(data, collectAdditionalRows))
 
         if (data.filteredItems.isEmpty()) {
             body {
-                row {
-                    if (data.filter.isNotEmpty()) {
-                        cell(Text(TextStyles.dim("No results …")))
-                    } else {
-                        cell(Text(TextStyles.dim("There is nothing here")))
-                    }
+                if (data.filter.isNotEmpty()) {
+                    row { cell(Text(TextStyles.dim("No results …"))) }
+                    collectAdditionalRows(1)
+                } else {
+                    row { cell(Text(TextStyles.dim("There is nothing here"))) }
+                    collectAdditionalRows(1)
                 }
             }
             return@table
@@ -67,11 +71,13 @@ class UI(
                 cell(Text("Last Modified", overflowWrap = OverflowWrap.ELLIPSES))
                 cell("Name")
             }
+            collectAdditionalRows(1)
         }
         body {
             renderEntries(
                 entries = data.filteredItems,
                 cursor = data.cursor,
+                otherRows = additionalRows,
                 renderMore = { n ->
                     row {
                         cell("")
@@ -112,13 +118,13 @@ class UI(
     private fun SectionBuilder.renderEntries(
         entries: List<UIState.Entry>,
         cursor: Int,
+        otherRows: Int,
         renderMore: SectionBuilder.(Int) -> Unit,
         renderEntry: SectionBuilder.(UIState.Entry, Boolean) -> Unit
     ) {
         var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
         if (config.limitToTerminalHeight) {
             terminal.info.updateTerminalSize()
-            val otherRows = 3
             maxVisible = maxVisible.coerceAtMost(terminal.info.height - otherRows)
         }
         maxVisible = maxVisible.coerceAtLeast(1)
@@ -211,65 +217,122 @@ class UI(
         }
     }
 
-    private fun keyName(key: KeyboardEvent): String {
-        var k = when (key.key) {
-            "Enter" -> "enter"
-            "Escape" -> "esc"
-            "Tab" -> "tab"
-            "ArrowUp" -> "↑"
-            "ArrowDown" -> "↓"
-            "ArrowLeft" -> "←"
-            "ArrowRight" -> "→"
-            else -> key.key
+    private fun renderBottom(
+        state: UIState,
+        collectAdditionalRows: (Int) -> Unit
+    ): Widget = verticalLayout {
+        align = TextAlign.LEFT
+
+        if (!config.hideHints) {
+            cell(renderNavHints(state))
+            collectAdditionalRows(1)
         }
-        if (key.alt) k = "alt+$k"
-        if (key.shift && key.key.length > 1) k = "shift+$k"
-        if (key.ctrl) k = "ctrl+$k"
-        return k
+
+        if (state.isMenuOpen) {
+            cell(renderMenu(state, collectAdditionalRows))
+            if (!config.hideHints) {
+                cell("${TextStyles.dim("•")} ${renderMenuHints(state)}")
+                collectAdditionalRows(1)
+            }
+        }
     }
 
-    private fun renderHints(
-        state: UIState
-    ): String {
-        val styleKey = TextColors.rgb(config.colors.keyHints) + TextStyles.bold
+    private fun renderMenu(
+        state: UIState,
+        collectAdditionalRows: (Int) -> Unit
+    ) = grid {
+        state.availableMenuActions.forEachIndexed { i, item ->
+            row {
+                cell(TextStyles.dim("│"))
+                val isSelected = i == state.coercedMenuCursor
+                if (isSelected) {
+                    cell(renderAction(state, actions.menuSubmit))
+                    cell(renderAction(state, item).let { rendered ->
+                        item.selectedStyle?.let { it(rendered) + " " } ?: rendered
+                    })
+                } else {
+                    cell("")
+                    cell(renderAction(state, item))
+                }
+            }
+        }
+        collectAdditionalRows(state.availableMenuActions.size)
+    }
 
-        fun MutableList<String>.render(action: KeyAction) {
-            if (!action.available(state)) return
-            add(when (action.description) {
-                null -> styleKey(keyName(action.key))
-                else -> "${styleKey(keyName(action.key))} ${TextStyles.dim(action.description)}"
-            }.let { action.style?.let { style -> style(it) } ?: it })
+    private fun renderAction(state: UIState, action: Action<*>): String {
+        val styleKey = TextColors.rgb(config.colors.keyHints) + TextStyles.bold
+        val keyStr = when (action) {
+            is KeyAction -> styleKey(keyName(action.key))
+            is MenuAction -> null
+        }
+        val desc = action.description(state)
+        val descStr = when (action) {
+            is KeyAction -> desc?.let { TextStyles.dim(it) }
+            is MenuAction -> desc
+        }
+        val str = listOfNotNull(
+            keyStr,
+            descStr
+        ).joinToString(" ")
+        action.style?.let { return it(str) }
+        return str
+    }
+
+    private fun buildHints(
+        state: UIState,
+        block: RenderHintsScope.() -> Unit
+    ): String = RenderHintsScope(state).apply(block).joinToString(TextStyles.dim(" • "))
+
+    private inner class RenderHintsScope(
+        private val state: UIState
+    ) : MutableList<String> by mutableListOf() {
+        fun render(action: KeyAction) {
+            if (!action.isAvailable(state)) return
+            add(renderAction(state, action))
         }
 
-        fun MutableList<String>.group(block: MutableList<String>.() -> Unit) {
-            mutableListOf<String>().apply(block).let {
+        fun group(block: RenderHintsScope.() -> Unit) {
+            RenderHintsScope(state).apply(block).let {
                 if (it.isNotEmpty()) add(it.joinToString(" "))
             }
         }
+    }
 
-        return buildList {
+    private fun renderNavHints(state: UIState) = buildHints(state) {
+        render(actions.navigateUp)
 
-            render(actions.navigateUp)
+        group {
+            render(actions.cursorUp)
+            render(actions.cursorDown)
+        }
 
-            group {
-                render(actions.cursorUp)
-                render(actions.cursorDown)
-            }
+        render(actions.navigateInto)
+        render(actions.navigateOpen)
 
-            render(actions.navigateInto)
-            render(actions.navigateOpen)
+        render(actions.autocompleteFilter)
+        render(actions.clearFilter)
 
-            render(actions.autocompleteFilter)
-            render(actions.clearFilter)
+        render(actions.exitCD)
+        render(actions.exit)
 
-            render(actions.exitCD)
-            render(actions.exit)
+        if (!state.isMenuOpen) {
+            render(actions.openMenu)
+        }
 
-            if (state.debugMode && state.lastReceivedEvent != null) {
-                add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
-            }
+        if (state.debugMode && state.lastReceivedEvent != null) {
+            add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
+        }
+    }
 
-        }.joinToString(TextStyles.dim(" • "))
+    private fun renderMenuHints(state: UIState) = buildHints(state) {
+        if (state.coercedMenuCursor == 0) {
+            render(actions.closeMenu)
+        }
+        group {
+            if (state.coercedMenuCursor > 0) render(actions.menuUp)
+            render(actions.menuDown)
+            if (this.isNotEmpty()) add(TextStyles.dim("navigate"))
+        }
     }
 
     private fun renderPermissions(stat: Stat): String {
@@ -345,5 +408,26 @@ class UI(
         val rgb = RGB(config.colors.modificationTime)
         val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
         return style(instant.format(format))
+    }
+
+    companion object {
+        fun keyName(key: KeyboardEvent): String {
+            var k = when (key.key) {
+                "Enter" -> "enter"
+                "Escape" -> "esc"
+                "Tab" -> "tab"
+                "ArrowUp" -> "↑"
+                "ArrowDown" -> "↓"
+                "ArrowLeft" -> "←"
+                "ArrowRight" -> "→"
+                "PageUp" -> "page↑"
+                "PageDown" -> "page↓"
+                else -> key.key
+            }
+            if (key.alt) k = "alt+$k"
+            if (key.shift && key.key.length > 1) k = "shift+$k"
+            if (key.ctrl) k = "ctrl+$k"
+            return k
+        }
     }
 }

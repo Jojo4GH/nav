@@ -12,7 +12,12 @@ data class State(
     val items: List<Entry> = directory.entries(),
     val cursor: Int,
     val filter: String = "",
-//    val exit: Path? = null,
+
+    private val menuCursor: Int = -1,
+    private val allMenuActions: () -> List<MenuAction>,
+
+    val command: String? = null,
+
     val debugMode: Boolean = false,
     val lastReceivedEvent: KeyboardEvent? = null
 ) {
@@ -22,6 +27,17 @@ data class State(
             .sortedByDescending { it.path.name.startsWith(filter) }
     }
     val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
+
+    val availableMenuActions get() = allMenuActions().filter { it.isAvailable(this) }
+    val coercedMenuCursor get() = menuCursor.coerceAtMost(availableMenuActions.lastIndex).coerceAtLeast(-1)
+    val isMenuOpen get() = menuCursor >= 0
+    val currentMenuAction get() = availableMenuActions.getOrNull(coercedMenuCursor)
+
+    val isTypingCommand get() = command != null
+
+    fun withMenuCursor(cursor: Int?) = copy(menuCursor = cursor?.coerceAtLeast(0) ?: -1)
+
+    fun withCommand(command: String?) = copy(command = command)
 
     fun withCursor(cursor: Int) = copy(
         cursor = when {
@@ -48,12 +64,23 @@ data class State(
     }
 
     fun navigatedInto(entry: Entry?): State {
-        if (entry?.isDirectory != true) return this
+        if (entry == null || !entry.isDirectory) return this
         return copy(
             directory = entry.path,
             items = entry.path.entries(),
             cursor = 0,
             filter = ""
+        )
+    }
+
+    fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
+        val entries = directory.entries()
+        val tmp = copy(items = entries)
+        return tmp.copy(
+            cursor = when {
+                preferredEntry != null -> tmp.filteredItems.indexOfFirst { it.path.name == preferredEntry }.coerceAtLeast(0)
+                else -> 0
+            }
         )
     }
 
