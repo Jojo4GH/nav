@@ -224,16 +224,16 @@ class UI(
         align = TextAlign.LEFT
 
         if (!config.hideHints) {
-//            if (state.filteredItems.isEmpty() && state.filter.isNotEmpty() && !state.isMenuOpen) {
-//                cell(Text(TextStyles.dim("Use the menu to create files or directories …")))
-//                collectAdditionalRows(1)
-//            }
-            cell(renderHints(state))
+            cell(renderNavHints(state))
             collectAdditionalRows(1)
         }
 
         if (state.isMenuOpen) {
             cell(renderMenu(state, collectAdditionalRows))
+            if (!config.hideHints) {
+                cell("${TextStyles.dim("•")} ${renderMenuHints(state)}")
+                collectAdditionalRows(1)
+            }
         }
     }
 
@@ -241,15 +241,6 @@ class UI(
         state: UIState,
         collectAdditionalRows: (Int) -> Unit
     ) = grid {
-//        if (!config.hideHints && state.filter.isEmpty()) {
-//            row {
-//                cell(TextStyles.dim("•"))
-//                cell(TextStyles.dim("Type to create files or directories …")) {
-//                    columnSpan = 2
-//                }
-//            }
-//            collectAdditionalRows(1)
-//        }
         state.availableMenuActions.forEachIndexed { i, item ->
             row {
                 cell(TextStyles.dim("│"))
@@ -287,54 +278,61 @@ class UI(
         return str
     }
 
-    private fun renderHints(
-        state: UIState
-    ): String {
-        fun MutableList<String>.render(action: KeyAction) {
+    private fun buildHints(
+        state: UIState,
+        block: RenderHintsScope.() -> Unit
+    ): String = RenderHintsScope(state).apply(block).joinToString(TextStyles.dim(" • "))
+
+    private inner class RenderHintsScope(
+        private val state: UIState
+    ) : MutableList<String> by mutableListOf() {
+        fun render(action: KeyAction) {
             if (!action.isAvailable(state)) return
             add(renderAction(state, action))
         }
 
-        fun MutableList<String>.group(block: MutableList<String>.() -> Unit) {
-            mutableListOf<String>().apply(block).let {
+        fun group(block: RenderHintsScope.() -> Unit) {
+            RenderHintsScope(state).apply(block).let {
                 if (it.isNotEmpty()) add(it.joinToString(" "))
             }
         }
+    }
 
-        return buildList {
-            render(actions.navigateUp)
+    private fun renderNavHints(state: UIState) = buildHints(state) {
+        render(actions.navigateUp)
 
-            group {
-                render(actions.cursorUp)
-                render(actions.cursorDown)
-            }
+        group {
+            render(actions.cursorUp)
+            render(actions.cursorDown)
+        }
 
-            render(actions.navigateInto)
-            render(actions.navigateOpen)
+        render(actions.navigateInto)
+        render(actions.navigateOpen)
 
-            render(actions.autocompleteFilter)
-            render(actions.clearFilter)
+        render(actions.autocompleteFilter)
+        render(actions.clearFilter)
 
-            render(actions.exitCD)
-            render(actions.exit)
+        render(actions.exitCD)
+        render(actions.exit)
 
-            if (state.isMenuOpen) {
-                if (state.coercedMenuCursor == 0) {
-                    render(actions.closeMenu)
-                }
-                group {
-                    if (state.coercedMenuCursor > 0) render(actions.menuUp)
-                    render(actions.menuDown)
-                    if (this.isNotEmpty()) add(TextStyles.dim("menu"))
-                }
-            } else {
-                render(actions.openMenu)
-            }
+        if (!state.isMenuOpen) {
+            render(actions.openMenu)
+        }
 
-            if (state.debugMode && state.lastReceivedEvent != null) {
-                add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
-            }
-        }.joinToString(TextStyles.dim(" • "))
+        if (state.debugMode && state.lastReceivedEvent != null) {
+            add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
+        }
+    }
+
+    private fun renderMenuHints(state: UIState) = buildHints(state) {
+        if (state.coercedMenuCursor == 0) {
+            render(actions.closeMenu)
+        }
+        group {
+            if (state.coercedMenuCursor > 0) render(actions.menuUp)
+            render(actions.menuDown)
+            if (this.isNotEmpty()) add(TextStyles.dim("navigate"))
+        }
     }
 
     private fun renderPermissions(stat: Stat): String {
