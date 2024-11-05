@@ -27,7 +27,7 @@ enum class Shell(
                     newDir=${'$'}(cat "${'$'}navFile")
                     if [ -n "${'$'}newDir" ]; then
                         cd "${'$'}newDir" || exit
-                        rm "${'$'}navFile"
+                        rm -f "${'$'}navFile"
                     fi
                 fi
             }
@@ -49,7 +49,7 @@ enum class Shell(
                     newDir=$(cat "${'$'}navFile")
                     if [[ -n "${'$'}newDir" ]]; then
                         cd "${'$'}newDir" || exit
-                        rm "${'$'}navFile"
+                        rm -f "${'$'}navFile"
                     fi
                 fi
             }
