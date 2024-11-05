@@ -382,7 +382,7 @@ class UI(
     private fun renderModificationTime(instant: Instant): String {
         val now = Clock.System.now()
         val duration = now - instant
-        val format = if (duration > 365.days) DateTimeComponents.Format {
+        val format = if (duration.absoluteValue > 365.days) DateTimeComponents.Format {
             dayOfMonth()
             chars(" ")
             monthName(MonthNames.ENGLISH_ABBREVIATED)
@@ -398,9 +398,8 @@ class UI(
             minute()
         }
 
-        val hours = duration.inWholeMinutes / 60.0
-//        val factor = 1.0 / ((hours / config.modificationTime.halfBrightnessAtHours) + 1)
-        val factor = 2.0.pow(-hours / config.modificationTime.halfBrightnessAtHours)
+        val hoursSinceInstant = (duration.inWholeMinutes / 60.0).coerceAtLeast(0.0)
+        val factor = 2.0.pow(-hoursSinceInstant / config.modificationTime.halfBrightnessAtHours)
 
         val brightnessRange = config.modificationTime.minimumBrightness..1.0
         val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
