@@ -19,7 +19,7 @@ Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to nav
 
 - ➡️ Use arrow keys to navigate everywhere
 - ⌨️ Type to filter entries, press `Tab` to autocomplete
-- ✏️ Instantly edit files with your favorite editor
+- ✏️ Instantly edit files with your favorite editor on the fly
 - 📈 Create files and directories or run commands everywhere
 - ✅ Press `Enter` to move your shell to the current directory
 
