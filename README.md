@@ -43,6 +43,20 @@ Or install with any of the following package managers:
 
 [AUR]: https://aur.archlinux.org/packages/nav-cli
 
+Or on NixOS, add the following to your configuration:
+```nix
+{ config, pkgs, ... }:
+let # nav derivation as it is not yet available in nixpkgs
+    repo = builtins.fetchGit {
+        url = "https://github.com/Jojo4GH/nav";
+        ref = "master";
+    };
+in
+{ # Install nav:
+    environment.systemPackages = [ (pkgs.callPackage "${repo}/install" { }) ];
+}
+```
+
 Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
 </details>
@@ -102,6 +116,38 @@ Invoke-Expression (& nav --init powershell | Out-String)
 
 ```powershell
 Invoke-Expression (& nav --init pwsh | Out-String)
+```
+
+</details>
+
+<details>
+<summary>NixOS</summary>
+
+Bash:
+
+```nix
+programs.bash.shellInit = "eval \"$(nav --init bash)\"";
+```
+
+Zsh:
+
+```nix
+programs.zsh.shellInit = "eval \"$(nav --init zsh)\"";
+```
+
+Or with `home-manager`:
+
+```nix
+home-manager.users.user.programs = {
+    bash = {
+        enable = true;
+        bashrcExtra = "eval \"$(nav --init bash)\"";
+    };
+    zsh = {
+        inherit (config.programs.zsh) enable;
+        initExtra = "eval \"$(nav --init zsh)\"";
+    };
+};
 ```
 
 </details>
