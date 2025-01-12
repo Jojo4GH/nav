@@ -19,7 +19,7 @@ Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to nav
 
 - ➡️ Use arrow keys to navigate everywhere
 - ⌨️ Type to filter entries, press `Tab` to autocomplete
-- ✏️ Instantly edit files with your favorite editor
+- ✏️ Instantly edit files with your favorite editor on the fly
 - 📈 Create files and directories or run commands everywhere
 - ✅ Press `Enter` to move your shell to the current directory
 
@@ -42,6 +42,20 @@ Or install with any of the following package managers:
 | Arch Linux   | [AUR]      | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
 
 [AUR]: https://aur.archlinux.org/packages/nav-cli
+
+Or on NixOS, add the following to your configuration:
+```nix
+{ config, pkgs, ... }:
+let # nav derivation as it is not yet available in nixpkgs
+    repo = builtins.fetchGit {
+        url = "https://github.com/Jojo4GH/nav";
+        ref = "master";
+    };
+in
+{ # Install nav:
+    environment.systemPackages = [ (pkgs.callPackage "${repo}/install" { }) ];
+}
+```
 
 Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
@@ -102,6 +116,38 @@ Invoke-Expression (& nav --init powershell | Out-String)
 
 ```powershell
 Invoke-Expression (& nav --init pwsh | Out-String)
+```
+
+</details>
+
+<details>
+<summary>NixOS</summary>
+
+Bash:
+
+```nix
+programs.bash.shellInit = "eval \"$(nav --init bash)\"";
+```
+
+Zsh:
+
+```nix
+programs.zsh.shellInit = "eval \"$(nav --init zsh)\"";
+```
+
+Or with `home-manager`:
+
+```nix
+home-manager.users.user.programs = {
+    bash = {
+        enable = true;
+        bashrcExtra = "eval \"$(nav --init bash)\"";
+    };
+    zsh = {
+        inherit (config.programs.zsh) enable;
+        initExtra = "eval \"$(nav --init zsh)\"";
+    };
+};
 ```
 
 </details>
