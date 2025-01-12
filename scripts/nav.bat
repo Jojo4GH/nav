@@ -1,5 +1,7 @@
 @echo off
 
+@rem This is an example file for a possible batch based implementation
+
 %NAV_BINARY% %*
 
 set navFile=%USERPROFILE%\.nav-cd

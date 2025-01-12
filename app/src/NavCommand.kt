@@ -14,7 +14,6 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.mordant.terminal.Terminal
 import de.jonasbroeckmann.nav.app.App
-import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.absolute
 import de.jonasbroeckmann.nav.utils.cleaned
@@ -79,7 +78,7 @@ class NavCommand : CliktCommand() {
         val terminal = Terminal()
 
         if (version) {
-            terminal.println("$BinaryName ${BuildConfig.VERSION}")
+            terminal.println("$BinaryName $Version")
             return
         }
 
@@ -112,6 +111,7 @@ class NavCommand : CliktCommand() {
     }
 
     companion object {
-        val BinaryName get() = BuildConfig.BINARY_NAME
+        const val BinaryName = "nav"
+        const val Version = "1.2.0"
     }
 }

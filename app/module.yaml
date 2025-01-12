@@ -1,0 +1,19 @@
+product:
+    type: lib
+    platforms: [linuxX64, linuxArm64, mingwX64, jvm]
+
+dependencies:
+    - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC
+    - org.jetbrains.kotlinx:kotlinx-datetime:0.6.0
+    - org.jetbrains.kotlinx:kotlinx-io-core:0.4.0
+    - com.akuleshov7:ktoml-core:0.5.2
+    - com.akuleshov7:ktoml-file:0.5.2
+    - com.github.ajalt.clikt:clikt:4.4.0
+    - com.github.ajalt.mordant:mordant:2.7.1
+    - com.github.ajalt.mordant:mordant-coroutines:2.7.1
+    - com.kgit2:kommand:2.1.2
+
+settings:
+    kotlin:
+        serialization: json
+

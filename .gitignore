@@ -1,6 +1,7 @@
+/.fleet
 /.gradle
 /.idea
 /.kotlin
 /.vscode
 
-build
+build/
