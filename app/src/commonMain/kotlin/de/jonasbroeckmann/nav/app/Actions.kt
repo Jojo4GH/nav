@@ -74,13 +74,31 @@ class Actions(config: Config) {
     val autocompleteFilter = KeyAction(
         key = config.keys.filter.autocomplete,
         description = { "autocomplete" },
-        condition = { filter.isNotEmpty() && items.isNotEmpty() },
+        condition = { items.isNotEmpty() },
         action = {
             val commonPrefix = items
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
                 .commonPrefix()
-            NewState(filtered(commonPrefix))
+
+            val filteredState = filtered(commonPrefix)
+
+            val adjustedState = when (config.autocomplete.style) {
+                Config.Autocomplete.Style.CommonPrefixStop -> {
+                    filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                }
+                Config.Autocomplete.Style.CommonPrefixCycle -> {
+                    if (!filteredState.filter.equals(filter, ignoreCase = true)) {
+                        // Go to first
+                        filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                    } else {
+                        // Go to next
+                        filteredState.withCursorOnNext { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                    }
+                }
+            }
+
+            NewState(adjustedState)
         }
     )
     val clearFilter = KeyAction(
