@@ -23,8 +23,9 @@ data class State(
 ) {
     val filteredItems: List<Entry> by lazy {
         if (filter.isEmpty()) return@lazy items
-        items.filter { filter.lowercase() in it.path.name.lowercase() }
-            .sortedByDescending { it.path.name.startsWith(filter) }
+        items
+            .filter { filter.lowercase() in it.path.name.lowercase() }
+            .sortedByDescending { it.path.name.startsWith(filter) } // intentionally
     }
     val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
 
@@ -45,6 +46,24 @@ data class State(
             else -> cursor.mod(filteredItems.size)
         }
     )
+
+    fun withCursorOnFirst(predicate: (Entry) -> Boolean): State = copy(
+        cursor = filteredItems.indexOfFirst { predicate(it) }.coerceAtLeast(0)
+    )
+
+    fun withCursorOnNext(predicate: (Entry) -> Boolean): State {
+        for (i in (cursor + 1) until filteredItems.size) {
+            if (predicate(filteredItems[i])) {
+                return copy(cursor = i)
+            }
+        }
+        for (i in 0 until cursor) {
+            if (predicate(filteredItems[i])) {
+                return copy(cursor = i)
+            }
+        }
+        return this
+    }
 
     fun filtered(filter: String): State {
         val tmp = copy(filter = filter)
@@ -74,14 +93,11 @@ data class State(
     }
 
     fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
-        val entries = directory.entries()
-        val tmp = copy(items = entries)
-        return tmp.copy(
-            cursor = when {
-                preferredEntry != null -> tmp.filteredItems.indexOfFirst { it.path.name == preferredEntry }.coerceAtLeast(0)
-                else -> 0
-            }
-        )
+        val tmp = copy(items = directory.entries())
+        return when (preferredEntry) {
+            null -> tmp.copy(cursor = 0)
+            else -> tmp.withCursorOnFirst { it.path.name == preferredEntry }
+        }
     }
 
     companion object {

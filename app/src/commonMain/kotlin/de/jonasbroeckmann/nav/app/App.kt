@@ -122,7 +122,15 @@ class App(
         if (command != null) {
             tryUpdateTextField(command)?.let { return Event.NewState(state.withCommand(it)) }
         } else {
-            tryUpdateTextField(state.filter)?.let { return Event.NewState(state.filtered(it)) }
+            tryUpdateTextField(state.filter)?.let { filter ->
+                val filtered = state.filtered(filter)
+                if (filtered.filteredItems.size == state.filteredItems.size) {
+                    return Event.NewState(filtered)
+                }
+                return Event.NewState(filtered.withCursorOnFirst {
+                    it.path.name.startsWith(filter, ignoreCase = true)
+                })
+            }
         }
         return null
     }

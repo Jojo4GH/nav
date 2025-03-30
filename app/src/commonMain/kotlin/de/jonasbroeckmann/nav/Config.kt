@@ -7,6 +7,7 @@ import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
@@ -25,6 +26,7 @@ data class Config(
     val keys: Keys = Keys(),
 
     val colors: Colors = Colors.Retro,
+    val autocomplete: Autocomplete = Autocomplete(),
     val modificationTime: ModificationTime = ModificationTime()
 ) {
     @Serializable
@@ -123,6 +125,29 @@ data class Config(
             )
         }
     }
+    @Serializable
+    data class Autocomplete(
+        val style: Style = Style.CommonPrefixCycle,
+        val autoNavigation: AutoNavigation = AutoNavigation.OnSingleAfterCompletion,
+    ) {
+        @Serializable
+        enum class Style {
+            /** Auto complete the largest common prefix and stop */
+            CommonPrefixStop,
+            /** Auto complete the largest common prefix and cycle through all entries */
+            CommonPrefixCycle
+        }
+        @Serializable
+        enum class AutoNavigation {
+            /** Do not auto navigate */
+            None,
+            /** Auto complete the entry and on second action navigate */
+            OnSingleAfterCompletion,
+            /** Auto complete the entry and navigate immediately (not recommended) */
+            OnSingle
+        }
+    }
+
     @Serializable
     data class ModificationTime(
         val minimumBrightness: Double = 0.4,

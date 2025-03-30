@@ -74,13 +74,49 @@ class Actions(config: Config) {
     val autocompleteFilter = KeyAction(
         key = config.keys.filter.autocomplete,
         description = { "autocomplete" },
-        condition = { filter.isNotEmpty() && items.isNotEmpty() },
+        condition = { items.isNotEmpty() },
         action = {
             val commonPrefix = items
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
                 .commonPrefix()
-            NewState(filtered(commonPrefix))
+            val filteredState = filtered(commonPrefix)
+            val hasFilterChanged = !filteredState.filter.equals(filter, ignoreCase = true)
+
+            // Handle autocomplete
+            val completedState = when (config.autocomplete.style) {
+                Config.Autocomplete.Style.CommonPrefixStop -> {
+                    filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                }
+                Config.Autocomplete.Style.CommonPrefixCycle -> {
+                    if (hasFilterChanged) {
+                        // Go to first
+                        filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                    } else {
+                        // Go to next
+                        filteredState.withCursorOnNext { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                    }
+                }
+            }
+
+            // Handle auto-navigation
+            if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.None) {
+                return@KeyAction NewState(completedState)
+            }
+            completedState.filteredItems
+                .singleOrNull { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                ?.let { singleEntry ->
+                    if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.OnSingleAfterCompletion) {
+                        if (!hasFilterChanged) {
+                            return@KeyAction NewState(completedState.navigatedInto(singleEntry))
+                        }
+                    }
+                    if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.OnSingle) {
+                        return@KeyAction NewState(completedState.navigatedInto(singleEntry))
+                    }
+                }
+
+            NewState(completedState)
         }
     )
     val clearFilter = KeyAction(
