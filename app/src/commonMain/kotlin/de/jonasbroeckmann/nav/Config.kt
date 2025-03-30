@@ -4,10 +4,11 @@ package de.jonasbroeckmann.nav
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
+import com.github.ajalt.mordant.terminal.danger
+import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
-
 
 @Serializable
 data class Config(

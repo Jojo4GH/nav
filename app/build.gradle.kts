@@ -1,25 +1,20 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.crypto.checksum.Checksum
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.kotlinx.serialization)
-    alias(libs.plugins.gmazzo.buildconfig)
-    alias(libs.plugins.gradle.checksum)
-    alias(libs.plugins.dorongold.tasktree)
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    val kotlinVersion = "2.1.20"
+    kotlin("multiplatform") version kotlinVersion
+    kotlin("plugin.serialization") version kotlinVersion
+    id("com.github.gmazzo.buildconfig") version "5.4.0"
+    id("org.gradle.crypto.checksum") version "1.4.0"
 }
 
 group = "de.jonasbroeckmann.nav"
 version = "1.2.1"
 
-val mainClassJvm = "$group.MainKt"
 val binaryName = "nav"
 
 buildConfig {
@@ -27,7 +22,6 @@ buildConfig {
     buildConfigField("String", "BINARY_NAME", "\"$binaryName\"")
 }
 
-@OptIn(ExperimentalKotlinGradlePluginApi::class)
 kotlin {
     jvm()
 
@@ -52,45 +46,22 @@ kotlin {
     }
 
     sourceSets {
-        commonMain {
-            dependencies {
-                implementation(libs.kotlinx.coroutines)
-                implementation(libs.kotlinx.datetime)
-                implementation(libs.kotlinx.io)
+        commonMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.7.0")
 
-                implementation(libs.ktoml.core)
-                implementation(libs.ktoml.file)
+            val ktomlVersion = "0.6.0"
+            implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
+            implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
 
-                implementation(libs.clikt)
+            implementation("com.github.ajalt.clikt:clikt:5.0.3")
 
-                implementation(libs.mordant)
-                implementation(libs.mordant.coroutines)
+            implementation("com.github.ajalt.mordant:mordant:3.0.2")
+            implementation("com.github.ajalt.mordant:mordant-coroutines:3.0.2")
 
-                implementation(libs.kommand)
-            }
+            implementation("com.kgit2:kommand:2.1.2")
         }
-    }
-}
-
-
-val jvmPackageTasks = kotlin.targets.withType<KotlinJvmTarget>().map { jvmTarget ->
-    val targetName = jvmTarget.name
-    val main by jvmTarget.compilations.named("main")
-    val jvmShadowJar = tasks.register<ShadowJar>("${targetName}ShadowJar") {
-        group = "build"
-        from(main.output)
-        configurations = listOf(main.runtimeDependencyFiles)
-        manifest {
-            attributes("Main-Class" to mainClassJvm)
-        }
-        archiveFileName.set("$binaryName-$targetName.jar")
-    }
-
-    tasks.register<Copy>("package${targetName.replaceFirstChar { it.uppercase() }}") {
-        group = "distribution"
-        dependsOn(jvmShadowJar)
-        from(jvmShadowJar)
-        into(layout.buildDirectory.dir("packages"))
     }
 }
 
@@ -117,7 +88,7 @@ inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
     block()
 }
 
-val nativePackageTasks = tasks.withType<KotlinNativeLink>().filter { it.optimized }.map { linkTask ->
+val packageTasks = tasks.withType<KotlinNativeLink>().filter { it.optimized }.map { linkTask ->
     val konanTarget = linkTask.binary.compilation.konanTarget
     val taskName = linkTask.name.removePrefix("link")
 
@@ -129,8 +100,6 @@ val nativePackageTasks = tasks.withType<KotlinNativeLink>().filter { it.optimize
         }
     }
 }
-
-val packageTasks = jvmPackageTasks + nativePackageTasks
 
 val checksumTask = tasks.register<Checksum>("checksums") {
     group = "distribution"
@@ -145,7 +114,6 @@ tasks.register("packageAll") {
     dependsOn(packageTasks)
     dependsOn(checksumTask)
 }
-
 
 val KonanTarget.targetTriple: String get() = listOfNotNull(
     when (architecture) {
@@ -185,4 +153,3 @@ val KonanTarget.targetTriple: String get() = listOfNotNull(
         else -> null
     }
 ).joinToString("-")
-

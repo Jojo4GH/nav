@@ -28,7 +28,6 @@ class UI(
     private val config: Config,
     private val actions: Actions
 ) : Animation<UIState>(
-    trailingLinebreak = true,
     terminal = terminal
 ) {
 
@@ -124,8 +123,8 @@ class UI(
     ) {
         var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
         if (config.limitToTerminalHeight) {
-            terminal.info.updateTerminalSize()
-            maxVisible = maxVisible.coerceAtMost(terminal.info.height - otherRows)
+            terminal.updateSize()
+            maxVisible = maxVisible.coerceAtMost(terminal.size.height - otherRows)
         }
         maxVisible = maxVisible.coerceAtLeast(1)
 
