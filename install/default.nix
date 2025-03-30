@@ -11,7 +11,7 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "nav";
-  version = "1.2.1";
+  version = "1.3.0";
 
   src = fetchzip {
     url = "https://github.com/Jojo4GH/nav/releases/download/v${version}/nav-${platform}.tar.gz";
