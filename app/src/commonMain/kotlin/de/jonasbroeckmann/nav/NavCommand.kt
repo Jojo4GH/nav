@@ -13,6 +13,8 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.mordant.terminal.Terminal
+import com.github.ajalt.mordant.terminal.danger
+import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
@@ -20,7 +22,6 @@ import de.jonasbroeckmann.nav.utils.absolute
 import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
-
 
 class NavCommand : CliktCommand() {
     private val startingDirectory by argument(

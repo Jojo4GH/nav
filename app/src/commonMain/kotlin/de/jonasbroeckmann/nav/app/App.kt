@@ -5,6 +5,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.Terminal
+import com.github.ajalt.mordant.terminal.danger
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
@@ -86,7 +87,6 @@ class App(
         exitProcess(0)
     }
 
-
     private fun mainUILoop(): Event.OutsideUI {
         val sequenceTimout = config.inputTimeoutMillis.let {
             if (config.inputTimeoutMillis > 0) it.milliseconds else Duration.INFINITE
@@ -95,7 +95,7 @@ class App(
             while (true) {
                 val inputEvent = try {
                     rawMode.readEvent(sequenceTimout)
-                } catch (e: RuntimeException) {
+                } catch (_: RuntimeException) {
                     continue // on timeout try again
                 }
                 when (val event = inputEvent.process()) {
@@ -126,7 +126,6 @@ class App(
         }
         return null
     }
-
 
     companion object {
         private fun KeyboardEvent.tryUpdateTextField(str: String): String? {

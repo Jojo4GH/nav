@@ -28,11 +28,37 @@ class UI(
     private val config: Config,
     private val actions: Actions
 ) : Animation<UIState>(
-    trailingLinebreak = true,
     terminal = terminal
 ) {
 
-    override fun renderData(data: UIState): Widget = table {
+    override fun renderData(data: UIState): Widget = verticalLayout {
+        align = TextAlign.LEFT
+
+        var additionalRows = 0
+
+        val top = renderTitle(data.directory, data.filter, data.debugMode)
+        additionalRows += 1
+
+        val bottom = renderBottom(data) { additionalRows += it }
+
+        val table = renderTable(
+            entries = data.filteredItems,
+            cursor = data.cursor,
+            filter = data.filter,
+            additionalRows = additionalRows
+        )
+
+        cell(top)
+        cell(table)
+        cell(bottom)
+    }
+
+    private fun renderTable(
+        entries: List<UIState.Entry>,
+        cursor: Int,
+        filter: String,
+        additionalRows: Int
+    ) = table {
         overflowWrap = OverflowWrap.ELLIPSES
         cellBorders = Borders.LEFT_RIGHT
         tableBorders = Borders.NONE
@@ -40,22 +66,16 @@ class UI(
         padding = Padding(0)
         whitespace = Whitespace.PRE_WRAP
 
-        var additionalRows = 0
-        val collectAdditionalRows = { rows: Int -> additionalRows += rows }
+        var additionalRows = additionalRows
 
-        captionTop(renderTitle(data.directory, data.filter, data.debugMode), align = TextAlign.LEFT)
-        collectAdditionalRows(1)
-
-        captionBottom(renderBottom(data, collectAdditionalRows))
-
-        if (data.filteredItems.isEmpty()) {
+        if (entries.isEmpty()) {
             body {
-                if (data.filter.isNotEmpty()) {
+                if (filter.isNotEmpty()) {
                     row { cell(Text(TextStyles.dim("No results …"))) }
-                    collectAdditionalRows(1)
+                    additionalRows += 1
                 } else {
                     row { cell(Text(TextStyles.dim("There is nothing here"))) }
-                    collectAdditionalRows(1)
+                    additionalRows += 1
                 }
             }
             return@table
@@ -71,12 +91,12 @@ class UI(
                 cell(Text("Last Modified", overflowWrap = OverflowWrap.ELLIPSES))
                 cell("Name")
             }
-            collectAdditionalRows(1)
+            additionalRows += 1
         }
         body {
             renderEntries(
-                entries = data.filteredItems,
-                cursor = data.cursor,
+                entries = entries,
+                cursor = cursor,
                 otherRows = additionalRows,
                 renderMore = { n ->
                     row {
@@ -107,7 +127,7 @@ class UI(
                         text = renderName(
                             entry = entry,
                             isSelected = isSelected,
-                            filter = data.filter
+                            filter = filter
                         )
                     ))
                 }
@@ -124,8 +144,8 @@ class UI(
     ) {
         var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
         if (config.limitToTerminalHeight) {
-            terminal.info.updateTerminalSize()
-            maxVisible = maxVisible.coerceAtMost(terminal.info.height - otherRows)
+            terminal.updateSize()
+            maxVisible = maxVisible.coerceAtMost(terminal.size.height - otherRows)
         }
         maxVisible = maxVisible.coerceAtLeast(1)
 
@@ -189,9 +209,9 @@ class UI(
             .let {
                 when {
                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
-                    entry.isRegularFile -> fileStyle(it)
+                    entry.isRegularFile -> "${fileStyle(it)} "
                     entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
-                    else -> TextColors.magenta(it)
+                    else -> "${TextColors.magenta(it)} "
                 }
             }
     }
@@ -222,6 +242,7 @@ class UI(
         collectAdditionalRows: (Int) -> Unit
     ): Widget = verticalLayout {
         align = TextAlign.LEFT
+        this.width = ColumnWidth.Expand()
 
         if (!config.hideHints) {
             cell(renderNavHints(state))
