@@ -183,10 +183,10 @@ hideHints = false
 clearOnExit = true
 
 limitToTerminalHeight = true
-maxVisibleEntries = 20      # Set to 0 for unlimited entries
+maxVisibleEntries = 20 # Set to 0 for unlimited entries
 maxVisiblePathElements = 6
 # Used to distinguish escape sequences on Linux terminals
-inputTimeoutMillis = 4      # Set to 0 for no timeout
+inputTimeoutMillis = 4 # Set to 0 for no timeout
 suppressInitCheck = false
 
 [keys]
@@ -226,7 +226,20 @@ directory = "F71674"
 file = "F5741D"
 link = "009FFD"
 
+[autocomplete]
+
+# Controls the behavior of the auto complete feature
+# - "CommonPrefixCycle": Auto completes the largest common prefix and cycles through all entries
+# - "CommonPrefixStop": Auto completes the largest common prefix and stops
+style = "CommonPrefixCycle"
+# Controls auto navigation on completion
+# - "None": Do not auto navigate
+# - "OnSingleAfterCompletion": Auto completes the entry and on second action navigates
+# - "OnSingle": Auto completes the entry and navigates immediately (not recommended)
+autoNavigation = "OnSingleAfterCompletion"
+
 [modificationTime]
+
 minimumBrightness = 0.4
 halfBrightnessAtHours = 12.0
 ```
