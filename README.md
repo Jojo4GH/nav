@@ -37,25 +37,14 @@ Install (or update) nav with the [installer script](install/install.sh):
 curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
 ```
 Or install with any of the following package managers:
+
 | Distribution | Repository | Instructions                               |
-| ------------ | ---------- | ------------------------------------------ |
+|--------------|------------|--------------------------------------------|
 | Arch Linux   | [AUR]      | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
+| NixOS        | [Nixpkgs]  | `nix-shell -p nav`                         |
 
 [AUR]: https://aur.archlinux.org/packages/nav-cli
-
-Or on NixOS, add the following to your configuration:
-```nix
-{ config, pkgs, ... }:
-let # nav derivation as it is not yet available in nixpkgs
-    repo = builtins.fetchGit {
-        url = "https://github.com/Jojo4GH/nav";
-        ref = "master";
-    };
-in
-{ # Install nav:
-    environment.systemPackages = [ (pkgs.callPackage "${repo}/install" { }) ];
-}
-```
+[Nixpkgs]: https://search.nixos.org/packages?show=nav
 
 Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
