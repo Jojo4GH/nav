@@ -51,13 +51,22 @@ data class State(
         cursor = filteredItems.indexOfFirst { predicate(it) }.coerceAtLeast(0)
     )
 
-    fun withCursorOnNext(predicate: (Entry) -> Boolean): State {
-        for (i in (cursor + 1) until filteredItems.size) {
-            if (predicate(filteredItems[i])) {
-                return copy(cursor = i)
-            }
-        }
-        for (i in 0 until cursor) {
+    fun withCursorOnNext(predicate: (Entry) -> Boolean): State = withCursorOnNextInOffsets(
+        offsets = 1 until filteredItems.size,
+        predicate = predicate
+    )
+
+    fun withCursorOnNextReverse(predicate: (Entry) -> Boolean): State = withCursorOnNextInOffsets(
+        offsets = (1 until filteredItems.size).map { -it },
+        predicate = predicate
+    )
+
+    private fun withCursorOnNextInOffsets(
+        offsets: Iterable<Int>,
+        predicate: (Entry) -> Boolean
+    ): State {
+        for (offset in offsets) {
+            val i = (cursor + offset).mod(filteredItems.size)
             if (predicate(filteredItems[i])) {
                 return copy(cursor = i)
             }

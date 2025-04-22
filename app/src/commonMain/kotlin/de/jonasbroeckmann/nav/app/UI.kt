@@ -283,7 +283,7 @@ class UI(
     private fun renderAction(state: UIState, action: Action<*>): String {
         val styleKey = TextColors.rgb(config.colors.keyHints) + TextStyles.bold
         val keyStr = when (action) {
-            is KeyAction -> styleKey(keyName(action.key))
+            is KeyAction -> action.displayKey(state)?.let { styleKey(keyName(it)) }
             is MenuAction -> null
         }
         val desc = action.description(state)
