@@ -19,38 +19,38 @@ import kotlinx.io.files.SystemFileSystem
 
 class Actions(config: Config) {
     val cursorUp = KeyAction(
-        key = config.keys.cursor.up,
+        config.keys.cursor.up,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(cursor - 1)) }
     )
     val cursorDown = KeyAction(
-        key = config.keys.cursor.down,
+        config.keys.cursor.down,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(cursor + 1)) }
     )
     val cursorHome = KeyAction(
-        key = config.keys.cursor.home,
+        config.keys.cursor.home,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(0)) }
     )
     val cursorEnd = KeyAction(
-        key = config.keys.cursor.end,
+        config.keys.cursor.end,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(filteredItems.lastIndex)) }
     )
 
     val navigateUp = KeyAction(
-        key = config.keys.nav.up,
+        config.keys.nav.up,
         condition = { directory.parent != null },
         action = { NewState(navigatedUp()) }
     )
     val navigateInto = KeyAction(
-        key = config.keys.nav.into,
+        config.keys.nav.into,
         condition = { currentEntry?.isDirectory == true },
         action = { NewState(navigatedInto(currentEntry)) }
     )
     val navigateOpen = KeyAction(
-        key = config.keys.nav.open,
+        config.keys.nav.open,
         description = { "open in ${config.editor}" },
         style = TextColors.rgb(config.colors.file),
         condition = { currentEntry?.isRegularFile == true },
@@ -58,24 +58,24 @@ class Actions(config: Config) {
     )
 
     val exitCD = KeyAction(
-        key = config.keys.submit,
+        config.keys.submit,
         description = { "exit here" },
         style = TextColors.rgb(config.colors.path),
         condition = { directory != WorkingDirectory && filter.isEmpty() && !isMenuOpen },
         action = { ExitAt(directory) }
     )
     val exit = KeyAction(
-        key = config.keys.cancel,
+        config.keys.cancel,
         description = { "exit" },
         condition = { filter.isEmpty() },
         action = { Exit }
     )
 
     val autocompleteFilter = KeyAction(
-        key = config.keys.filter.autocomplete,
+        config.keys.filter.autocomplete, config.keys.filter.autocomplete.copy(shift = true),
         description = { "autocomplete" },
         condition = { items.isNotEmpty() },
-        action = {
+        action = { keyEvent ->
             val commonPrefix = items
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
@@ -93,8 +93,13 @@ class Actions(config: Config) {
                         // Go to first
                         filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
                     } else {
-                        // Go to next
-                        filteredState.withCursorOnNext { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                        if (keyEvent.shift) {
+                            // Go to previous
+                            filteredState.withCursorOnNextReverse { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                        } else {
+                            // Go to next
+                            filteredState.withCursorOnNext { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
+                        }
                     }
                 }
             }
@@ -120,31 +125,31 @@ class Actions(config: Config) {
         }
     )
     val clearFilter = KeyAction(
-        key = config.keys.filter.clear,
+        config.keys.filter.clear,
         description = { "clear filter" },
         condition = { filter.isNotEmpty() },
         action = { NewState(filtered("")) }
     )
 
     val openMenu = KeyAction(
-        key = config.keys.menu.down,
+        config.keys.menu.down,
         description = { "more" },
         condition = { !isMenuOpen },
         action = { NewState(withMenuCursor(0)) }
     )
     val closeMenu = KeyAction(
-        key = config.keys.menu.up,
+        config.keys.menu.up,
         description = { "close menu" },
         condition = { isMenuOpen && coercedMenuCursor == 0 },
         action = { NewState(withMenuCursor(null)) }
     )
     val menuDown = KeyAction(
-        key = config.keys.menu.down,
+        config.keys.menu.down,
         condition = { isMenuOpen && coercedMenuCursor < availableMenuActions.lastIndex },
         action = { NewState(withMenuCursor(coercedMenuCursor + 1)) }
     )
     val menuUp = KeyAction(
-        key = config.keys.menu.up,
+        config.keys.menu.up,
         condition = { isMenuOpen && coercedMenuCursor > 0 },
         action = { NewState(withMenuCursor(coercedMenuCursor - 1)) }
     )
@@ -217,7 +222,7 @@ class Actions(config: Config) {
     )
 
     val menuSubmit = KeyAction(
-        key = config.keys.submit,
+        config.keys.submit,
         condition = { isMenuOpen },
         action = { currentMenuAction?.perform(this, null) }
     )
@@ -255,13 +260,30 @@ data class MenuAction(
 }
 
 data class KeyAction(
-    val key: KeyboardEvent,
+    val keyFilter: (State, KeyboardEvent) -> Boolean,
+    val displayKey: (State) -> KeyboardEvent? = { null },
     override val description: State.() -> String? = { null },
     override val style: TextStyle? = null,
     private val condition: State.() -> Boolean,
     private val action: State.(KeyboardEvent) -> App.Event?
 ) : Action<KeyboardEvent> {
-    override fun matches(state: State, input: KeyboardEvent) = key == input && isAvailable(state)
+    constructor(
+        vararg keys: KeyboardEvent,
+        displayKey: (State) -> KeyboardEvent? = { keys.firstOrNull() },
+        description: State.() -> String? = { null },
+        style: TextStyle? = null,
+        condition: State.() -> Boolean,
+        action: State.(KeyboardEvent) -> App.Event?
+    ) : this(
+        keyFilter = { _, key -> keys.any { it == key } },
+        displayKey = displayKey,
+        description = description,
+        style = style,
+        condition = condition,
+        action = action
+    )
+
+    override fun matches(state: State, input: KeyboardEvent) = keyFilter(state, input) && isAvailable(state)
     override fun isAvailable(state: State) = state.condition()
 
     override fun perform(state: State, input: KeyboardEvent) = state.action(input)
