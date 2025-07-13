@@ -5,15 +5,15 @@ import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
 
 plugins {
-    val kotlinVersion = "2.1.20"
+    val kotlinVersion = "2.2.0"
     kotlin("multiplatform") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
-    id("com.github.gmazzo.buildconfig") version "5.4.0"
+    id("com.github.gmazzo.buildconfig") version "5.6.7"
     id("org.gradle.crypto.checksum") version "1.4.0"
 }
 
 group = "de.jonasbroeckmann.nav"
-version = "1.3.1"
+version = "1.3.2"
 
 val binaryName = "nav"
 
@@ -23,6 +23,15 @@ buildConfig {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-Xcontext-parameters",
+            "-Xcontext-sensitive-resolution",
+            "-Xnested-type-aliases",
+            "-Xconsistent-data-class-copy-visibility"
+        )
+    }
+
     jvm()
 
     linuxX64()
@@ -47,20 +56,21 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
-            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.7.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.0")
 
-            val ktomlVersion = "0.6.0"
+            val ktomlVersion = "0.7.0"
             implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
             implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
 
             implementation("com.github.ajalt.clikt:clikt:5.0.3")
 
-            implementation("com.github.ajalt.mordant:mordant:3.0.2")
-            implementation("com.github.ajalt.mordant:mordant-coroutines:3.0.2")
+            val mordantVersion = "3.0.2"
+            implementation("com.github.ajalt.mordant:mordant:$mordantVersion")
+            implementation("com.github.ajalt.mordant:mordant-coroutines:$mordantVersion")
 
-            implementation("com.kgit2:kommand:2.1.2")
+            implementation("com.kgit2:kommand:2.3.0")
         }
     }
 }
