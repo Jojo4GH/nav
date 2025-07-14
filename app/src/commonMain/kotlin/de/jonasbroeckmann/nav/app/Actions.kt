@@ -9,15 +9,17 @@ import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
+import de.jonasbroeckmann.nav.app.UI.Companion.style
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 
-class Actions(config: Config) {
+class Actions(config: Config) : ConfigProvider by config {
     val cursorUp = KeyAction(
         config.keys.cursor.up,
         condition = { filteredItems.isNotEmpty() },
@@ -52,7 +54,7 @@ class Actions(config: Config) {
     val navigateOpen = KeyAction(
         config.keys.nav.open,
         description = { "open in ${config.editor}" },
-        style = TextColors.rgb(config.colors.file),
+        style = { TextColors.rgb(config.colors.file) },
         condition = { currentEntry?.isRegularFile == true },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
     )
@@ -60,7 +62,7 @@ class Actions(config: Config) {
     val exitCD = KeyAction(
         config.keys.submit,
         description = { "exit here" },
-        style = TextColors.rgb(config.colors.path),
+        style = { TextColors.rgb(config.colors.path) },
         condition = { directory != WorkingDirectory && filter.isEmpty() && !isMenuOpen },
         action = { ExitAt(directory) }
     )
@@ -154,10 +156,89 @@ class Actions(config: Config) {
         action = { NewState(withMenuCursor(coercedMenuCursor - 1)) }
     )
 
+    val quickMacroActions = listOf(
+        KeyAction(
+            keyFilter = { state, key ->
+                state.inQuickMacroMode && key.copy(ctrl = false) == config.keys.cancel
+            },
+            displayKey = { config.keys.cancel },
+            description = {
+                "cancel"
+            },
+            condition = {
+                inQuickMacroMode
+            },
+            action = {
+                NewState(copy(inQuickMacroMode = false))
+            }
+        )
+    ) + config.entryMacros.mapNotNull { macro ->
+        if (macro.quickMacroKey == null) return@mapNotNull null
+        KeyAction(
+            keyFilter = { state, key ->
+                state.inQuickMacroMode && key.copy(ctrl = false) == macro.quickMacroKey
+            },
+            displayKey = { macro.quickMacroKey },
+            description = {
+                currentEntry?.let { macro.computeDescription(it) }
+            },
+            style = { currentEntry.style },
+            condition = {
+                inQuickMacroMode && macro.condition()
+            },
+            action = {
+                macro.runCommand()
+            }
+        )
+    }
+
+    private val macroMenuActions = config.entryMacros.map { macro ->
+        MenuAction(
+            description = {
+                currentEntry?.let { "* " + macro.computeDescription(it) }
+            },
+            style = { currentEntry.style },
+            condition = {
+                macro.condition()
+            },
+            action = {
+                macro.runCommand()
+            }
+        )
+    }.toTypedArray()
+
+    context(state: State)
+    private fun Config.EntryMacro.condition(): Boolean {
+        val currentEntry = state.currentEntry
+        return when {
+            currentEntry == null -> false
+            currentEntry.isDirectory -> onDirectory
+            currentEntry.isRegularFile -> onFile
+            currentEntry.isSymbolicLink -> onSymbolicLink
+            else -> false
+        }
+    }
+
+    context(state: State)
+    private fun Config.EntryMacro.runCommand() = RunMacroCommand(
+        command = computeCommand(requireNotNull(state.currentEntry)),
+        eventAfterSuccessfulCommand = when (afterSuccessfulCommand) {
+            Config.AfterMacroCommand.DoNothing -> null
+            Config.AfterMacroCommand.ExitAtCurrentDirectory -> ExitAt(state.directory)
+            Config.AfterMacroCommand.ExitAtInitialDirectory -> Exit
+        },
+        eventAfterFailedCommand = when (afterFailedCommand) {
+            Config.AfterMacroCommand.DoNothing -> null
+            Config.AfterMacroCommand.ExitAtCurrentDirectory -> ExitAt(state.directory)
+            Config.AfterMacroCommand.ExitAtInitialDirectory -> Exit
+        }
+    )
+
     val menuActions = listOf(
+        *macroMenuActions,
         MenuAction(
             description = { "New file: \"${filter}\"" },
-            style = TextColors.rgb(config.colors.file),
+            style = { TextColors.rgb(config.colors.file) },
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.sink(directory / filter).close()
@@ -166,7 +247,7 @@ class Actions(config: Config) {
         ),
         MenuAction(
             description = { "New directory: \"${filter}\"" },
-            style = TextColors.rgb(config.colors.directory),
+            style = { TextColors.rgb(config.colors.directory) },
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.createDirectories(directory / filter)
@@ -175,7 +256,7 @@ class Actions(config: Config) {
         ),
         MenuAction(
             description = { "Run command here" },
-            style = TextColors.rgb(config.colors.path),
+            style = { TextColors.rgb(config.colors.path) },
             condition = { !isTypingCommand },
             action = { NewState(withCommand("")) }
         ),
@@ -212,7 +293,7 @@ class Actions(config: Config) {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
                 when {
-                    currentEntry.isDirectory -> TODO()
+                    currentEntry.isDirectory -> SystemFileSystem.delete(currentEntry.path)
                     currentEntry.isRegularFile -> SystemFileSystem.delete(currentEntry.path)
                     currentEntry.isSymbolicLink -> SystemFileSystem.delete(currentEntry.path)
                 }
@@ -238,21 +319,26 @@ class Actions(config: Config) {
 
 sealed interface Action<Event : InputEvent?> {
     val description: State.() -> String?
-    val style: TextStyle?
+
+    context(state: State) fun style(): TextStyle?
 
     fun matches(state: State, input: Event): Boolean
     fun isAvailable(state: State): Boolean
 
     fun perform(state: State, input: Event): App.Event?
+
 }
 
 data class MenuAction(
-    override val description: State.() -> String,
-    override val style: TextStyle? = null,
+    override val description: State.() -> String?,
+    private val style: State.() -> TextStyle? = { null },
     val selectedStyle: TextStyle? = TextStyles.inverse.style,
     private val condition: State.() -> Boolean,
     private val action: State.() -> App.Event?
 ) : Action<Nothing?> {
+    context(state: State)
+    override fun style() = state.style()
+
     override fun matches(state: State, input: Nothing?) = isAvailable(state)
     override fun isAvailable(state: State) = state.condition()
 
@@ -263,7 +349,7 @@ data class KeyAction(
     val keyFilter: (State, KeyboardEvent) -> Boolean,
     val displayKey: (State) -> KeyboardEvent? = { null },
     override val description: State.() -> String? = { null },
-    override val style: TextStyle? = null,
+    private val style: State.() -> TextStyle? = { null },
     private val condition: State.() -> Boolean,
     private val action: State.(KeyboardEvent) -> App.Event?
 ) : Action<KeyboardEvent> {
@@ -271,7 +357,7 @@ data class KeyAction(
         vararg keys: KeyboardEvent,
         displayKey: (State) -> KeyboardEvent? = { keys.firstOrNull() },
         description: State.() -> String? = { null },
-        style: TextStyle? = null,
+        style: State.() -> TextStyle? = { null },
         condition: State.() -> Boolean,
         action: State.(KeyboardEvent) -> App.Event?
     ) : this(
@@ -282,6 +368,9 @@ data class KeyAction(
         condition = condition,
         action = action
     )
+
+    context(state: State)
+    override fun style() = state.style()
 
     override fun matches(state: State, input: KeyboardEvent) = keyFilter(state, input) && isAvailable(state)
     override fun isAvailable(state: State) = state.condition()

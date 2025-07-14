@@ -1,13 +1,15 @@
 @file:UseSerializers(KeyboardEventAsStringSerializer::class)
 package de.jonasbroeckmann.nav
 
+import com.akuleshov7.ktoml.TomlInputConfig
+import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
@@ -27,8 +29,12 @@ data class Config(
 
     val colors: Colors = Colors.Retro,
     val autocomplete: Autocomplete = Autocomplete(),
-    val modificationTime: ModificationTime = ModificationTime()
-) {
+    val modificationTime: ModificationTime = ModificationTime(),
+
+    val entryMacros: List<EntryMacro> = emptyList()
+) : ConfigProvider {
+    override val config get() = this
+
     @Serializable
     data class Keys(
         val cursor: Cursor = Cursor(),
@@ -154,6 +160,62 @@ data class Config(
         val halfBrightnessAtHours: Double = 12.0
     )
 
+    @Serializable
+    data class EntryMacro(
+        /** Allows placeholders */
+        val description: String,
+        val onFile: Boolean = false,
+        val onDirectory: Boolean = false,
+        val onSymbolicLink: Boolean = false,
+        /** Allows placeholders */
+        val command: String,
+        val afterCommand: AfterMacroCommand = AfterMacroCommand.DoNothing,
+        val afterSuccessfulCommand: AfterMacroCommand = afterCommand,
+        val afterFailedCommand: AfterMacroCommand = afterCommand,
+        val quickMacroKey: KeyboardEvent? = null
+    ) {
+        context(state: State, configProvider: ConfigProvider)
+        fun computeDescription(
+            currentEntry: State.Entry
+        ) = description.replacePlaceholders(
+            state = state,
+            currentEntry = currentEntry
+        )
+
+        context(state: State)
+        fun computeCommand(
+            currentEntry: State.Entry
+        ) = command.replacePlaceholders(
+            state = state,
+            currentEntry = currentEntry
+        )
+
+        private fun String.replacePlaceholders(
+            state: State,
+            currentEntry: State.Entry
+        ) = this
+            .replace(PLACEHOLDER_INITIAL_DIR, WorkingDirectory.toString())
+            .replace(PLACEHOLDER_DIR, state.directory.toString())
+            .replace(PLACEHOLDER_ENTRY_PATH, currentEntry.path.toString())
+            .replace(PLACEHOLDER_ENTRY_NAME, currentEntry.path.name)
+            .replace(PLACEHOLDER_FILTER, state.filter)
+
+        companion object {
+            private const val PLACEHOLDER_INITIAL_DIR = "{initialDir}"
+            private const val PLACEHOLDER_DIR = "{dir}"
+            private const val PLACEHOLDER_ENTRY_PATH = "{entryPath}"
+            private const val PLACEHOLDER_ENTRY_NAME = "{entryName}"
+            private const val PLACEHOLDER_FILTER = "{filter}"
+        }
+    }
+
+    @Serializable
+    enum class AfterMacroCommand {
+        DoNothing,
+        ExitAtCurrentDirectory,
+        ExitAtInitialDirectory,
+    }
+
     companion object {
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
@@ -163,7 +225,15 @@ data class Config(
                 ?: DefaultPath.takeIf { it.exists() }?.toString()
                 ?: return Config()
             try {
-                return TomlFileReader.decodeFromFile(serializer(), path)
+                return TomlFileReader(
+                    inputConfig = TomlInputConfig(
+                        ignoreUnknownNames = true
+                    ),
+                    outputConfig = TomlOutputConfig()
+                ).decodeFromFile(
+                    deserializer = serializer(),
+                    tomlFilePath = path
+                )
             } catch (e: Exception) {
                 terminal.danger("Could not load config: ${e.message}")
                 terminal.info("Using default config")
@@ -173,4 +243,8 @@ data class Config(
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
     }
+}
+
+interface ConfigProvider {
+    val config: Config
 }
