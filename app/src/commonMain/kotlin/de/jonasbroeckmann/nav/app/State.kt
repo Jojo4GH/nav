@@ -18,6 +18,8 @@ data class State(
 
     val command: String? = null,
 
+    val inQuickMacroMode: Boolean = false,
+
     val debugMode: Boolean = false,
     val lastReceivedEvent: KeyboardEvent? = null
 ) {
@@ -107,6 +109,11 @@ data class State(
             null -> tmp.copy(cursor = 0)
             else -> tmp.withCursorOnFirst { it.path.name == preferredEntry }
         }
+    }
+
+    fun inQuickMacroMode(enabled: Boolean = true) = when (enabled) {
+        true -> copy(inQuickMacroMode = true).withMenuCursor(null)
+        false -> copy(inQuickMacroMode = false)
     }
 
     companion object {

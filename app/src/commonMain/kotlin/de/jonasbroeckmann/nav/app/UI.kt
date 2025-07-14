@@ -9,48 +9,55 @@ import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.UserHome
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
 import kotlin.math.pow
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import de.jonasbroeckmann.nav.app.State as UIState
 
 
+@OptIn(ExperimentalTime::class)
 class UI(
     terminal: Terminal,
-    private val config: Config,
+    override val config: Config,
     private val actions: Actions
 ) : Animation<UIState>(
     terminal = terminal
-) {
+), ConfigProvider {
 
-    override fun renderData(data: UIState): Widget = verticalLayout {
-        align = TextAlign.LEFT
+    override fun renderData(data: UIState): Widget = context(data) {
+        verticalLayout {
+            if (data.debugMode) terminal.println("Updating UI ...")
 
-        var additionalRows = 0
+            align = TextAlign.LEFT
 
-        val top = renderTitle(data.directory, data.filter, data.debugMode)
-        additionalRows += 1
+            var additionalRows = 0
 
-        val bottom = renderBottom(data) { additionalRows += it }
+            val top = renderTitle(data.directory, data.filter, data.debugMode)
+            additionalRows += 1
 
-        val table = renderTable(
-            entries = data.filteredItems,
-            cursor = data.cursor,
-            filter = data.filter,
-            additionalRows = additionalRows
-        )
+            val bottom = renderBottom { additionalRows += it }
 
-        cell(top)
-        cell(table)
-        cell(bottom)
+            val table = renderTable(
+                entries = data.filteredItems,
+                cursor = data.cursor,
+                filter = data.filter,
+                additionalRows = additionalRows
+            )
+
+            cell(top)
+            cell(table)
+            cell(bottom)
+        }
     }
 
     private fun renderTable(
@@ -237,29 +244,29 @@ class UI(
         }
     }
 
+    context(state: UIState)
     private fun renderBottom(
-        state: UIState,
         collectAdditionalRows: (Int) -> Unit
     ): Widget = verticalLayout {
         align = TextAlign.LEFT
         this.width = ColumnWidth.Expand()
 
         if (!config.hideHints) {
-            cell(renderNavHints(state))
+            cell(renderNavHints())
             collectAdditionalRows(1)
         }
 
         if (state.isMenuOpen) {
-            cell(renderMenu(state, collectAdditionalRows))
+            cell(renderMenu(collectAdditionalRows))
             if (!config.hideHints) {
-                cell("${TextStyles.dim("•")} ${renderMenuHints(state)}")
+                cell("${TextStyles.dim("•")} ${renderMenuHints()}")
                 collectAdditionalRows(1)
             }
         }
     }
 
+    context(state: UIState)
     private fun renderMenu(
-        state: UIState,
         collectAdditionalRows: (Int) -> Unit
     ) = grid {
         state.availableMenuActions.forEachIndexed { i, item ->
@@ -267,20 +274,21 @@ class UI(
                 cell(TextStyles.dim("│"))
                 val isSelected = i == state.coercedMenuCursor
                 if (isSelected) {
-                    cell(renderAction(state, actions.menuSubmit))
-                    cell(renderAction(state, item).let { rendered ->
+                    cell(renderAction(actions.menuSubmit))
+                    cell(renderAction(item).let { rendered ->
                         item.selectedStyle?.let { it(rendered) + " " } ?: rendered
                     })
                 } else {
                     cell("")
-                    cell(renderAction(state, item))
+                    cell(renderAction(item))
                 }
             }
         }
         collectAdditionalRows(state.availableMenuActions.size)
     }
 
-    private fun renderAction(state: UIState, action: Action<*>): String {
+    context(state: UIState)
+    private fun renderAction(action: Action<*>): String {
         val styleKey = TextColors.rgb(config.colors.keyHints) + TextStyles.bold
         val keyStr = when (action) {
             is KeyAction -> action.displayKey(state)?.let { styleKey(keyName(it)) }
@@ -295,57 +303,81 @@ class UI(
             keyStr,
             descStr
         ).joinToString(" ")
-        action.style?.let { return it(str) }
+        action.style()?.let { return it(str) }
         return str
     }
 
     private fun buildHints(
-        state: UIState,
         block: RenderHintsScope.() -> Unit
-    ): String = RenderHintsScope(state).apply(block).joinToString(TextStyles.dim(" • "))
+    ): String {
+        val scope = RenderHintsScope().apply(block)
+        return scope.joinToString(
+            separator = TextStyles.dim(" • "),
+            prefix = scope.prefix
+        )
+    }
 
-    private inner class RenderHintsScope(
-        private val state: UIState
-    ) : MutableList<String> by mutableListOf() {
+    private inner class RenderHintsScope : MutableList<String> by mutableListOf() {
+        var prefix: String = ""
+
+        context(state: UIState)
         fun render(action: KeyAction) {
             if (!action.isAvailable(state)) return
-            add(renderAction(state, action))
+            add(renderAction(action))
         }
 
         fun group(block: RenderHintsScope.() -> Unit) {
-            RenderHintsScope(state).apply(block).let {
+            RenderHintsScope().apply(block).let {
                 if (it.isNotEmpty()) add(it.joinToString(" "))
             }
         }
     }
 
-    private fun renderNavHints(state: UIState) = buildHints(state) {
-        render(actions.navigateUp)
+    context(state: UIState)
+    private fun renderNavHints() = buildHints {
+        if (state.inQuickMacroMode) {
+            prefix = state.currentEntry.style("Entry") + TextStyles.dim(" │ ")
+            val availableMacros = actions.quickMacroActions.filter { it.isAvailable(state) }
+            availableMacros.forEach {
+                render(it)
+            }
+            if (availableMacros.size <= 1) { // cancel is always available
+                add(TextStyles.dim("No entry macros available"))
+            }
+        } else {
+            render(actions.navigateUp)
 
-        group {
-            render(actions.cursorUp)
-            render(actions.cursorDown)
+            group {
+                render(actions.cursorUp)
+                render(actions.cursorDown)
+            }
+
+            render(actions.navigateInto)
+            render(actions.navigateOpen)
+
+            render(actions.autocompleteFilter)
+            render(actions.clearFilter)
+
+            render(actions.exitCD)
+            render(actions.exit)
+
+            if (!state.isMenuOpen) {
+                render(actions.openMenu)
+            }
         }
 
-        render(actions.navigateInto)
-        render(actions.navigateOpen)
-
-        render(actions.autocompleteFilter)
-        render(actions.clearFilter)
-
-        render(actions.exitCD)
-        render(actions.exit)
-
-        if (!state.isMenuOpen) {
-            render(actions.openMenu)
-        }
-
-        if (state.debugMode && state.lastReceivedEvent != null) {
-            add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
+        if (state.debugMode) {
+            if (state.inQuickMacroMode) {
+                add(TextStyles.dim("M"))
+            }
+            if (state.lastReceivedEvent != null) {
+                add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
+            }
         }
     }
 
-    private fun renderMenuHints(state: UIState) = buildHints(state) {
+    context(state: UIState)
+    private fun renderMenuHints() = buildHints {
         if (state.coercedMenuCursor == 0) {
             render(actions.closeMenu)
         }
@@ -404,13 +436,13 @@ class UI(
         val now = Clock.System.now()
         val duration = now - instant
         val format = if (duration.absoluteValue > 365.days) DateTimeComponents.Format {
-            dayOfMonth()
+            day()
             chars(" ")
             monthName(MonthNames.ENGLISH_ABBREVIATED)
             chars("  ")
             year()
         } else DateTimeComponents.Format {
-            dayOfMonth()
+            day()
             chars(" ")
             monthName(MonthNames.ENGLISH_ABBREVIATED)
             chars(" ")
@@ -448,6 +480,15 @@ class UI(
             if (key.shift && key.key.length > 1) k = "shift+$k"
             if (key.ctrl) k = "ctrl+$k"
             return k
+        }
+
+        context(configProvider: ConfigProvider)
+        val UIState.Entry?.style get() = when {
+            this == null -> TextColors.magenta
+            isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
+            isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
+            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
+            else -> TextColors.magenta
         }
     }
 }

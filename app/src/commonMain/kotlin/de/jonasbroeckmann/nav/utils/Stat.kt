@@ -1,7 +1,8 @@
 package de.jonasbroeckmann.nav.utils
 
-import kotlinx.datetime.Instant
 import kotlinx.io.files.Path
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 
 fun Path.stat(): Stat = stat(this)
@@ -9,6 +10,7 @@ fun Path.stat(): Stat = stat(this)
 expect fun stat(path: Path): Stat
 
 
+@OptIn(ExperimentalTime::class)
 data class Stat(
     val deviceId: ULong,
     val serialNumber: ULong,

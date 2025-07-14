@@ -9,19 +9,22 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
+
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("KeyboardEvent", PrimitiveKind.STRING)
+
     override fun serialize(encoder: Encoder, value: KeyboardEvent) {
-        encoder.encodeString(listOfNotNull(
-            "ctrl".takeIf { value.ctrl },
-            "shift".takeIf { value.shift },
-            "alt".takeIf { value.alt },
-            value.key
-        ).joinToString("+"))
+        encoder.encodeString(buildList {
+            if (value.ctrl) add("ctrl")
+            if (value.shift) add("shift")
+            if (value.alt) add("alt")
+            add(value.key)
+        }.joinToString(MODIFIER_SEPARATOR))
     }
+
     override fun deserialize(decoder: Decoder): KeyboardEvent {
-        decoder.decodeString().split("+").let {
-            val key = it.last()
-            val modifiers = it.dropLast(1)
+        decoder.decodeString().split(MODIFIER_SEPARATOR).let { parts ->
+            val key = parts.last()
+            val modifiers = parts.dropLast(1).map { it.lowercase() }
             return KeyboardEvent(
                 key = key,
                 ctrl = "ctrl" in modifiers,
@@ -30,4 +33,6 @@ object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
             )
         }
     }
+
+    private const val MODIFIER_SEPARATOR = "+"
 }
