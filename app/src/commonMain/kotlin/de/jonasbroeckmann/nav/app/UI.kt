@@ -12,17 +12,19 @@ import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.UserHome
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
 import kotlin.math.pow
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import de.jonasbroeckmann.nav.app.State as UIState
 
 
+@OptIn(ExperimentalTime::class)
 class UI(
     terminal: Terminal,
     private val config: Config,
@@ -404,13 +406,13 @@ class UI(
         val now = Clock.System.now()
         val duration = now - instant
         val format = if (duration.absoluteValue > 365.days) DateTimeComponents.Format {
-            dayOfMonth()
+            day()
             chars(" ")
             monthName(MonthNames.ENGLISH_ABBREVIATED)
             chars("  ")
             year()
         } else DateTimeComponents.Format {
-            dayOfMonth()
+            day()
             chars(" ")
             monthName(MonthNames.ENGLISH_ABBREVIATED)
             chars(" ")

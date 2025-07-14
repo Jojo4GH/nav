@@ -1,11 +1,13 @@
 package de.jonasbroeckmann.nav.utils
 
-import kotlinx.datetime.Instant
 import kotlinx.io.files.Path
 import java.nio.file.attribute.FileTime
 import java.nio.file.attribute.PosixFilePermission
 import kotlin.io.path.*
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
+@OptIn(ExperimentalTime::class)
 actual fun stat(path: Path): Stat {
     // TODO: Implement stat for JVM
     val javaPath = java.nio.file.Path.of(path.toString())
@@ -47,6 +49,7 @@ actual fun stat(path: Path): Stat {
     )
 }
 
+@OptIn(ExperimentalTime::class)
 private fun Any?.parseFileTime() = when (this) {
     is FileTime -> Instant.fromEpochSeconds(toInstant().epochSecond)
     else -> Instant.DISTANT_PAST

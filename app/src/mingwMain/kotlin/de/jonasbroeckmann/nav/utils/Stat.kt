@@ -4,12 +4,13 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
-import kotlinx.datetime.Instant
 import kotlinx.io.files.Path
 import platform.posix.*
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, ExperimentalTime::class)
 actual fun stat(path: Path): Stat = memScoped {
     val result: stat = alloc()
     stat(path.toString(), result.ptr)
