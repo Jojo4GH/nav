@@ -13,7 +13,6 @@ import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
 import de.jonasbroeckmann.nav.app.UI.Companion.macroStyle
-import de.jonasbroeckmann.nav.app.UI.Companion.style
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
@@ -353,7 +352,7 @@ fun <E : InputEvent?> Action<E>.tryPerform(state: State, input: E, terminal: Ter
                 return null
             }
             msg.contains("Permission denied", ignoreCase = true) -> {
-                terminal.danger("$msg")
+                terminal.danger(msg)
                 terminal.info("Try running ${NavCommand.BinaryName} with elevated permissions :)")
                 return null
             }
