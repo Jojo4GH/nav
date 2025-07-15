@@ -9,6 +9,7 @@ import de.jonasbroeckmann.nav.utils.stat
 import kotlinx.io.files.Path
 
 data class State(
+    val initialDirectory: Path,
     val directory: Path,
     val items: List<Entry> = directory.entries(),
     val cursor: Int,
@@ -24,8 +25,9 @@ data class State(
     val debugMode: Boolean = false,
     val lastReceivedEvent: KeyboardEvent? = null
 ) {
+    val hasFilter get() = filter.isNotEmpty()
     val filteredItems: List<Entry> by lazy {
-        if (filter.isEmpty()) return@lazy items
+        if (!hasFilter) return@lazy items
         items
             .filter { filter.lowercase() in it.path.name.lowercase() }
             .sortedByDescending { it.path.name.startsWith(filter) } // intentionally

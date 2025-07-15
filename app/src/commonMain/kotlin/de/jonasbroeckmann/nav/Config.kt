@@ -5,11 +5,14 @@ import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
@@ -31,9 +34,14 @@ data class Config(
     val autocomplete: Autocomplete = Autocomplete(),
     val modificationTime: ModificationTime = ModificationTime(),
 
-    val entryMacros: List<EntryMacro> = emptyList()
+    private val macros: List<Macro> = emptyList(),
+    @Deprecated("Use `macros` instead")
+    private val entryMacros: List<Macro> = emptyList()
 ) : ConfigProvider {
     override val config get() = this
+
+    @Suppress("DEPRECATION")
+    val allMacros: List<Macro> = macros + entryMacros
 
     @Serializable
     data class Keys(
@@ -161,12 +169,14 @@ data class Config(
     )
 
     @Serializable
-    data class EntryMacro(
+    data class Macro(
         /** Allows placeholders */
         val description: String,
+        val onNone: Boolean = false,
         val onFile: Boolean = false,
         val onDirectory: Boolean = false,
         val onSymbolicLink: Boolean = false,
+        val requireFilter: Boolean = false,
         /** Allows placeholders */
         val command: String,
         val afterCommand: AfterMacroCommand = AfterMacroCommand.DoNothing,
@@ -174,30 +184,37 @@ data class Config(
         val afterFailedCommand: AfterMacroCommand = afterCommand,
         val quickMacroKey: KeyboardEvent? = null
     ) {
-        context(state: State, configProvider: ConfigProvider)
-        fun computeDescription(
-            currentEntry: State.Entry
-        ) = description.replacePlaceholders(
-            state = state,
-            currentEntry = currentEntry
-        )
+        val usesEntry by lazy{
+            EntryPlaceholders.any {
+                it in description || it in command
+            }
+        }
 
         context(state: State)
-        fun computeCommand(
-            currentEntry: State.Entry
-        ) = command.replacePlaceholders(
-            state = state,
-            currentEntry = currentEntry
-        )
+        fun isAvailable(): Boolean {
+            if (requireFilter && !state.hasFilter) return false
+            val currentEntry = state.currentEntry
+            return when {
+                currentEntry == null -> onNone
+                currentEntry.isDirectory -> onDirectory
+                currentEntry.isRegularFile -> onFile
+                currentEntry.isSymbolicLink -> onSymbolicLink
+                else -> false
+            }
+        }
 
-        private fun String.replacePlaceholders(
-            state: State,
-            currentEntry: State.Entry
-        ) = this
-            .replace(PLACEHOLDER_INITIAL_DIR, WorkingDirectory.toString())
+        context(state: State)
+        fun computeDescription() = description.replacePlaceholders()
+
+        context(state: State)
+        fun computeCommand() = command.replacePlaceholders()
+
+        context(state: State)
+        private fun String.replacePlaceholders() = this
+            .replace(PLACEHOLDER_INITIAL_DIR, state.initialDirectory.toString())
             .replace(PLACEHOLDER_DIR, state.directory.toString())
-            .replace(PLACEHOLDER_ENTRY_PATH, currentEntry.path.toString())
-            .replace(PLACEHOLDER_ENTRY_NAME, currentEntry.path.name)
+            .replace(PLACEHOLDER_ENTRY_PATH, state.currentEntry?.path?.toString().orEmpty())
+            .replace(PLACEHOLDER_ENTRY_NAME, state.currentEntry?.path?.name.orEmpty())
             .replace(PLACEHOLDER_FILTER, state.filter)
 
         companion object {
@@ -206,14 +223,29 @@ data class Config(
             private const val PLACEHOLDER_ENTRY_PATH = "{entryPath}"
             private const val PLACEHOLDER_ENTRY_NAME = "{entryName}"
             private const val PLACEHOLDER_FILTER = "{filter}"
+            private val EntryPlaceholders = setOf(
+                PLACEHOLDER_ENTRY_PATH,
+                PLACEHOLDER_ENTRY_NAME
+            )
         }
     }
 
     @Serializable
     enum class AfterMacroCommand {
         DoNothing,
+        ClearFilter,
         ExitAtCurrentDirectory,
         ExitAtInitialDirectory,
+        Exit;
+
+        context(state: State)
+        fun computeEvent() = when (this) {
+            DoNothing -> null
+            ClearFilter -> App.Event.NewState(state.filtered(""))
+            ExitAtCurrentDirectory -> App.Event.ExitAt(state.directory)
+            ExitAtInitialDirectory -> App.Event.ExitAt(state.initialDirectory)
+            Exit -> App.Event.Exit
+        }
     }
 
     companion object {

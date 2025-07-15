@@ -350,13 +350,13 @@ class UI(
     context(state: UIState)
     private fun renderNavHints() = buildHints {
         if (state.inQuickMacroMode) {
-            prefix = state.currentEntry.style("Entry") + TextStyles.dim(" │ ")
+            prefix = macroStyle()("Macro") + TextStyles.dim(" │ ")
             val availableMacros = actions.quickMacroActions.filter { it.isAvailable(state) }
             availableMacros.forEach {
                 render(it)
             }
             if (availableMacros.size <= 1) { // cancel is always available
-                add(TextStyles.dim("No entry macros available"))
+                add(TextStyles.dim("No macros available"))
             }
         } else {
             render(actions.navigateUp)
@@ -496,9 +496,15 @@ class UI(
             return k
         }
 
+        context(state: UIState, configProvider: ConfigProvider)
+        fun macroStyle(macro: Config.Macro? = null) = when {
+            macro == null -> state.currentEntry?.style ?: TextColors.rgb(configProvider.config.colors.path)
+            macro.usesEntry -> state.currentEntry?.style ?: TextStyles.dim.style
+            else -> TextColors.rgb(configProvider.config.colors.path)
+        }
+
         context(configProvider: ConfigProvider)
-        val UIState.Entry?.style get() = when {
-            this == null -> TextColors.magenta
+        val UIState.Entry.style get() = when {
             isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
             isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
             isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)

@@ -12,6 +12,7 @@ import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
+import de.jonasbroeckmann.nav.app.UI.Companion.macroStyle
 import de.jonasbroeckmann.nav.app.UI.Companion.style
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
@@ -162,76 +163,38 @@ class Actions(config: Config) : ConfigProvider by config {
                 state.inQuickMacroMode && key.copy(ctrl = false) == config.keys.cancel
             },
             displayKey = { config.keys.cancel },
-            description = {
-                "cancel"
-            },
-            condition = {
-                inQuickMacroMode
-            },
-            action = {
-                NewState(copy(inQuickMacroMode = false))
-            }
+            description = { "cancel" },
+            condition = { inQuickMacroMode },
+            action = { NewState(copy(inQuickMacroMode = false)) }
         )
-    ) + config.entryMacros.mapNotNull { macro ->
+    ) + config.allMacros.mapNotNull { macro ->
         if (macro.quickMacroKey == null) return@mapNotNull null
         KeyAction(
             keyFilter = { state, key ->
                 state.inQuickMacroMode && key.copy(ctrl = false) == macro.quickMacroKey
             },
             displayKey = { macro.quickMacroKey },
-            description = {
-                currentEntry?.let { macro.computeDescription(it) }
-            },
-            style = { currentEntry.style },
-            condition = {
-                inQuickMacroMode && macro.condition()
-            },
-            action = {
-                macro.runCommand()
-            }
+            description = { macro.computeDescription() },
+            style = { macroStyle(macro) },
+            condition = { inQuickMacroMode && macro.isAvailable() },
+            action = { macro.computeAppEvent() }
         )
     }
 
-    private val macroMenuActions = config.entryMacros.map { macro ->
+    private val macroMenuActions = config.allMacros.map { macro ->
         MenuAction(
-            description = {
-                currentEntry?.let { "* " + macro.computeDescription(it) }
-            },
-            style = { currentEntry.style },
-            condition = {
-                macro.condition()
-            },
-            action = {
-                macro.runCommand()
-            }
+            description = { "* ${macro.computeDescription()}" },
+            style = { macroStyle(macro) },
+            condition = { macro.isAvailable() },
+            action = { macro.computeAppEvent() }
         )
     }.toTypedArray()
 
     context(state: State)
-    private fun Config.EntryMacro.condition(): Boolean {
-        val currentEntry = state.currentEntry
-        return when {
-            currentEntry == null -> false
-            currentEntry.isDirectory -> onDirectory
-            currentEntry.isRegularFile -> onFile
-            currentEntry.isSymbolicLink -> onSymbolicLink
-            else -> false
-        }
-    }
-
-    context(state: State)
-    private fun Config.EntryMacro.runCommand() = RunMacroCommand(
-        command = computeCommand(requireNotNull(state.currentEntry)),
-        eventAfterSuccessfulCommand = when (afterSuccessfulCommand) {
-            Config.AfterMacroCommand.DoNothing -> null
-            Config.AfterMacroCommand.ExitAtCurrentDirectory -> ExitAt(state.directory)
-            Config.AfterMacroCommand.ExitAtInitialDirectory -> Exit
-        },
-        eventAfterFailedCommand = when (afterFailedCommand) {
-            Config.AfterMacroCommand.DoNothing -> null
-            Config.AfterMacroCommand.ExitAtCurrentDirectory -> ExitAt(state.directory)
-            Config.AfterMacroCommand.ExitAtInitialDirectory -> Exit
-        }
+    private fun Config.Macro.computeAppEvent() = RunMacroCommand(
+        command = computeCommand(),
+        eventAfterSuccessfulCommand = { afterSuccessfulCommand.computeEvent() },
+        eventAfterFailedCommand = { afterFailedCommand.computeEvent() }
     )
 
     val menuActions = listOf(

@@ -20,13 +20,14 @@ import kotlin.time.Duration.Companion.milliseconds
 class App(
     private val terminal: Terminal,
     override val config: Config,
-    startingDirectory: Path,
+    initialDirectory: Path,
     private val initShell: Shell?,
     debugMode: Boolean
 ) : ConfigProvider {
     private val actions = Actions(config)
     private var state = State(
-        directory = startingDirectory,
+        initialDirectory = initialDirectory,
+        directory = initialDirectory,
         cursor = 0,
         debugMode = debugMode,
         allMenuActions = { actions.menuActions }
@@ -98,8 +99,8 @@ class App(
         is Event.RunMacroCommand -> {
             state = state.inQuickMacroMode(false)
             when (runCommandFromUI(command)) {
-                0 -> eventAfterSuccessfulCommand?.handle() ?: true
-                else -> eventAfterFailedCommand?.handle() ?: true
+                0 -> state.eventAfterSuccessfulCommand()?.handle() ?: true
+                else -> state.eventAfterFailedCommand()?.handle() ?: true
             }
         }
     }
@@ -203,8 +204,8 @@ class App(
         data object RunCommand : OutsideUI
         data class RunMacroCommand(
             val command: String,
-            val eventAfterSuccessfulCommand: Event?,
-            val eventAfterFailedCommand: Event?
+            val eventAfterSuccessfulCommand: State.() -> Event?,
+            val eventAfterFailedCommand: State.() -> Event?
         ) : OutsideUI
         data class ExitAt(val directory: Path) : OutsideUI
         data object Exit : OutsideUI

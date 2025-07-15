@@ -24,9 +24,9 @@ import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
 
 class NavCommand : CliktCommand() {
-    private val startingDirectory by argument(
+    private val initialDirectory by argument(
         "DIRECTORY",
-        help = "The directory to start in",
+        help = "The initial directory to start in",
         completionCandidates = CompletionCandidates.Path
     )
         .convert { Path(it).absolute().cleaned() }
@@ -106,7 +106,7 @@ class NavCommand : CliktCommand() {
         App(
             terminal = terminal,
             config = config,
-            startingDirectory = startingDirectory ?: WorkingDirectory,
+            initialDirectory = initialDirectory ?: WorkingDirectory,
             initShell = correctInit,
             debugMode = debugMode
         ).main()

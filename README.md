@@ -236,24 +236,28 @@ halfBrightnessAtHours = 12.0
 
 For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
 
-### Entry Macros
+### Custom Macros
 
-You can define custom macros that work with entries (e.g. directories, files) in the configuration file as follows:
+You can define custom macros in the configuration file as follows:
 
 ```toml
-[[entryMacros]]
+[[macros]]
 # The description displayed (required) (see placeholders)
 description = "..."
-# The conditions for the macro to be available (defaults to false)
-onFile = false
-onDirectory = false
-onSymbolicLink = false
+# The conditions for the macro to be available
+onNone = false                  # Whether the macro is available when no entry is selected (defaults to false)
+onFile = false                  # Whether the macro is available on file entries (defaults to false)
+onDirectory = false             # Whether the macro is available on directorie entries (defaults to false)
+onSymbolicLink = false          # Whether the macro is available on symbolic link entries (defaults to false)
+requireFilter = false           # Whether the macro requires a filter to be not empty (defaults to false)
 # The command to run (required) (see placeholders)
 command = "..."
 # What to do after the command was executed. Possible values are:
 # - "DoNothing": Do nothing
+# - "ClearFilter": Clear the current filter
 # - "ExitAtCurrentDirectory": Exit at the current directory
 # - "ExitAtInitialDirectory": Exit at the initial directory
+# - "Exit": Just exit
 afterCommand = "..."            # Defaults to "DoNothing"
 afterSuccessfulCommand = "..."  # Defaults to value of afterCommand
 afterFailedCommand = "..."      # Defaults to value of afterCommand
@@ -262,46 +266,63 @@ quickMacroKey = "..."
 ```
 
 There are several placeholders available for `description` and `command`:
+
 - `{initialDir}`: The initial directory where nav was started
 - `{dir}`: The current directory inside nav
-- `{entryPath}`: The path of the currently highlighted entry
-- `{entryName}`: The name of the currently highlighted entry
+- `{entryPath}`: The path of the currently selected entry or empty if no entry is selected
+- `{entryName}`: The name of the currently selected entry or empty if no entry is selected
 - `{filter}`: The current filter string or empty if no filter is set
 
+Remember to properly escape the placeholders in the command, e.g. by using quotes.
+
 Macros are available in the menu (default `PageDown`).
-They can also quickly be triggered by tapping `ctrl` together with or followed by the `quickMacroKey`.
+They can also quickly be triggered by tapping `ctrl` together with (or followed by) the `quickMacroKey`.
 
 Example:
 
 ```toml
 # An alternative editor macro
-[[entryMacros]]
+[[macros]]
 description = "open {entryName} in code"
-command = "code {entryPath}"
+command = "code '{entryPath}'"
 afterSuccessfulCommand = "ExitAtCurrentDirectory"
 onFile = true
 onDirectory = true
 quickMacroKey = "ArrowRight"
 
 # Same as above, but waits for the editor to close before returning again to nav
-[[entryMacros]]
+[[macros]]
 description = "open {entryName} in code and wait"
-command = "code --wait {entryPath}"
+command = "code --wait '{entryPath}'"
 onFile = true
 onDirectory = true
 quickMacroKey = "shift+ArrowRight"
 
 # A macro for deleting directories recursively
-[[entryMacros]]
-description = "delete {entryName} recursively"
-command = "rm -rf {entryPath}"
+[[macros]]
+description = "delete {entryName} (recursively)"
+command = "rm -rf '{entryPath}'"
+onFile = true
 onDirectory = true
+onSymbolicLink = true
 quickMacroKey = "Delete"
 
+# A find files macro
+[[macros]]
+description = "find {filter} (recursively)"
+command = "find '{dir}' -iname '{filter}'"
+afterSuccessfulCommand = "ClearFilter"
+onNone = true
+onFile = true
+onDirectory = true
+onSymbolicLink = true
+requireFilter = true
+quickMacroKey = "F"
+
 # A macro for printing the full path of the entry
-[[entryMacros]]
+[[macros]]
 description = "print full path"
-command = "echo {entryPath}"
+command = "echo '{entryPath}'"
 onFile = true
 onDirectory = true
 onSymbolicLink = true
