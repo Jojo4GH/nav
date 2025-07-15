@@ -198,7 +198,6 @@ class Actions(config: Config) : ConfigProvider by config {
     )
 
     val menuActions = listOf(
-        *macroMenuActions,
         MenuAction(
             description = { "New file: \"${filter}\"" },
             style = { TextColors.rgb(config.colors.file) },
@@ -239,6 +238,7 @@ class Actions(config: Config) : ConfigProvider by config {
                 if (command.isNullOrBlank()) NewState(withCommand(null)) else RunCommand
             }
         ),
+        *macroMenuActions,
         MenuAction(
             description = {
                 val currentEntry = currentEntry
