@@ -117,19 +117,32 @@ class UI(
                 }
             ) { entry, isSelected ->
                 row {
-                    cell(Text(
-                        text = renderPermissions(entry.stat),
-                        width = 9
-                    ))
-                    cell(Text(
-                        text = renderFileSize(entry.size),
-                        align = TextAlign.RIGHT,
-                        width = 4
-                    ))
-                    cell(Text(
-                        text = renderModificationTime(entry.stat.lastModificationTime),
-                        width = 12
-                    ))
+                    if (entry.statError != null) {
+                        cell(TextColors.red(entry.statError.message)) {
+                            columnSpan = 3
+                            align = TextAlign.CENTER
+                        }
+                    } else {
+                        cell(
+                            Text(
+                                text = renderPermissions(entry.stat),
+                                width = 9
+                            )
+                        )
+                        cell(
+                            Text(
+                                text = renderFileSize(entry.size),
+                                align = TextAlign.RIGHT,
+                                width = 4
+                            )
+                        )
+                        cell(
+                            Text(
+                                text = renderModificationTime(entry.stat.lastModificationTime),
+                                width = 12
+                            )
+                        )
+                    }
                     cell(Text(
                         text = renderName(
                             entry = entry,
@@ -215,6 +228,7 @@ class UI(
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
             .let {
                 when {
+                    entry.statError != null -> "${TextStyles.dim(it)} "
                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
                     entry.isRegularFile -> "${fileStyle(it)} "
                     entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "

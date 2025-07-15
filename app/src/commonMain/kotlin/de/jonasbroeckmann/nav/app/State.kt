@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import de.jonasbroeckmann.nav.utils.Stat
+import de.jonasbroeckmann.nav.utils.StatResult
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.stat
@@ -118,17 +119,26 @@ data class State(
 
     companion object {
         private fun Path.entries(): List<Entry> = children()
+            .asSequence()
             .map { it.cleaned() } // fix broken paths
             .map { Entry(it, it.stat()) }
             .sortedBy { it.path.name }
             .sortedByDescending { it.isDirectory }
+            .toList()
     }
 
 
     data class Entry(
         val path: Path,
-        val stat: Stat
+        val stat: Stat,
+        val statError: StatResult.Error?
     ) {
+        constructor(path: Path, statResult: StatResult) : this(
+            path = path,
+            stat = statResult as? Stat ?: Stat.None,
+            statError = statResult as? StatResult.Error
+        )
+
         val isDirectory get() = stat.mode.isDirectory
         val isRegularFile get() = stat.mode.isRegularFile
         val isSymbolicLink get() = stat.mode.isSymbolicLink

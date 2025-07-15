@@ -11,10 +11,11 @@ import kotlin.time.Instant
 
 
 @OptIn(ExperimentalForeignApi::class, ExperimentalTime::class)
-actual fun stat(path: Path): Stat = memScoped {
+actual fun stat(path: Path): StatResult = memScoped {
     val result: stat = alloc()
+    set_posix_errno(0)
     stat(path.toString(), result.ptr)
-    return Stat(
+    return StatResult.fromErrno() ?: Stat(
         deviceId = result.st_dev,
         serialNumber = result.st_ino,
         mode = Stat.Mode(
