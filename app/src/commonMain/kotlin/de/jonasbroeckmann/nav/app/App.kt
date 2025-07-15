@@ -63,6 +63,11 @@ class App(
 
     private fun Event.handle(): Boolean = when (this) {
         is Event.NewState -> {
+            if (state.debugMode) {
+                if (this@App.state.currentEntry != state.currentEntry) {
+                    terminal.println("New entry: ${state.currentEntry}")
+                }
+            }
             this@App.state = state
             true
         }
