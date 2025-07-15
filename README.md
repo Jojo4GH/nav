@@ -317,7 +317,7 @@ onFile = true
 onDirectory = true
 onSymbolicLink = true
 requireFilter = true
-quickMacroKey = "F"
+quickMacroKey = "f"
 
 # A macro for printing the full path of the entry
 [[macros]]
