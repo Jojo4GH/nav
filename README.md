@@ -310,7 +310,7 @@ onSymbolicLink = true
 ## Known Issues
 
 - Symbolic link destinations are not shown and handled weirdly.
-- On windows special characters in paths may lead invalid file information being returned (#22).
+- On windows special characters in paths may lead invalid file information being returned ([#22](https://github.com/Jojo4GH/nav/issues/22)).
   This can be fixed by enabling `Settings` -> `Language & region` -> `Administrative language settings` -> `Change system locale...` -> `Use Unicode UTF-8 for worldwide language support`
 
 ## ❤️ Powered by
