@@ -42,7 +42,12 @@ class UI(
 
             var additionalRows = 0
 
-            val top = renderTitle(data.directory, data.filter, data.debugMode)
+            val top = renderTitle(
+                directory = data.directory,
+                filter = data.filter,
+                showCursor = !data.isTypingCommand && !data.inQuickMacroMode,
+                debugMode = data.debugMode
+            )
             additionalRows += 1
 
             val bottom = renderBottom { additionalRows += it }
@@ -187,14 +192,18 @@ class UI(
         }
     }
 
-    private fun renderTitle(directory: Path, filter: String, debugMode: Boolean): String {
-        return "${renderPath(directory, debugMode)}${renderFilter(filter)}"
+    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean, debugMode: Boolean): String {
+        return "${renderPath(directory, debugMode)}${renderFilter(filter, showCursor)}"
     }
 
-    private fun renderFilter(filter: String): String {
+    private fun renderFilter(filter: String, showCursor: Boolean): String {
         if (filter.isEmpty()) return ""
         val style = TextColors.rgb(config.colors.filter) + TextStyles.bold
-        return " $RealSystemPathSeparator ${style(filter)}"
+        return buildString {
+            append(" $RealSystemPathSeparator ")
+            append(style(filter))
+            if (showCursor) append(style("_"))
+        }
     }
 
     private fun renderName(entry: UIState.Entry, isSelected: Boolean, filter: String): String {
@@ -371,6 +380,8 @@ class UI(
 
             render(actions.autocompleteFilter)
             render(actions.clearFilter)
+
+            render(actions.discardCommand)
 
             render(actions.exitCD)
             render(actions.exit)
