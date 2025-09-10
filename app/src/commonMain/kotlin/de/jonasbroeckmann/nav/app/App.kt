@@ -52,6 +52,8 @@ class App(
             }
         }
 
+        terminal.cursor.show()
+        
         if (!config.clearOnExit) {
             ui.stop()
         } else {

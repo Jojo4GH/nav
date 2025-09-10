@@ -103,6 +103,8 @@ class NavCommand : CliktCommand() {
             terminal.info("Use --init-info to get more information.")
         }
 
+        terminal.cursor.hide()
+
         App(
             terminal = terminal,
             config = config,
