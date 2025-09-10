@@ -63,13 +63,13 @@ class Actions(config: Config) : ConfigProvider by config {
         config.keys.submit,
         description = { "exit here" },
         style = { TextColors.rgb(config.colors.path) },
-        condition = { directory != WorkingDirectory && filter.isEmpty() && !isMenuOpen },
+        condition = { directory != WorkingDirectory && filter.isEmpty() && !isTypingCommand && !isMenuOpen },
         action = { ExitAt(directory) }
     )
     val exit = KeyAction(
         config.keys.cancel,
         description = { "exit" },
-        condition = { filter.isEmpty() },
+        condition = { filter.isEmpty() && !isTypingCommand },
         action = { Exit }
     )
 
@@ -129,8 +129,14 @@ class Actions(config: Config) : ConfigProvider by config {
     val clearFilter = KeyAction(
         config.keys.filter.clear,
         description = { "clear filter" },
-        condition = { filter.isNotEmpty() },
+        condition = { filter.isNotEmpty() && !isTypingCommand },
         action = { NewState(filtered("")) }
+    )
+    val discardCommand = KeyAction(
+        config.keys.cancel,
+        description = { "discard command" },
+        condition = { isTypingCommand },
+        action = { NewState(withCommand(null)) }
     )
 
     val openMenu = KeyAction(
@@ -262,11 +268,11 @@ class Actions(config: Config) : ConfigProvider by config {
         ),
         MenuAction(
             description = {
-                val cmdStr = if (command.isNullOrBlank()) {
+                val cmdStr = if (command.isNullOrEmpty()) {
                     if (config.hideHints) ""
                     else TextStyles.dim("type command or press ${UI.keyName(config.keys.submit)} to cancel")
                 } else {
-                    TextColors.rgb("FFFFFF")(command) + TextColors.rgb("FFFFFF")("_")
+                    TextColors.rgb("FFFFFF")("${command}_")
                 }
                 "${TextColors.rgb(config.colors.path)("❯")} $cmdStr"
             },
@@ -312,7 +318,7 @@ class Actions(config: Config) : ConfigProvider by config {
         cursorUp, cursorDown, cursorHome, cursorEnd,
         navigateUp, navigateInto, navigateOpen,
         exitCD, exit,
-        autocompleteFilter, clearFilter,
+        autocompleteFilter, clearFilter, discardCommand,
         menuDown, menuUp, openMenu, closeMenu, menuSubmit,
     )
 }

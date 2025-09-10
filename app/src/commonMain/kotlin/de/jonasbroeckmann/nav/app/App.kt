@@ -39,6 +39,7 @@ class App(
 
     fun main(): Nothing {
         terminal.cursor.hide(showOnExit = false)
+
         while (true) {
             ui.update(state)
             val inputEvent = readInput()
@@ -58,7 +59,9 @@ class App(
         } else {
             ui.clear()
         }
+
         terminal.cursor.show()
+
         exitProcess(0)
     }
 
