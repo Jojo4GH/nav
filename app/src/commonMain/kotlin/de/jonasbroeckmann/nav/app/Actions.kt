@@ -266,7 +266,7 @@ class Actions(config: Config) : ConfigProvider by config {
                     if (config.hideHints) ""
                     else TextStyles.dim("type command or press ${UI.keyName(config.keys.submit)} to cancel")
                 } else {
-                    TextColors.rgb("FFFFFF")(command)
+                    TextColors.rgb("FFFFFF")(command) + TextColors.rgb("FFFFFF")("_")
                 }
                 "${TextColors.rgb(config.colors.path)("❯")} $cmdStr"
             },
