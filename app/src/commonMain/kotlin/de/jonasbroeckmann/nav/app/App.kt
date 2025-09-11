@@ -6,6 +6,7 @@ import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
+import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
@@ -81,18 +82,16 @@ class App(
             false
         }
         is Event.OpenFile -> {
-            ui.clear() // hide UI before opening editor
-            // open editor
-            val exitCode = openInEditorAndWait(config.editor, file, state.directory)
-            if (exitCode != 0) {
-                terminal.danger("Received exit code $exitCode from ${config.editor}")
+            val exitCode = openInEditor(file)
+            if (exitCode != null && exitCode != 0) {
+                terminal.danger("Received exit code $exitCode")
             }
             true
         }
         is Event.RunCommand -> {
             state.command?.let { command ->
                 val exitCode = runCommandFromUI(command)
-                if (exitCode != 0) {
+                if (exitCode != null && exitCode != 0) {
                     terminal.danger("Received exit code $exitCode")
                 }
                 state = state.withCommand(null) // clear command
@@ -102,13 +101,18 @@ class App(
         is Event.RunMacroCommand -> {
             state = state.inQuickMacroMode(false)
             when (runCommandFromUI(command)) {
+                null -> true
                 0 -> eventAfterSuccessfulCommand?.handle() ?: true
                 else -> eventAfterFailedCommand?.handle() ?: true
             }
         }
     }
 
-    private fun runCommandFromUI(command: String): Int {
+    private fun runCommandFromUI(
+        command: String,
+        cwd: Path = state.directory,
+        configuration: Command.() -> Command = { this }
+    ): Int? {
         ui.clear() // hide UI before running command
         val (exe, args) = when (initShell) {
             null -> {
@@ -118,22 +122,42 @@ class App(
             else -> initShell.shell to initShell.execCommandArgs(command)
         }
         if (state.debugMode) terminal.println("Running $exe with args $args")
-        // run command
-        val exitCode = Command(exe).args(args)
-            .cwd(state.directory.toString())
-            .spawn()
-            .wait()
+        val exitCode = try {
+            // run command
+            Command(exe)
+                .args(args)
+                .cwd(cwd.toString())
+                .configuration()
+                .spawn()
+                .wait()
+        } catch (e: KommandException) {
+            terminal.danger("An error occurred while running $exe with args $args: ${e.message}")
+            if (state.debugMode) {
+                terminal.danger(e.stackTraceToString())
+            }
+            null
+        }
         state = state.updatedEntries() // update in case the command changed something
         return exitCode
     }
 
-    private val inputTimout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
+    private fun openInEditor(file: Path): Int? {
+        val editor = config.editor
+        var fileString = "$file"
+        if (" " in fileString) {
+            // try to escape spaces in file path
+            fileString = "\"$fileString\""
+        }
+        return runCommandFromUI("$editor $fileString") { stdin(Stdio.Inherit) }
+    }
+
+    private val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
 
     private fun readInput(): InputEvent {
         terminal.enterRawMode().use { rawMode ->
             while (true) {
                 try {
-                    return rawMode.readEvent(inputTimout)
+                    return rawMode.readEvent(inputTimeout)
                 } catch (_: RuntimeException) {
                     continue // on timeout try again
                 }
@@ -190,13 +214,6 @@ class App(
                 else -> null
             }
         }
-
-        private fun openInEditorAndWait(editor: String, file: Path, cwd: Path): Int = Command(editor)
-            .args(file.toString())
-            .cwd(cwd.toString())
-            .stdin(Stdio.Inherit)
-            .spawn()
-            .wait()
     }
 
     sealed interface Event {
