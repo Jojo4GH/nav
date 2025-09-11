@@ -168,7 +168,10 @@ $ENV:NAV_CONFIG = "$HOME\some\other\path\nav.toml"
 The default configuration looks as follows:
 
 ```toml
+# If not specified, uses the first that exists of the following:
+# $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
 editor = "nano"
+
 hideHints = false
 clearOnExit = true
 

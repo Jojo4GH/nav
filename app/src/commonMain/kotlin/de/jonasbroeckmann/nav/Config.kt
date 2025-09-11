@@ -15,7 +15,7 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable
 data class Config(
-    val editor: String = "nano",
+    val editor: String = DefaultEditor,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
 
@@ -239,6 +239,18 @@ data class Config(
                 terminal.info("Using default config")
                 return Config()
             }
+        }
+
+        private val DefaultEditor by lazy {
+            getenv("EDITOR")?.trim()?.takeUnless { it.isBlank() }
+                ?: getenv("VISUAL")?.trim()?.takeUnless { it.isBlank() }
+                ?: which("nano")?.toString()
+                ?: which("nvim")?.toString()
+                ?: which("vim")?.toString()
+                ?: which("vi")?.toString()
+                ?: which("code")?.toString()
+                ?: which("notepad")?.toString()
+                ?: "nano"
         }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
