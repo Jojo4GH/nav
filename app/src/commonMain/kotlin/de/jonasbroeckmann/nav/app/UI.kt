@@ -238,9 +238,12 @@ class UI(
             .let {
                 when {
                     entry.statError != null -> "${TextStyles.dim(it)} "
+                    entry.isSymbolicLink -> when {
+                        entry.isDirectory -> "${linkStyle(it)}$RealSystemPathSeparator ${TextStyles.dim("->")} "
+                        else -> "${linkStyle(it)} ${TextStyles.dim("->")} "
+                    }
                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
                     entry.isRegularFile -> "${fileStyle(it)} "
-                    entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
                     else -> "${TextColors.magenta(it)} "
                 }
             }
@@ -510,9 +513,9 @@ class UI(
         context(configProvider: ConfigProvider)
         val UIState.Entry?.style get() = when {
             this == null -> TextColors.magenta
+            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
             isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
             isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
-            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
             else -> TextColors.magenta
         }
     }
