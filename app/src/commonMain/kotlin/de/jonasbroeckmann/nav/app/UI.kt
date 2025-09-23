@@ -97,6 +97,7 @@ class UI(
             style = TextStyles.dim.style
             row {
                 cell("Permissions")
+                cell("HL")
                 cell("User")
                 cell("Group")
                 cell("Size") {
@@ -117,6 +118,9 @@ class UI(
                         cell("")
                         cell("")
                         cell("")
+                        cell("")
+                        cell("")
+                        cell("")
                         cell("… $n more") {
                             style = TextStyles.dim.style
                         }
@@ -134,6 +138,11 @@ class UI(
                             Text(
                                 text = renderPermissions(entry.stat),
                                 width = 9
+                            )
+                        )
+                        cell(
+                            Text(
+                                text = renderHardlinkCount(entry.stat.hardlinkCount)
                             )
                         )
                         cell(Text(
@@ -247,8 +256,8 @@ class UI(
                 when {
                     entry.statError != null -> "${TextStyles.dim(it)} "
                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
-                    entry.isRegularFile -> "${fileStyle(it)} "
                     entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
+                    entry.isRegularFile -> "${fileStyle(it)} "
                     else -> "${TextColors.magenta(it)} "
                 }
             }
@@ -434,6 +443,11 @@ class UI(
         }
 
         return "${render(stat.mode.user)}${render(stat.mode.group)}${render(stat.mode.others)}"
+    }
+
+    private fun renderHardlinkCount(hardlinkCount: UInt): String {
+        val styleHardlinkCount = TextColors.rgb(config.colors.hardlinkCount)
+        return styleHardlinkCount("$hardlinkCount")
     }
 
     private fun renderUser(userGroup: UserGroup): String {
