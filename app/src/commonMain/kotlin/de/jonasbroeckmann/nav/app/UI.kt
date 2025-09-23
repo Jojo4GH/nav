@@ -12,6 +12,7 @@ import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.Stat
+import de.jonasbroeckmann.nav.utils.UserGroup
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
@@ -76,7 +77,6 @@ class UI(
         tableBorders = Borders.NONE
         borderType = BorderType.BLANK
         padding = Padding(0)
-        whitespace = Whitespace.PRE_WRAP
 
         var additionalRows = additionalRows
 
@@ -97,6 +97,8 @@ class UI(
             style = TextStyles.dim.style
             row {
                 cell("Permissions")
+                cell("User")
+                cell("Group")
                 cell("Size") {
                     align = TextAlign.RIGHT
                 }
@@ -134,6 +136,12 @@ class UI(
                                 width = 9
                             )
                         )
+                        cell(Text(
+                            text = renderUser(entry.userGroup),
+                        ))
+                        cell(Text(
+                            text = renderGroup(entry.userGroup),
+                        ))
                         cell(
                             Text(
                                 text = renderFileSize(entry.size),
@@ -426,6 +434,17 @@ class UI(
         }
 
         return "${render(stat.mode.user)}${render(stat.mode.group)}${render(stat.mode.others)}"
+    }
+
+    private fun renderUser(userGroup: UserGroup): String {
+        val styleUser = TextColors.rgb(config.colors.user)
+
+        return userGroup.userName?.let { styleUser(it) } ?: TextStyles.dim("?")
+    }
+
+    private fun renderGroup(userGroup: UserGroup): String {
+        val styleGroup = TextColors.rgb(config.colors.group)
+        return userGroup.groupName?.let { styleGroup(it) } ?: TextStyles.dim("?")
     }
 
     private fun renderFileSize(bytes: Long?): String {

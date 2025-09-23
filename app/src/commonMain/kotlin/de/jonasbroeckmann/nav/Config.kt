@@ -78,6 +78,8 @@ data class Config(
         val permissionRead: String = Retro.permissionRead,
         val permissionWrite: String = Retro.permissionWrite,
         val permissionExecute: String = Retro.permissionExecute,
+        val user: String = Retro.user,
+        val group: String = Retro.group,
         val entrySize: String = Retro.entrySize,
         val modificationTime: String = Retro.modificationTime,
 
@@ -96,6 +98,8 @@ data class Config(
                 permissionRead = "C50F1F",
                 permissionWrite = "13A10E",
                 permissionExecute = "3B78FF",
+                user = "C50F1F",
+                group = "C50F1F",
                 entrySize = "FFFF00",
                 modificationTime = "00FF00",
 
@@ -123,6 +127,8 @@ data class Config(
                 permissionRead = color1,
                 permissionWrite = color2,
                 permissionExecute = color3,
+                user = color1,
+                group = color1,
                 entrySize = color2,
                 modificationTime = color3,
                 directory = color1,
