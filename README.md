@@ -280,7 +280,7 @@ Example:
 # An alternative editor macro
 [[entryMacros]]
 description = "open {entryName} in code"
-command = "code {entryPath}"
+command = "code '{entryPath}'"
 afterSuccessfulCommand = "ExitAtCurrentDirectory"
 onFile = true
 onDirectory = true
@@ -289,7 +289,7 @@ quickMacroKey = "ArrowRight"
 # Same as above, but waits for the editor to close before returning again to nav
 [[entryMacros]]
 description = "open {entryName} in code and wait"
-command = "code --wait {entryPath}"
+command = "code --wait '{entryPath}'"
 onFile = true
 onDirectory = true
 quickMacroKey = "shift+ArrowRight"
@@ -297,14 +297,14 @@ quickMacroKey = "shift+ArrowRight"
 # A macro for deleting directories recursively
 [[entryMacros]]
 description = "delete {entryName} recursively"
-command = "rm -rf {entryPath}"
+command = "rm -rf '{entryPath}'"
 onDirectory = true
 quickMacroKey = "Delete"
 
 # A macro for printing the full path of the entry
 [[entryMacros]]
 description = "print full path"
-command = "echo {entryPath}"
+command = "echo '{entryPath}'"
 onFile = true
 onDirectory = true
 onSymbolicLink = true
