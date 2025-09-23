@@ -5,6 +5,7 @@ import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.StatResult
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.getUserGroup
 import de.jonasbroeckmann.nav.utils.stat
 import kotlinx.io.files.Path
 
@@ -143,6 +144,10 @@ data class State(
         val isRegularFile get() = stat.mode.isRegularFile
         val isSymbolicLink get() = stat.mode.isSymbolicLink
         val size get() = stat.size.takeIf { it >= 0 && !isDirectory }
+
+        val userGroup by lazy {
+            getUserGroup()
+        }
     }
 }
 
