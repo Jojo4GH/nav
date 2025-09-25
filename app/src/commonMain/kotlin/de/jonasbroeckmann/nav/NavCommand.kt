@@ -96,7 +96,7 @@ class NavCommand : CliktCommand() {
             return
         }
 
-        val config = Config.load(terminal)
+        val config = Config.load(terminal, debugMode)
 
         if (correctInit == null && !config.suppressInitCheck) {
             terminal.danger("The installation is not complete and some feature will not work.")

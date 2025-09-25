@@ -218,9 +218,9 @@ class Actions(config: Config) : ConfigProvider by config {
         val currentEntry = state.currentEntry
         return when {
             currentEntry == null -> false
+            currentEntry.isSymbolicLink -> onSymbolicLink
             currentEntry.isDirectory -> onDirectory
             currentEntry.isRegularFile -> onFile
-            currentEntry.isSymbolicLink -> onSymbolicLink
             else -> false
         }
     }
@@ -287,9 +287,9 @@ class Actions(config: Config) : ConfigProvider by config {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
                 val style = when {
+                    currentEntry.isSymbolicLink -> TextColors.rgb(config.colors.link)
                     currentEntry.isDirectory -> TextColors.rgb(config.colors.directory)
                     currentEntry.isRegularFile -> TextColors.rgb(config.colors.file)
-                    currentEntry.isSymbolicLink -> TextColors.rgb(config.colors.link)
                     else -> TextColors.magenta
                 }
                 style("Delete: ${currentEntry.path.name}")
@@ -299,9 +299,9 @@ class Actions(config: Config) : ConfigProvider by config {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
                 when {
+                    currentEntry.isSymbolicLink -> SystemFileSystem.delete(currentEntry.path)
                     currentEntry.isDirectory -> SystemFileSystem.delete(currentEntry.path)
                     currentEntry.isRegularFile -> SystemFileSystem.delete(currentEntry.path)
-                    currentEntry.isSymbolicLink -> SystemFileSystem.delete(currentEntry.path)
                 }
                 NewState(updatedEntries())
             }
