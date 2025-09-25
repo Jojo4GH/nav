@@ -11,12 +11,17 @@ import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.io.files.Path
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
 
 @Serializable
-data class Config(
-    val editor: String = DefaultEditor,
+data class Config private constructor(
+    val editor: String? = null,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
 
@@ -239,7 +244,15 @@ data class Config(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun load(terminal: Terminal, debugMode: Boolean = false): Config {
+        fun load(terminal: Terminal, debugMode: Boolean = false) = loadInternal(terminal, debugMode)
+            .let {
+                // fill in default editor
+                if (it.editor == null) {
+                    it.copy(editor = findDefaultEditor(terminal, debugMode))
+                } else it
+            }
+
+        private fun loadInternal(terminal: Terminal, debugMode: Boolean): Config {
             val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
                 ?: DefaultPath.takeIf { it.exists() }?.toString()
                 ?: return Config()
@@ -263,16 +276,50 @@ data class Config(
             }
         }
 
-        private val DefaultEditor by lazy {
-            getenv("EDITOR")?.trim()?.takeUnless { it.isBlank() }
-                ?: getenv("VISUAL")?.trim()?.takeUnless { it.isBlank() }
-                ?: which("nano")?.toString()
-                ?: which("nvim")?.toString()
-                ?: which("vim")?.toString()
-                ?: which("vi")?.toString()
-                ?: which("code")?.toString()
-                ?: which("notepad")?.toString()
-                ?: "nano"
+        private fun findDefaultEditor(terminal: Terminal, debugMode: Boolean): String? {
+            if (debugMode) terminal.println("Searching for default editor:")
+
+            fun checkEnvVar(name: String): String? {
+                val value = getenv(name)?.trim() ?: run {
+                    if (debugMode) terminal.println($$"  $$$name not set")
+                    return null
+                }
+                if (value.isBlank()) {
+                    if (debugMode) terminal.println($$"  $$$name is empty")
+                    return null
+                }
+                if (debugMode) terminal.println($$"  Using value of $$$name: $$value")
+                return value
+            }
+
+            fun checkProgram(name: String): String? {
+                val path = which(name) ?: run {
+                    if (debugMode) terminal.println($$"  $$name not found in $PATH")
+                    return null
+                }
+                if (debugMode) terminal.println("  Found $name at $path")
+                return path.toString()
+            }
+
+            return sequence {
+                yield(checkEnvVar("EDITOR"))
+                yield(checkEnvVar("VISUAL"))
+                yield(checkProgram("nano"))
+                yield(checkProgram("nvim"))
+                yield(checkProgram("vim"))
+                yield(checkProgram("vi"))
+                yield(checkProgram("code"))
+                yield(checkProgram("notepad"))
+            }.filterNotNull().firstOrNull().also {
+                if (it == null) {
+                    terminal.danger("Could not find a default editor")
+                    terminal.info(specifyEditorMessage)
+                }
+            }
+        }
+
+        val specifyEditorMessage: String get() {
+            return $$"""Please specify an editor via the "editor" config option or the $EDITOR environment variable"""
         }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
