@@ -182,6 +182,16 @@ maxVisiblePathElements = 6
 inputTimeoutMillis = 4 # Set to 0 for no timeout
 suppressInitCheck = false
 
+# Which columns to show for each entry and how to order them
+shownColumns = [
+    "Permissions",      # Permissions of the entry in unix style
+    # "HardLinkCount",  # Number of hard links to the entry (not shown by default)
+    # "UserName",       # Name of the user owning the entry (not shown by default)
+    # "GroupName",      # Name of the group owning the entry (not shown by default)
+    "EntrySize",        # Size of the file
+    "LastModified",     # Time of last modification
+]
+
 [keys]
 
 submit = "Enter"

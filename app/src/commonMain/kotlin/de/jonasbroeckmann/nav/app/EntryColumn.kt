@@ -94,7 +94,7 @@ enum class EntryColumn(
     }),
 
     @OptIn(ExperimentalTime::class)
-    ModificationTime("Last Modified", { entry ->
+    LastModified("Last Modified", { entry ->
         val instant = entry.stat.lastModificationTime
         val now = Clock.System.now()
         val duration = now - instant

@@ -27,12 +27,12 @@ data class Config(
     val suppressInitCheck: Boolean = false,
 
     val shownColumns: List<EntryColumn> = listOf(
-        EntryColumn.Permissions,
-        // EntryColumn.HardLinkCount,
-        // EntryColumn.UserName,
-        // EntryColumn.GroupName,
-        EntryColumn.EntrySize,
-        EntryColumn.ModificationTime,
+        Permissions,
+        // HardLinkCount,
+        // UserName,
+        // GroupName,
+        EntrySize,
+        LastModified,
     ),
 
     val keys: Keys = Keys(),
