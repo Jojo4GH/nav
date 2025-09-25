@@ -5,6 +5,8 @@ import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.StatResult
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.getGroupNameFromId
+import de.jonasbroeckmann.nav.utils.getUserNameFromId
 import de.jonasbroeckmann.nav.utils.stat
 import kotlinx.io.files.Path
 
@@ -121,7 +123,7 @@ data class State(
         private fun Path.entries(): List<Entry> = children()
             .asSequence()
             .map { it.cleaned() } // fix broken paths
-            .map { Entry(it, it.stat()) }
+            .map { Entry(it) }
             .sortedBy { it.path.name }
             .sortedByDescending { it.isDirectory }
             .toList()
@@ -130,19 +132,19 @@ data class State(
 
     data class Entry(
         val path: Path,
-        val stat: Stat,
-        val statError: StatResult.Error?
     ) {
-        constructor(path: Path, statResult: StatResult) : this(
-            path = path,
-            stat = statResult as? Stat ?: Stat.None,
-            statError = statResult as? StatResult.Error
-        )
+        private val statResult: StatResult by lazy { path.stat() }
+        private val statError get() = statResult as? StatResult.Error
 
+        val stat get() = statResult as? Stat ?: Stat.None
         val isDirectory get() = stat.mode.isDirectory
         val isRegularFile get() = stat.mode.isRegularFile
         val isSymbolicLink get() = stat.mode.isSymbolicLink
         val size get() = stat.size.takeIf { it >= 0 && !isDirectory }
+
+        val userName by lazy { getUserNameFromId(stat.userId) }
+        val groupName by lazy { getGroupNameFromId(stat.groupId) }
+
+        val error get() = statError?.message
     }
 }
-
