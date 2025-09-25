@@ -1,5 +1,5 @@
 package de.jonasbroeckmann.nav.utils
 
-import de.jonasbroeckmann.nav.app.State
+actual fun getUserNameFromId(uid: UInt): String? = null
 
-actual fun State.Entry.getUserGroup() = UserGroup.None
+actual fun getGroupNameFromId(gid: UInt): String? = null

@@ -1,17 +1,5 @@
 package de.jonasbroeckmann.nav.utils
 
-import de.jonasbroeckmann.nav.app.State
+expect fun getUserNameFromId(uid: UInt): String?
 
-data class UserGroup(
-    val userName: String?,
-    val groupName: String?,
-) {
-    companion object {
-        val None = UserGroup(
-            userName = null,
-            groupName = null,
-        )
-    }
-}
-
-expect fun State.Entry.getUserGroup(): UserGroup
+expect fun getGroupNameFromId(gid: UInt): String?

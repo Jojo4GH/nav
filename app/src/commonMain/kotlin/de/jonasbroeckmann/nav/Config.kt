@@ -8,6 +8,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.serialization.Serializable
@@ -24,6 +25,15 @@ data class Config(
     val maxVisiblePathElements: Int = 6,
     val inputTimeoutMillis: Int = 4,
     val suppressInitCheck: Boolean = false,
+
+    val shownColumns: List<EntryColumn> = listOf(
+        EntryColumn.Permissions,
+        // EntryColumn.HardLinkCount,
+        // EntryColumn.UserName,
+        // EntryColumn.GroupName,
+        EntryColumn.EntrySize,
+        EntryColumn.ModificationTime,
+    ),
 
     val keys: Keys = Keys(),
 
@@ -229,7 +239,7 @@ data class Config(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun load(terminal: Terminal): Config {
+        fun load(terminal: Terminal, debugMode: Boolean = false): Config {
             val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
                 ?: DefaultPath.takeIf { it.exists() }?.toString()
                 ?: return Config()
@@ -245,6 +255,9 @@ data class Config(
                 )
             } catch (e: Exception) {
                 terminal.danger("Could not load config: ${e.message}")
+                if (debugMode) {
+                    terminal.danger(e.stackTraceToString())
+                }
                 terminal.info("Using default config")
                 return Config()
             }
