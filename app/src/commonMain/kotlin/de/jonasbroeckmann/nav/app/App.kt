@@ -6,11 +6,13 @@ import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
+import com.github.ajalt.mordant.terminal.info
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
 import de.jonasbroeckmann.nav.Config
+import de.jonasbroeckmann.nav.Config.Companion.specifyEditorMessage
 import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.Shell
 import de.jonasbroeckmann.nav.utils.exitProcess
@@ -142,7 +144,11 @@ class App(
     }
 
     private fun openInEditor(file: Path): Int? {
-        val editor = config.editor
+        val editor = config.editor ?: run {
+            terminal.danger("No editor configured")
+            terminal.info(specifyEditorMessage)
+            return null
+        }
         var fileString = "$file"
         if (" " in fileString) {
             // try to escape spaces in file path
