@@ -8,6 +8,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.serialization.Serializable
@@ -24,6 +25,15 @@ data class Config(
     val maxVisiblePathElements: Int = 6,
     val inputTimeoutMillis: Int = 4,
     val suppressInitCheck: Boolean = false,
+
+    val shownColumns: List<EntryColumn> = listOf(
+        Permissions,
+        // HardLinkCount,
+        // UserName,
+        // GroupName,
+        EntrySize,
+        LastModified,
+    ),
 
     val keys: Keys = Keys(),
 
@@ -78,6 +88,9 @@ data class Config(
         val permissionRead: String = Retro.permissionRead,
         val permissionWrite: String = Retro.permissionWrite,
         val permissionExecute: String = Retro.permissionExecute,
+        val hardlinkCount: String = Retro.hardlinkCount,
+        val user: String = Retro.user,
+        val group: String = Retro.group,
         val entrySize: String = Retro.entrySize,
         val modificationTime: String = Retro.modificationTime,
 
@@ -96,6 +109,9 @@ data class Config(
                 permissionRead = "C50F1F",
                 permissionWrite = "13A10E",
                 permissionExecute = "3B78FF",
+                hardlinkCount = "13A10E",
+                user = "C50F1F",
+                group = "C50F1F",
                 entrySize = "FFFF00",
                 modificationTime = "00FF00",
 
@@ -123,6 +139,9 @@ data class Config(
                 permissionRead = color1,
                 permissionWrite = color2,
                 permissionExecute = color3,
+                hardlinkCount = color2,
+                user = color1,
+                group = color1,
                 entrySize = color2,
                 modificationTime = color3,
                 directory = color1,
@@ -220,7 +239,7 @@ data class Config(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun load(terminal: Terminal): Config {
+        fun load(terminal: Terminal, debugMode: Boolean = false): Config {
             val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
                 ?: DefaultPath.takeIf { it.exists() }?.toString()
                 ?: return Config()
@@ -236,6 +255,9 @@ data class Config(
                 )
             } catch (e: Exception) {
                 terminal.danger("Could not load config: ${e.message}")
+                if (debugMode) {
+                    terminal.danger(e.stackTraceToString())
+                }
                 terminal.info("Using default config")
                 return Config()
             }

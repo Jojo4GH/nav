@@ -27,6 +27,7 @@ data class Stat(
     val deviceId: ULong,
     val serialNumber: ULong,
     val mode: Mode,
+    val hardlinkCount: UInt,
     val userId: UInt,
     val groupId: UInt,
     val size: Long,
@@ -83,6 +84,7 @@ data class Stat(
             mode = Mode.None,
             userId = 0u,
             groupId = 0u,
+            hardlinkCount = 0u,
             size = 0L,
             lastAccessTime = Instant.fromEpochMilliseconds(0L),
             lastModificationTime = Instant.fromEpochMilliseconds(0L),
@@ -92,8 +94,8 @@ data class Stat(
 }
 
 
-infix fun UInt.mask(mask: Int): Boolean = (this and mask.toUInt()) != 0u
-infix fun UShort.mask(mask: Int): Boolean = (this.toUInt() and mask.toUInt()) != 0u
+infix fun UInt.mask(mask: Int): Boolean = (this and mask.toUInt()) == mask.toUInt()
+infix fun UShort.mask(mask: Int): Boolean = (this.toUInt() and mask.toUInt()) == mask.toUInt()
 
 infix fun UInt.bit(i: Int): Boolean = ((this shr i) and 1u) != 0u
 
