@@ -120,7 +120,7 @@ enum class EntryColumn(
         val brightnessRange = config.modificationTime.minimumBrightness..1.0
         val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
 
-        val rgb = RGB.Companion(config.colors.modificationTime)
+        val rgb = RGB(config.colors.modificationTime)
         val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
         Text(style(instant.format(format)))
     });
