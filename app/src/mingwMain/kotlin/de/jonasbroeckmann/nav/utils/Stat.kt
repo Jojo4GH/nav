@@ -42,6 +42,7 @@ actual fun stat(path: Path): StatResult = memScoped {
                 canExecute = result.st_mode mask S_IXOTH
             )
         ),
+        hardlinkCount = result.st_nlink.toUInt(),
         userId = result.st_uid.toUInt(),
         groupId = result.st_gid.toUInt(),
         size = result.st_size.toLong(),

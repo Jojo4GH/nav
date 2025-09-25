@@ -42,6 +42,7 @@ actual fun stat(path: Path): StatResult {
                     canExecute = PosixFilePermission.OTHERS_EXECUTE in permissions
                 )
             ),
+            hardlinkCount = 0u,
             userId = 0u,
             groupId = 0u,
             size = javaPath.fileSize(),
