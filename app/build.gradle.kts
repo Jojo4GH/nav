@@ -8,6 +8,7 @@ plugins {
     val kotlinVersion = "2.2.0"
     kotlin("multiplatform") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
     id("com.github.gmazzo.buildconfig") version "5.6.7"
     id("org.gradle.crypto.checksum") version "1.4.0"
 }
