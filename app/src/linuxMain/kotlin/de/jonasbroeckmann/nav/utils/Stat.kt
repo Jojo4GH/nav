@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav.utils
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.UnsafeNumber
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
@@ -10,7 +11,7 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 
-@OptIn(ExperimentalForeignApi::class, ExperimentalTime::class)
+@OptIn(ExperimentalForeignApi::class, ExperimentalTime::class, UnsafeNumber::class)
 actual fun stat(path: Path): StatResult = memScoped {
     val result: stat = alloc()
     set_posix_errno(0)
@@ -42,6 +43,7 @@ actual fun stat(path: Path): StatResult = memScoped {
                 canExecute = result.st_mode mask S_IXOTH
             )
         ),
+        hardlinkCount = result.st_nlink.toUInt(),
         userId = result.st_uid,
         groupId = result.st_gid,
         size = result.st_size,
