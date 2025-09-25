@@ -94,8 +94,8 @@ data class Stat(
 }
 
 
-infix fun UInt.mask(mask: Int): Boolean = (this and mask.toUInt()) != 0u
-infix fun UShort.mask(mask: Int): Boolean = (this.toUInt() and mask.toUInt()) != 0u
+infix fun UInt.mask(mask: Int): Boolean = (this and mask.toUInt()) == mask.toUInt()
+infix fun UShort.mask(mask: Int): Boolean = (this.toUInt() and mask.toUInt()) == mask.toUInt()
 
 infix fun UInt.bit(i: Int): Boolean = ((this shr i) and 1u) != 0u
 
