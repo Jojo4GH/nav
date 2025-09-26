@@ -1,5 +1,5 @@
 import com.netflix.gradle.plugins.deb.Deb
-import io.gitlab.arturbosch.detekt.Detekt
+import dev.detekt.gradle.Detekt
 import org.gradle.crypto.checksum.Checksum
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
@@ -10,7 +10,7 @@ plugins {
     val kotlinVersion = "2.2.0"
     kotlin("multiplatform") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
-    id("io.gitlab.arturbosch.detekt") version "1.23.8"
+    id("dev.detekt") version "2.0.0-alpha.0"
     id("com.github.gmazzo.buildconfig") version "5.6.7"
     id("org.gradle.crypto.checksum") version "1.4.0"
     id("com.netflix.nebula.ospackage") version "12.1.1"
