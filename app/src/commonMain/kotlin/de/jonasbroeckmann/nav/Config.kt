@@ -246,9 +246,10 @@ data class Config private constructor(
         fun load() = loadInternal()
             .let {
                 // override editor from command line argument
-                if (context.command.editor != null) {
-                    context.printlnOnDebug { "Using editor from command line argument: ${context.command.editor}" }
-                    return it.copy(editor = context.command.editor)
+                val editorFromCLI = context.command.configurationOptions.editor
+                if (editorFromCLI != null) {
+                    context.printlnOnDebug { "Using editor from command line argument: $editorFromCLI" }
+                    return it.copy(editor = editorFromCLI)
                 }
 
                 // fill in default editor

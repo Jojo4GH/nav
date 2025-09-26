@@ -2,11 +2,16 @@ package de.jonasbroeckmann.nav
 
 import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.UsageError
+import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.output.HelpFormatter
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
+import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.flag
@@ -23,7 +28,8 @@ import de.jonasbroeckmann.nav.utils.exitProcess
 import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
 
-class NavCommand : CliktCommand() {
+class NavCommand : CliktCommand(name = BinaryName) {
+
     val startingDirectory by argument(
         "DIRECTORY",
         help = "The directory to start in",
@@ -37,55 +43,71 @@ class NavCommand : CliktCommand() {
             require(metadata.isDirectory) { "\"$it\": Not a directory" }
         }
 
-    private val init by mutuallyExclusiveOptions<Pair<Shell, InitAction>>(
+    val configurationOptions by ConfigurationOptions()
+
+    class ConfigurationOptions : OptionGroup(
+        name = "Configuration",
+        help = "Options to configure the behavior of $BinaryName"
+    ) {
+        val shell by option(
+            "--shell",
+            "--correct-init",
+            metavar = "SHELL",
+            help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly"
+        ).choice(Shell.available)
+
+        val editor by option(
+            "--editor",
+            metavar = "EDITOR",
+            help = "Explicitly specify the editor to use (overrides all configuration)"
+        ).convert { it.trim() }
+
+        val editConfig by option(
+            "--edit-config",
+            help = "Opens the current config file in the editor"
+        ).flag()
+    }
+
+    private val initOption by mutuallyExclusiveOptions<InitOption>(
+        option(
+            "--init-help",
+            "--init-info",
+            help = "Prints information about how to initialize $BinaryName correctly"
+        ).flag().convert { if (it) InitOption.Info else null },
         option(
             "--init",
             metavar = "SHELL",
             help = "Prints the initialization script for the specified shell"
-        ).choice(Shell.available).convert { it to { printInitScript() } },
+        ).choice(Shell.available).convert { InitOption.Init(it) },
         option(
             "--profile-location",
             metavar = "SHELL",
             help = "Prints the typical location of the profile file for the specified shell"
-        ).choice(Shell.available).convert { it to { printProfileLocation() } },
+        ).choice(Shell.available).convert { InitOption.ProfileLocation(it) },
         option(
             "--profile-command",
             metavar = "SHELL",
             help = "Prints the command that should be added to the profile file for the specified shell"
-        ).choice(Shell.available).convert { it to { printProfileCommand() } },
+        ).choice(Shell.available).convert { InitOption.ProfileCommand(it) },
+        name = "Initialization",
+        help = "Options related to $BinaryName initialization"
     ).single()
 
-    private val initInfo by option(
-        "--init-info",
-        help = "Prints information about how to initialize $BinaryName correctly"
-    ).flag()
-
-    val shell by option(
-        "--shell",
-        "--correct-init",
-        metavar = "SHELL",
-        help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly"
-    ).choice(Shell.available)
+    private sealed interface InitOption {
+        data object Info : InitOption
+        data class Init(val shell: Shell) : InitOption
+        data class ProfileLocation(val shell: Shell) : InitOption
+        data class ProfileCommand(val shell: Shell) : InitOption
+    }
 
     val debugMode by option(
         "--debug",
         help = "Enables debug mode"
     ).flag()
 
-    val editor by option(
-        "--editor",
-        metavar = "EDITOR",
-        help = "Explicitly specify the editor to use (overrides all configuration)"
-    ).convert { it.trim() }
-
-    private val editConfig by option(
-        "--edit-config",
-        help = "Opens the current config file in the editor"
-    ).flag()
-
     private val version by option(
         "--version",
-        help = "Print version"
+        help = "Print version and exit"
     ).flag()
 
     override fun run() {
@@ -96,29 +118,40 @@ class NavCommand : CliktCommand() {
             return
         }
 
-        init?.let { (shell, action) ->
-            shell.action(terminal)
-            return
-        }
-
-        if (initInfo) {
-            terminal.println()
-            Shell.printInitInfo(terminal)
-            terminal.println()
-            return
+        initOption?.let { initOption ->
+            when (initOption) {
+                InitOption.Info -> {
+                    terminal.println()
+                    Shell.printInitInfo(terminal)
+                    terminal.println()
+                    return
+                }
+                is InitOption.Init -> {
+                    initOption.shell.printInitScript()
+                    return
+                }
+                is InitOption.ProfileLocation -> {
+                    initOption.shell.printProfileLocation()
+                    return
+                }
+                is InitOption.ProfileCommand -> {
+                    initOption.shell.printProfileCommand()
+                    return
+                }
+            }
         }
 
         context(RunContext(terminal, this)) {
             val config = Config.load()
 
-            if (shell == null && !config.suppressInitCheck) {
+            if (configurationOptions.shell == null && !config.suppressInitCheck) {
                 terminal.danger("The installation is not complete and some feature will not work.")
-                terminal.info("Use --init-info to get more information.")
+                terminal.info("Use --init-help to get more information.")
             }
 
             val app = App(config)
 
-            if (editConfig) {
+            if (configurationOptions.editConfig) {
                 val configPath = Config.findConfigPath() ?: Config.DefaultPath
                 terminal.info("""Opening config file at "$configPath" ...""")
                 val exitCode = app.openInEditor(configPath)

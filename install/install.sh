@@ -467,4 +467,4 @@ completed "nav ${VERSION} installed"
 printf '\n'
 info "Please follow the steps for your shell to complete the installation:"
 
-nav --init-info
+nav --init-help

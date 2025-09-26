@@ -11,7 +11,7 @@ interface RunContext {
     val command: NavCommand
     val debugMode: Boolean get() = command.debugMode
     val startingDirectory: Path get() = command.startingDirectory ?: WorkingDirectory
-    val shell: Shell? get() = command.shell
+    val shell: Shell? get() = command.configurationOptions.shell
 
     companion object {
 
