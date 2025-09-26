@@ -133,7 +133,7 @@ class App(
     }
 
     fun openInEditor(file: Path): Int? {
-        val editor = config.editor ?: run {
+        val editorCommand = config.editorCommand ?: run {
             terminal.danger("Could not open file. No editor configured")
             return null
         }
@@ -142,7 +142,7 @@ class App(
             // try to escape spaces in file path
             fileString = "\"$fileString\""
         }
-        return runCommandFromUI("$editor $fileString") { stdin(Stdio.Inherit) }
+        return runCommandFromUI("$editorCommand $fileString") { stdin(Stdio.Inherit) }
     }
 
     private val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE

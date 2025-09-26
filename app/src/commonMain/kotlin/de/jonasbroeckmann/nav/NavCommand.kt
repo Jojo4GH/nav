@@ -60,7 +60,7 @@ class NavCommand : CliktCommand(name = BinaryName) {
 
         val editor by option(
             "--editor",
-            metavar = "EDITOR",
+            metavar = "COMMAND",
             help = "Explicitly specify the editor to use (overrides all configuration)"
         ).convert { it.trim() }
 
