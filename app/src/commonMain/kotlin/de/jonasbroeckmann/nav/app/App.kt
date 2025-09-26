@@ -4,7 +4,6 @@ import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
-import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
@@ -12,31 +11,26 @@ import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
 import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.ConfigProvider
-import de.jonasbroeckmann.nav.Shell
+import de.jonasbroeckmann.nav.RunContext
+import de.jonasbroeckmann.nav.dangerThrowable
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.exitProcess
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class App(
-    private val terminal: Terminal,
-    override val config: Config,
-    startingDirectory: Path,
-    private val initShell: Shell?,
-    debugMode: Boolean
-) : ConfigProvider {
+    context: RunContext,
+    override val config: Config
+) : RunContext by context, ConfigProvider {
+
     private val actions = Actions(config)
     private var state = State(
         directory = startingDirectory,
         cursor = 0,
-        debugMode = debugMode,
         allMenuActions = { actions.menuActions }
     )
-    private val ui = UI(
-        terminal = terminal,
-        config = config,
-        actions = actions
-    )
+    private val ui = UI(actions)
 
     fun main(): Nothing {
         terminal.cursor.hide(showOnExit = false)
@@ -44,7 +38,7 @@ class App(
         while (true) {
             ui.update(state)
             val inputEvent = readInput()
-            if (state.debugMode) terminal.println("Received input event: $inputEvent")
+            printlnOnDebug { "Received input event: $inputEvent" }
             if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
             val appEvent = inputEvent.process()
             if (appEvent == null) {
@@ -68,7 +62,7 @@ class App(
 
     private fun Event.handle(): Boolean = when (this) {
         is Event.NewState -> {
-            if (state.debugMode) {
+            if (debugMode) {
                 if (this@App.state.currentEntry != state.currentEntry) {
                     terminal.println("New entry: ${state.currentEntry}")
                 }
@@ -114,14 +108,14 @@ class App(
         configuration: Command.() -> Command = { this }
     ): Int? {
         ui.clear() // hide UI before running command
-        val (exe, args) = when (initShell) {
+        val (exe, args) = when (val shell = shell) {
             null -> {
                 val parts = command.split(" ")
                 parts.first() to parts.drop(1)
             }
-            else -> initShell.shell to initShell.execCommandArgs(command)
+            else -> shell.shell to shell.execCommandArgs(command)
         }
-        if (state.debugMode) terminal.println("Running $exe with args $args")
+        printlnOnDebug { "Running $exe with args $args" }
         val exitCode = try {
             // run command
             Command(exe)
@@ -131,24 +125,24 @@ class App(
                 .spawn()
                 .wait()
         } catch (e: KommandException) {
-            terminal.danger("An error occurred while running $exe with args $args: ${e.message}")
-            if (state.debugMode) {
-                terminal.danger(e.stackTraceToString())
-            }
+            dangerThrowable(e, "An error occurred while running $exe with args $args: ${e.message}")
             null
         }
         state = state.updatedEntries() // update in case the command changed something
         return exitCode
     }
 
-    private fun openInEditor(file: Path): Int? {
-        val editor = config.editor
+    fun openInEditor(file: Path): Int? {
+        val editorCommand = config.editorCommand ?: run {
+            terminal.danger("Could not open file. No editor configured")
+            return null
+        }
         var fileString = "$file"
         if (" " in fileString) {
             // try to escape spaces in file path
             fileString = "\"$fileString\""
         }
-        return runCommandFromUI("$editor $fileString") { stdin(Stdio.Inherit) }
+        return runCommandFromUI("$editorCommand $fileString") { stdin(Stdio.Inherit) }
     }
 
     private val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
@@ -169,7 +163,7 @@ class App(
         if (this !is KeyboardEvent) return null
         if (isCtrlC) return Event.Exit
         if (ctrl) {
-            if (state.debugMode) terminal.println("Entering quick macro mode ...")
+            printlnOnDebug { "Entering quick macro mode ..." }
             state = state.inQuickMacroMode(true)
         }
         if (state.inQuickMacroMode) {
@@ -181,7 +175,7 @@ class App(
                 return null
             }
             // no action matched, so we continue as normal
-            if (state.debugMode) terminal.println("Exiting quick macro mode ...")
+            printlnOnDebug { "Exiting quick macro mode ..." }
             state = state.inQuickMacroMode(false)
         }
         for (action in actions.ordered) {
@@ -206,6 +200,9 @@ class App(
     }
 
     companion object {
+        context(context: RunContext)
+        operator fun invoke(config: Config) = App(context, config)
+
         private fun KeyboardEvent.tryUpdateTextField(str: String): String? {
             if (alt || ctrl) return null
             return when {

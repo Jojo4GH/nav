@@ -4,11 +4,11 @@ import com.github.ajalt.mordant.animation.Animation
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.*
 import com.github.ajalt.mordant.table.*
-import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.RunContext
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
@@ -18,16 +18,17 @@ import de.jonasbroeckmann.nav.app.State as UIState
 
 @OptIn(ExperimentalTime::class)
 class UI(
-    terminal: Terminal,
-    override val config: Config,
+    context: RunContext,
+    configProvider: ConfigProvider,
     private val actions: Actions
 ) : Animation<UIState>(
-    terminal = terminal
-), ConfigProvider {
+    terminal = context.terminal
+), RunContext, ConfigProvider by configProvider {
+    override val command = context.command
 
     override fun renderData(data: UIState): Widget = context(data) {
         verticalLayout {
-            if (data.debugMode) terminal.println("Updating UI ...")
+            printlnOnDebug { "Updating UI ..." }
 
             align = TextAlign.LEFT
 
@@ -36,8 +37,7 @@ class UI(
             val top = renderTitle(
                 directory = data.directory,
                 filter = data.filter,
-                showCursor = !data.isTypingCommand && !data.inQuickMacroMode,
-                debugMode = data.debugMode
+                showCursor = !data.isTypingCommand && !data.inQuickMacroMode
             )
             additionalRows += 1
 
@@ -166,8 +166,8 @@ class UI(
         }
     }
 
-    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean, debugMode: Boolean): String {
-        return "${renderPath(directory, debugMode)}${renderFilter(filter, showCursor)}"
+    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean): String {
+        return "${renderPath(directory)}${renderFilter(filter, showCursor)}"
     }
 
     private fun renderFilter(filter: String, showCursor: Boolean): String {
@@ -223,7 +223,7 @@ class UI(
             }
     }
 
-    private fun renderPath(path: Path, debugMode: Boolean): String {
+    private fun renderPath(path: Path): String {
         val pathString = path.toString().let {
             val home = UserHome.toString().removeSuffix("$RealSystemPathSeparator")
             if (it.startsWith(home)) " ~${it.removePrefix(home)}" else it
@@ -368,7 +368,7 @@ class UI(
             }
         }
 
-        if (state.debugMode) {
+        if (debugMode) {
             if (state.inQuickMacroMode) {
                 add(TextStyles.dim("M"))
             }
@@ -391,6 +391,10 @@ class UI(
     }
 
     companion object {
+
+        context(context: RunContext, configProvider: ConfigProvider)
+        operator fun invoke(actions: Actions) = UI(context, configProvider, actions)
+
         fun keyName(key: KeyboardEvent): String {
             var k = when (key.key) {
                 "Enter" -> "enter"
