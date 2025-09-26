@@ -23,7 +23,6 @@ data class State(
 
     val inQuickMacroMode: Boolean = false,
 
-    val debugMode: Boolean = false,
     val lastReceivedEvent: KeyboardEvent? = null
 ) {
     val filteredItems: List<Entry> by lazy {
