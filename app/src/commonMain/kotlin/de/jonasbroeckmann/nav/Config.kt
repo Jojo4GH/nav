@@ -11,12 +11,14 @@ import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
 @Serializable
 data class Config private constructor(
-    val editor: String? = null,
+    @SerialName("editor")
+    val editorCommand: String? = null,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
 
@@ -249,14 +251,14 @@ data class Config private constructor(
         fun load() = loadInternal()
             .let {
                 // override editor from command line argument
-                val editorFromCLI = context.command.configurationOptions.editor
-                if (editorFromCLI != null) {
-                    context.printlnOnDebug { "Using editor from command line argument: $editorFromCLI" }
-                    return it.copy(editor = editorFromCLI)
+                val editorCommandFromCLI = context.command.configurationOptions.editor
+                if (editorCommandFromCLI != null) {
+                    context.printlnOnDebug { "Using editor from command line argument: $editorCommandFromCLI" }
+                    return it.copy(editorCommand = editorCommandFromCLI)
                 }
                 // fill in default editor
-                if (it.editor == null) {
-                    it.copy(editor = findDefaultEditor())
+                if (it.editorCommand == null) {
+                    it.copy(editorCommand = findDefaultEditorCommand())
                 } else it
             }
 
@@ -289,7 +291,7 @@ data class Config private constructor(
         }
 
         context(context: RunContext)
-        private fun findDefaultEditor(): String? {
+        private fun findDefaultEditorCommand(): String? {
             context.printlnOnDebug { "Searching for default editor:" }
 
             fun checkEnvVar(name: String): String? {

@@ -53,7 +53,7 @@ class Actions(config: Config) : ConfigProvider by config {
     )
     val navigateOpen = KeyAction(
         config.keys.nav.open,
-        description = { "open in ${config.editor ?: "editor"}" },
+        description = { "open in ${config.editorCommand ?: "editor"}" },
         style = { TextColors.rgb(config.colors.file) },
         condition = { currentEntry?.isRegularFile == true },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
