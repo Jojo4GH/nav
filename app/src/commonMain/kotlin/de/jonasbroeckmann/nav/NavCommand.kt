@@ -17,7 +17,6 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.BuildConfig
-import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.absolute
 import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.exitProcess
@@ -61,16 +60,23 @@ class NavCommand : CliktCommand() {
         help = "Prints information about how to initialize $BinaryName correctly"
     ).flag()
 
-    val correctInit by option(
+    val shell by option(
+        "--shell",
         "--correct-init",
         metavar = "SHELL",
-        help = "Signals that the initialization script is being used correctly from the specified shell"
+        help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly"
     ).choice(Shell.available)
 
     val debugMode by option(
         "--debug",
         help = "Enables debug mode"
     ).flag()
+
+    val editor by option(
+        "--editor",
+        metavar = "EDITOR",
+        help = "Explicitly specify the editor to use (overrides all configuration)"
+    ).convert { it.trim() }
 
     private val editConfig by option(
         "--edit-config",
@@ -103,10 +109,9 @@ class NavCommand : CliktCommand() {
         }
 
         context(RunContext(terminal, this)) {
-
             val config = Config.load()
 
-            if (correctInit == null && !config.suppressInitCheck) {
+            if (shell == null && !config.suppressInitCheck) {
                 terminal.danger("The installation is not complete and some feature will not work.")
                 terminal.info("Use --init-info to get more information.")
             }
@@ -126,26 +131,5 @@ class NavCommand : CliktCommand() {
 
     companion object {
         val BinaryName get() = BuildConfig.BINARY_NAME
-    }
-}
-
-interface RunContext {
-    val terminal: Terminal
-    val command: NavCommand
-    val debugMode: Boolean get() = command.debugMode
-    val startingDirectory: Path get() = command.startingDirectory ?: WorkingDirectory
-    val initShell: Shell? get() = command.correctInit
-
-    companion object {
-
-        operator fun invoke(
-            terminal: Terminal,
-            command: NavCommand
-        ): RunContext = Impl(terminal, command)
-
-        private data class Impl(
-            override val terminal: Terminal,
-            override val command: NavCommand
-        ) : RunContext
     }
 }
