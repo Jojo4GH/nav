@@ -1,5 +1,7 @@
 import com.netflix.gradle.plugins.deb.Deb
+import io.gitlab.arturbosch.detekt.Detekt
 import org.gradle.crypto.checksum.Checksum
+import org.gradle.kotlin.dsl.detekt
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
@@ -78,6 +80,16 @@ kotlin {
             implementation("com.kgit2:kommand:2.3.0")
         }
     }
+}
+
+dependencies {
+    detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:1.23.8")
+}
+
+tasks.register("detektAll") {
+    group = "verification"
+    description = "Run all detekt checks"
+    dependsOn(tasks.withType<Detekt>())
 }
 
 inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
