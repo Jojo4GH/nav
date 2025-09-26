@@ -5,22 +5,14 @@ import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
-import kotlinx.serialization.DeserializationStrategy
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import okio.Path.Companion.toPath
 
 @Serializable
 data class Config private constructor(
@@ -253,6 +245,12 @@ data class Config private constructor(
         context(context: RunContext)
         fun load() = loadInternal()
             .let {
+                // override editor from command line argument
+                if (context.command.editor != null) {
+                    context.printlnOnDebug { "Using editor from command line argument: ${context.command.editor}" }
+                    return it.copy(editor = context.command.editor)
+                }
+
                 // fill in default editor
                 if (it.editor == null) {
                     it.copy(editor = findDefaultEditor())
@@ -273,10 +271,7 @@ data class Config private constructor(
                     tomlFilePath = path.toString()
                 )
             } catch (e: Exception) {
-                context.terminal.danger("Could not load config: ${e.message}")
-                if (context.debugMode) {
-                    context.terminal.danger(e.stackTraceToString())
-                }
+                context.dangerThrowable(e, "Could not load config: ${e.message}")
                 context.terminal.warning("Using default config")
                 return Config()
             }
@@ -284,27 +279,27 @@ data class Config private constructor(
 
         context(context: RunContext)
         private fun findDefaultEditor(): String? {
-            if (context.debugMode) context.terminal.println("Searching for default editor:")
+            context.printlnOnDebug { "Searching for default editor:" }
 
             fun checkEnvVar(name: String): String? {
                 val value = getenv(name)?.trim() ?: run {
-                    if (context.debugMode) context.terminal.println($$"  $$$name not set")
+                    context.printlnOnDebug { $$"  $$$name not set" }
                     return null
                 }
                 if (value.isBlank()) {
-                    if (context.debugMode) context.terminal.println($$"  $$$name is empty")
+                    context.printlnOnDebug { $$"  $$$name is empty" }
                     return null
                 }
-                if (context.debugMode) context.terminal.println($$"  Using value of $$$name: $$value")
+                    context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
                 return value
             }
 
             fun checkProgram(name: String): String? {
                 val path = which(name) ?: run {
-                    if (context.debugMode) context.terminal.println($$"  $$name not found in $PATH")
+                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
                     return null
                 }
-                if (context.debugMode) context.terminal.println("  Found $name at $path")
+                    context.printlnOnDebug { "  Found $name at $path" }
                 return path.toString()
             }
 
@@ -326,7 +321,7 @@ data class Config private constructor(
         }
 
         val specifyEditorMessage: String get() {
-            return $$"""Please specify an editor via the "editor" config option or the $EDITOR environment variable"""
+            return $$"""Please specify an editor via the --editor CLI option, the editor config option or the $EDITOR environment variable"""
         }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
