@@ -174,7 +174,7 @@ The default configuration looks as follows:
 # If not specified, uses the first that exists of the following:
 # $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
 # You can also use the --editor command line option to override this
-editor = "nano"
+editor = ""
 
 hideHints = false
 clearOnExit = true
