@@ -14,6 +14,7 @@ import de.jonasbroeckmann.nav.CDFile
 import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.Config.Companion.specifyEditorMessage
 import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.RunContext
 import de.jonasbroeckmann.nav.Shell
 import de.jonasbroeckmann.nav.utils.exitProcess
 import kotlinx.io.files.Path
@@ -21,12 +22,10 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class App(
-    private val terminal: Terminal,
-    override val config: Config,
-    startingDirectory: Path,
-    private val initShell: Shell?,
-    debugMode: Boolean
-) : ConfigProvider {
+    context: RunContext,
+    override val config: Config
+) : RunContext by context, ConfigProvider {
+
     private val actions = Actions(config)
     private var state = State(
         directory = startingDirectory,
@@ -116,12 +115,12 @@ class App(
         configuration: Command.() -> Command = { this }
     ): Int? {
         ui.clear() // hide UI before running command
-        val (exe, args) = when (initShell) {
+        val (exe, args) = when (val shell = initShell) {
             null -> {
                 val parts = command.split(" ")
                 parts.first() to parts.drop(1)
             }
-            else -> initShell.shell to initShell.execCommandArgs(command)
+            else -> shell.shell to shell.execCommandArgs(command)
         }
         if (state.debugMode) terminal.println("Running $exe with args $args")
         val exitCode = try {
@@ -143,10 +142,9 @@ class App(
         return exitCode
     }
 
-    private fun openInEditor(file: Path): Int? {
+    fun openInEditor(file: Path): Int? {
         val editor = config.editor ?: run {
-            terminal.danger("No editor configured")
-            terminal.info(specifyEditorMessage)
+            terminal.danger("Could not open file. No editor configured")
             return null
         }
         var fileString = "$file"
@@ -212,6 +210,9 @@ class App(
     }
 
     companion object {
+        context(context: RunContext)
+        operator fun invoke(config: Config) = App(context, config)
+
         private fun KeyboardEvent.tryUpdateTextField(str: String): String? {
             if (alt || ctrl) return null
             return when {

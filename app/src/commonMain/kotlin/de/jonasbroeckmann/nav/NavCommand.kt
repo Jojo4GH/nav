@@ -20,11 +20,12 @@ import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.absolute
 import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.exitProcess
 import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
 
 class NavCommand : CliktCommand() {
-    private val startingDirectory by argument(
+    val startingDirectory by argument(
         "DIRECTORY",
         help = "The directory to start in",
         completionCandidates = CompletionCandidates.Path
@@ -60,15 +61,20 @@ class NavCommand : CliktCommand() {
         help = "Prints information about how to initialize $BinaryName correctly"
     ).flag()
 
-    private val correctInit by option(
+    val correctInit by option(
         "--correct-init",
         metavar = "SHELL",
         help = "Signals that the initialization script is being used correctly from the specified shell"
     ).choice(Shell.available)
 
-    private val debugMode by option(
+    val debugMode by option(
         "--debug",
         help = "Enables debug mode"
+    ).flag()
+
+    private val editConfig by option(
+        "--edit-config",
+        help = "Opens the current config file in the editor"
     ).flag()
 
     private val version by option(
@@ -96,23 +102,50 @@ class NavCommand : CliktCommand() {
             return
         }
 
-        val config = Config.load(terminal, debugMode)
+        context(RunContext(terminal, this)) {
 
-        if (correctInit == null && !config.suppressInitCheck) {
-            terminal.danger("The installation is not complete and some feature will not work.")
-            terminal.info("Use --init-info to get more information.")
+            val config = Config.load()
+
+            if (correctInit == null && !config.suppressInitCheck) {
+                terminal.danger("The installation is not complete and some feature will not work.")
+                terminal.info("Use --init-info to get more information.")
+            }
+
+            val app = App(config)
+
+            if (editConfig) {
+                val configPath = Config.findConfigPath() ?: Config.DefaultPath
+                terminal.info("""Opening config file at "$configPath" ...""")
+                val exitCode = app.openInEditor(configPath)
+                exitProcess(exitCode ?: 1)
+            }
+
+            app.main()
         }
-
-        App(
-            terminal = terminal,
-            config = config,
-            startingDirectory = startingDirectory ?: WorkingDirectory,
-            initShell = correctInit,
-            debugMode = debugMode
-        ).main()
     }
 
     companion object {
         val BinaryName get() = BuildConfig.BINARY_NAME
+    }
+}
+
+interface RunContext {
+    val terminal: Terminal
+    val command: NavCommand
+    val debugMode: Boolean get() = command.debugMode
+    val startingDirectory: Path get() = command.startingDirectory ?: WorkingDirectory
+    val initShell: Shell? get() = command.correctInit
+
+    companion object {
+
+        operator fun invoke(
+            terminal: Terminal,
+            command: NavCommand
+        ): RunContext = Impl(terminal, command)
+
+        private data class Impl(
+            override val terminal: Terminal,
+            override val command: NavCommand
+        ) : RunContext
     }
 }
