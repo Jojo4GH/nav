@@ -1,7 +1,6 @@
 import com.netflix.gradle.plugins.deb.Deb
 import io.gitlab.arturbosch.detekt.Detekt
 import org.gradle.crypto.checksum.Checksum
-import org.gradle.kotlin.dsl.detekt
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
