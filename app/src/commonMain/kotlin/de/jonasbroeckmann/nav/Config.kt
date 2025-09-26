@@ -311,7 +311,7 @@ data class Config private constructor(
                     return null
                 }
                     context.printlnOnDebug { "  Found $name at $path" }
-                return path.toString()
+                return "\"$path\"" // quote path to handle spaces
             }
 
             return sequence {
