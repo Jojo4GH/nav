@@ -33,19 +33,23 @@ Select your operating system
 <details>
 <summary>Linux</summary>
 
-Install (or update) nav with the [installer script](install/install.sh):
-```sh
-curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
-```
-Or install with any of the following package managers:
+Install with any of the following package managers:
 
-| Distribution | Repository | Instructions                               |
-|--------------|------------|--------------------------------------------|
-| Arch Linux   | [AUR]      | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
-| NixOS        | [Nixpkgs]  | `nix-shell -p nav`                         |
+| Distribution         | Repository                                                  | Instructions                               |
+|----------------------|-------------------------------------------------------------|--------------------------------------------|
+| Arch Linux           | [AUR]                                                       | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
+| NixOS                | [Nixpkgs]                                                   | `nix-shell -p nav`                         |
+| Debian, Ubuntu, etc. | [nav_amd64.deb][Deb_amd64] <br/> [nav_arm64.deb][Deb_arm64] | `dpkg -i ...`                              |
 
 [AUR]: https://aur.archlinux.org/packages/nav-cli
 [Nixpkgs]: https://search.nixos.org/packages?show=nav
+[Deb_amd64]: https://github.com/Jojo4GH/nav/releases/latest/download/nav_amd64.deb
+[Deb_arm64]: https://github.com/Jojo4GH/nav/releases/latest/download/nav_arm64.deb
+
+Or install (or update) nav with the [installer script](install/install.sh):
+```sh
+curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
+```
 
 Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
