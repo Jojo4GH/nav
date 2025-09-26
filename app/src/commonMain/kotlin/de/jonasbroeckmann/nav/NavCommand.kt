@@ -2,9 +2,6 @@ package de.jonasbroeckmann.nav
 
 import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.UsageError
-import com.github.ajalt.clikt.core.context
-import com.github.ajalt.clikt.output.HelpFormatter
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
@@ -38,8 +35,7 @@ class NavCommand : CliktCommand(name = BinaryName) {
         .convert { Path(it).absolute().cleaned() }
         .optional()
         .validate {
-            val metadata = it.metadataOrNull()
-                ?: fail("\"$it\": No such file or directory")
+            val metadata = it.metadataOrNull() ?: fail("\"$it\": No such file or directory")
             require(metadata.isDirectory) { "\"$it\": Not a directory" }
         }
 
@@ -49,9 +45,15 @@ class NavCommand : CliktCommand(name = BinaryName) {
         name = "Configuration",
         help = "Options to configure the behavior of $BinaryName"
     ) {
+        val configPath by option(
+            "--config",
+            metavar = "PATH",
+            help = """Explicitly specify the config file to use (default: looks for config file at $${Config.ENV_VAR_NAME} or "${Config.DefaultPath}")"""
+        )
+
         val shell by option(
             "--shell",
-            "--correct-init",
+            "--correct-init", // Deprecated
             metavar = "SHELL",
             help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly"
         ).choice(Shell.available)
@@ -71,7 +73,7 @@ class NavCommand : CliktCommand(name = BinaryName) {
     private val initOption by mutuallyExclusiveOptions<InitOption>(
         option(
             "--init-help",
-            "--init-info",
+            "--init-info", // Deprecated
             help = "Prints information about how to initialize $BinaryName correctly"
         ).flag().convert { if (it) InitOption.Info else null },
         option(
@@ -152,7 +154,7 @@ class NavCommand : CliktCommand(name = BinaryName) {
             val app = App(config)
 
             if (configurationOptions.editConfig) {
-                val configPath = Config.findConfigPath() ?: Config.DefaultPath
+                val configPath = Config.findExplicitPath() ?: Config.DefaultPath
                 terminal.info("""Opening config file at "$configPath" ...""")
                 val exitCode = app.openInEditor(configPath)
                 exitProcess(exitCode ?: 1)

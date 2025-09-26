@@ -239,8 +239,11 @@ data class Config private constructor(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun findConfigPath(): Path? = getenv(ENV_VAR_NAME)?.let { Path(it) } // if specified explicitly don't check for existence
-            ?: DefaultPath.takeIf { it.exists() }
+        context(context: RunContext)
+        fun findExplicitPath(): Path? {
+            return context.command.configurationOptions.configPath?.let { Path(it) }
+                ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+        }
 
         context(context: RunContext)
         fun load() = loadInternal()
@@ -251,7 +254,6 @@ data class Config private constructor(
                     context.printlnOnDebug { "Using editor from command line argument: $editorFromCLI" }
                     return it.copy(editor = editorFromCLI)
                 }
-
                 // fill in default editor
                 if (it.editor == null) {
                     it.copy(editor = findDefaultEditor())
@@ -260,8 +262,16 @@ data class Config private constructor(
 
         context(context: RunContext)
         private fun loadInternal(): Config {
-            val path = findConfigPath() ?: return Config()
             try {
+                val explicitPath = findExplicitPath()?.also {
+                    require(it.exists()) { "The specified config does not exist: $it" }
+                    require(it.isRegularFile) { "The specified config is not a file: $it" }
+                }
+                val path = when {
+                    explicitPath != null -> explicitPath
+                    DefaultPath.exists() && DefaultPath.isRegularFile -> DefaultPath
+                    else -> return Config()
+                }
                 return TomlFileReader(
                     inputConfig = TomlInputConfig(
                         ignoreUnknownNames = true
