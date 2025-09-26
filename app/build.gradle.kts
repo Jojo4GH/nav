@@ -82,7 +82,7 @@ kotlin {
 }
 
 dependencies {
-    detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:1.23.8")
+    detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
 }
 
 tasks.register("detektAll") {
