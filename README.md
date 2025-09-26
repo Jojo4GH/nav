@@ -144,7 +144,8 @@ home-manager.users.user.programs = {
 
 ## 🔧 Configuration
 
-The default location for the configuration file is `~/.config/nav.toml`.
+To create or edit the config file you can use the `--edit-config` CLI option.
+The default location for the file is `~/.config/nav.toml`.
 You can change this by setting the `NAV_CONFIG` environment variable:
 
 <details>
