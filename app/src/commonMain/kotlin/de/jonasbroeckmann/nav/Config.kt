@@ -8,6 +8,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
@@ -15,9 +16,11 @@ import kotlinx.io.files.Path
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
+import okio.Path.Companion.toPath
 
 @Serializable
 data class Config private constructor(
@@ -244,18 +247,21 @@ data class Config private constructor(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun load(terminal: Terminal, debugMode: Boolean = false) = loadInternal(terminal, debugMode)
+        fun findConfigPath(): Path? = getenv(ENV_VAR_NAME)?.let { Path(it) } // if specified explicitly don't check for existence
+            ?: DefaultPath.takeIf { it.exists() }
+
+        context(context: RunContext)
+        fun load() = loadInternal()
             .let {
                 // fill in default editor
                 if (it.editor == null) {
-                    it.copy(editor = findDefaultEditor(terminal, debugMode))
+                    it.copy(editor = findDefaultEditor())
                 } else it
             }
 
-        private fun loadInternal(terminal: Terminal, debugMode: Boolean): Config {
-            val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
-                ?: DefaultPath.takeIf { it.exists() }?.toString()
-                ?: return Config()
+        context(context: RunContext)
+        private fun loadInternal(): Config {
+            val path = findConfigPath() ?: return Config()
             try {
                 return TomlFileReader(
                     inputConfig = TomlInputConfig(
@@ -264,40 +270,41 @@ data class Config private constructor(
                     outputConfig = TomlOutputConfig()
                 ).decodeFromFile(
                     deserializer = serializer(),
-                    tomlFilePath = path
+                    tomlFilePath = path.toString()
                 )
             } catch (e: Exception) {
-                terminal.danger("Could not load config: ${e.message}")
-                if (debugMode) {
-                    terminal.danger(e.stackTraceToString())
+                context.terminal.danger("Could not load config: ${e.message}")
+                if (context.debugMode) {
+                    context.terminal.danger(e.stackTraceToString())
                 }
-                terminal.info("Using default config")
+                context.terminal.warning("Using default config")
                 return Config()
             }
         }
 
-        private fun findDefaultEditor(terminal: Terminal, debugMode: Boolean): String? {
-            if (debugMode) terminal.println("Searching for default editor:")
+        context(context: RunContext)
+        private fun findDefaultEditor(): String? {
+            if (context.debugMode) context.terminal.println("Searching for default editor:")
 
             fun checkEnvVar(name: String): String? {
                 val value = getenv(name)?.trim() ?: run {
-                    if (debugMode) terminal.println($$"  $$$name not set")
+                    if (context.debugMode) context.terminal.println($$"  $$$name not set")
                     return null
                 }
                 if (value.isBlank()) {
-                    if (debugMode) terminal.println($$"  $$$name is empty")
+                    if (context.debugMode) context.terminal.println($$"  $$$name is empty")
                     return null
                 }
-                if (debugMode) terminal.println($$"  Using value of $$$name: $$value")
+                if (context.debugMode) context.terminal.println($$"  Using value of $$$name: $$value")
                 return value
             }
 
             fun checkProgram(name: String): String? {
                 val path = which(name) ?: run {
-                    if (debugMode) terminal.println($$"  $$name not found in $PATH")
+                    if (context.debugMode) context.terminal.println($$"  $$name not found in $PATH")
                     return null
                 }
-                if (debugMode) terminal.println("  Found $name at $path")
+                if (context.debugMode) context.terminal.println("  Found $name at $path")
                 return path.toString()
             }
 
@@ -312,8 +319,8 @@ data class Config private constructor(
                 yield(checkProgram("notepad"))
             }.filterNotNull().firstOrNull().also {
                 if (it == null) {
-                    terminal.danger("Could not find a default editor")
-                    terminal.info(specifyEditorMessage)
+                    context.terminal.danger("Could not find a default editor")
+                    context.terminal.warning(specifyEditorMessage)
                 }
             }
         }
