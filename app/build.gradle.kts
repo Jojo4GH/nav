@@ -1,3 +1,4 @@
+import com.netflix.gradle.plugins.deb.Deb
 import org.gradle.crypto.checksum.Checksum
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
@@ -10,10 +11,13 @@ plugins {
     kotlin("plugin.serialization") version kotlinVersion
     id("com.github.gmazzo.buildconfig") version "5.6.7"
     id("org.gradle.crypto.checksum") version "1.4.0"
+    id("com.netflix.nebula.ospackage") version "12.1.1"
 }
 
 group = "de.jonasbroeckmann.nav"
 version = "1.4.3"
+
+description = "The interactive and stylish replacement for ls & cd!"
 
 val binaryName = "nav"
 
@@ -79,33 +83,73 @@ inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
     linkTask: KotlinNativeLink,
     name: String,
     extension: String,
+    deb: Boolean = false,
     crossinline block: T.() -> Unit = {}
-) = register<T>("package$name") {
-    group = "distribution"
-    dependsOn(linkTask)
-    from(linkTask.outputFile) {
-        rename("$binaryName\\.kexe", binaryName)
-        filePermissions { unix("rwxr-xr-x") }
+) = buildList {
+    val target = linkTask.binary.compilation.konanTarget
+
+    this += register<T>("package$name") {
+        group = "distribution"
+        dependsOn(linkTask)
+        from(linkTask.outputFile) {
+            rename("$binaryName\\.kexe", binaryName)
+            filePermissions { unix("rwxr-xr-x") }
+        }
+        destinationDirectory.set(layout.buildDirectory.dir("packages"))
+        archiveFileName.set(
+            listOfNotNull(
+                binaryName,
+                target.targetTriple,
+                if (!linkTask.optimized) "debug" else null
+            ).joinToString("-", postfix = extension)
+        )
+        block()
     }
-    destinationDirectory.set(layout.buildDirectory.dir("packages"))
-    archiveFileName.set(
-        listOfNotNull(
-            binaryName,
-            linkTask.binary.compilation.konanTarget.targetTriple,
-            if (!linkTask.optimized) "debug" else null
-        ).joinToString("-", postfix = extension)
-    )
-    block()
+
+    if (deb) {
+        this += register<Deb>("package${name}Deb") {
+            group = "distribution"
+            dependsOn(linkTask)
+            packageName = "nav"
+            archStr = when (target.architecture) {
+                Architecture.X64 -> "amd64"
+                Architecture.X86 -> "i386"
+                Architecture.ARM64 -> "arm64"
+                Architecture.ARM32 -> "armhf"
+            }
+            maintainer = "Jojo4GH" // TODO email
+            url = "https://github.com/Jojo4GH/nav"
+            packageGroup = "utils"
+            summary = project.description
+            packageDescription = null // TODO long description
+            from(linkTask.outputFile) {
+                rename("$binaryName\\.kexe", binaryName)
+                filePermissions { unix("rwxr-xr-x") }
+                into("/usr/bin")
+            }
+            postInstall("/usr/bin/$binaryName --init-help")
+            destinationDirectory.set(layout.buildDirectory.dir("packages"))
+            archiveFileName.set("${packageName}_$archStr.deb")
+        }
+    }
 }
 
-val packageTasks = tasks.withType<KotlinNativeLink>().filter { it.optimized }.map { linkTask ->
+val packageTasks = tasks.withType<KotlinNativeLink>().filter { it.optimized }.flatMap { linkTask ->
     val konanTarget = linkTask.binary.compilation.konanTarget
     val taskName = linkTask.name.removePrefix("link")
 
-    if (konanTarget.family == Family.MINGW) {
-        tasks.registerPackage<Zip>(linkTask, taskName, ".zip")
-    } else {
-        tasks.registerPackage<Tar>(linkTask, taskName, ".tar.gz") {
+    when (konanTarget.family) {
+        Family.MINGW -> tasks.registerPackage<Zip>(
+            linkTask = linkTask,
+            name = taskName,
+            extension = ".zip"
+        )
+        else -> tasks.registerPackage<Tar>(
+            linkTask = linkTask,
+            name = taskName,
+            extension = ".tar.gz",
+            deb = konanTarget.family == Family.LINUX
+        ) {
             compression = Compression.GZIP
         }
     }
