@@ -21,7 +21,7 @@ enum class Shell(
         initScript = { binary, navFileInHome ->
             """
             function nav () {
-                "$binary" --correct-init bash "${'$'}@"
+                "$binary" --shell bash "${'$'}@"
                 navFile="${'$'}HOME/$navFileInHome"
                 if [ -f "${'$'}navFile" ]; then
                     newDir=${'$'}(cat "${'$'}navFile")
@@ -43,7 +43,7 @@ enum class Shell(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                "$binary" --correct-init zsh "${'$'}@"
+                "$binary" --shell zsh "${'$'}@"
                 navFile="${'$'}HOME/$navFileInHome"
                 if [[ -f "${'$'}navFile" ]]; then
                     newDir=$(cat "${'$'}navFile")
@@ -65,7 +65,7 @@ enum class Shell(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                & "$binary" --correct-init powershell @args
+                & "$binary" --shell powershell @args
                 ${'$'}navFile = "${'$'}HOME\$navFileInHome"
                 if (Test-Path ${'$'}navFile) {
                     ${'$'}newDir = Get-Content ${'$'}navFile
@@ -87,7 +87,7 @@ enum class Shell(
         initScript = { binary, navFileInHome ->
             """
             function nav {
-                & "$binary" --correct-init pwsh @args
+                & "$binary" --shell pwsh @args
                 ${'$'}navFile = "${'$'}HOME\$navFileInHome"
                 if (Test-Path ${'$'}navFile) {
                     ${'$'}newDir = Get-Content ${'$'}navFile
