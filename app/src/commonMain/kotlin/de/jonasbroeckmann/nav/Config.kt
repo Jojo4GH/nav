@@ -290,6 +290,8 @@ data class Config private constructor(
             }
         }
 
+        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
+
         context(context: RunContext)
         private fun findDefaultEditorCommand(): String? {
             context.printlnOnDebug { "Searching for default editor:" }
@@ -319,12 +321,9 @@ data class Config private constructor(
             return sequence {
                 yield(checkEnvVar("EDITOR"))
                 yield(checkEnvVar("VISUAL"))
-                yield(checkProgram("nano"))
-                yield(checkProgram("nvim"))
-                yield(checkProgram("vim"))
-                yield(checkProgram("vi"))
-                yield(checkProgram("code"))
-                yield(checkProgram("notepad"))
+                DefaultEditorPrograms.forEach { name ->
+                    yield(checkProgram(name))
+                }
             }.filterNotNull().firstOrNull().also {
                 if (it == null) {
                     context.terminal.danger("Could not find a default editor")
