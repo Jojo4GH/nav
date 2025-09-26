@@ -1,42 +1,34 @@
 package de.jonasbroeckmann.nav.app
 
-import com.github.ajalt.colormath.model.RGB
 import com.github.ajalt.mordant.animation.Animation
-import com.github.ajalt.mordant.input.*
+import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.*
 import com.github.ajalt.mordant.table.*
-import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.RunContext
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
-import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.UserHome
-import kotlinx.datetime.format
-import kotlinx.datetime.format.DateTimeComponents
-import kotlinx.datetime.format.MonthNames
 import kotlinx.io.files.Path
-import kotlin.math.pow
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import de.jonasbroeckmann.nav.app.State as UIState
 
 
 @OptIn(ExperimentalTime::class)
 class UI(
-    terminal: Terminal,
-    override val config: Config,
+    context: RunContext,
+    configProvider: ConfigProvider,
     private val actions: Actions
 ) : Animation<UIState>(
-    terminal = terminal
-), ConfigProvider {
+    terminal = context.terminal
+), RunContext, ConfigProvider by configProvider {
+    override val command = context.command
 
     override fun renderData(data: UIState): Widget = context(data) {
         verticalLayout {
-            if (data.debugMode) terminal.println("Updating UI ...")
+            printlnOnDebug { "Updating UI ..." }
 
             align = TextAlign.LEFT
 
@@ -45,8 +37,7 @@ class UI(
             val top = renderTitle(
                 directory = data.directory,
                 filter = data.filter,
-                showCursor = !data.isTypingCommand && !data.inQuickMacroMode,
-                debugMode = data.debugMode
+                showCursor = !data.isTypingCommand && !data.inQuickMacroMode
             )
             additionalRows += 1
 
@@ -76,7 +67,6 @@ class UI(
         tableBorders = Borders.NONE
         borderType = BorderType.BLANK
         padding = Padding(0)
-        whitespace = Whitespace.PRE_WRAP
 
         var additionalRows = additionalRows
 
@@ -96,11 +86,9 @@ class UI(
         header {
             style = TextStyles.dim.style
             row {
-                cell("Permissions")
-                cell("Size") {
-                    align = TextAlign.RIGHT
+                config.shownColumns.forEach { column ->
+                    cell(column.title)
                 }
-                cell(Text("Last Modified", overflowWrap = OverflowWrap.ELLIPSES))
                 cell("Name")
             }
             additionalRows += 1
@@ -112,9 +100,9 @@ class UI(
                 otherRows = additionalRows,
                 renderMore = { n ->
                     row {
-                        cell("")
-                        cell("")
-                        cell("")
+                        config.shownColumns.forEach { _ ->
+                            cell("")
+                        }
                         cell("… $n more") {
                             style = TextStyles.dim.style
                         }
@@ -122,31 +110,17 @@ class UI(
                 }
             ) { entry, isSelected ->
                 row {
-                    if (entry.statError != null) {
-                        cell(TextColors.red(entry.statError.message)) {
-                            columnSpan = 3
+                    val error = entry.error
+
+                    if (error != null) {
+                        cell(TextColors.red(error)) {
+                            columnSpan = config.shownColumns.size
                             align = TextAlign.CENTER
                         }
                     } else {
-                        cell(
-                            Text(
-                                text = renderPermissions(entry.stat),
-                                width = 9
-                            )
-                        )
-                        cell(
-                            Text(
-                                text = renderFileSize(entry.size),
-                                align = TextAlign.RIGHT,
-                                width = 4
-                            )
-                        )
-                        cell(
-                            Text(
-                                text = renderModificationTime(entry.stat.lastModificationTime),
-                                width = 12
-                            )
-                        )
+                        config.shownColumns.forEach { column ->
+                            cell(column.render(entry))
+                        }
                     }
                     cell(Text(
                         text = renderName(
@@ -192,8 +166,8 @@ class UI(
         }
     }
 
-    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean, debugMode: Boolean): String {
-        return "${renderPath(directory, debugMode)}${renderFilter(filter, showCursor)}"
+    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean): String {
+        return "${renderPath(directory)}${renderFilter(filter, showCursor)}"
     }
 
     private fun renderFilter(filter: String, showCursor: Boolean): String {
@@ -237,16 +211,19 @@ class UI(
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
             .let {
                 when {
-                    entry.statError != null -> "${TextStyles.dim(it)} "
+                    entry.error != null -> "${TextStyles.dim(it)} "
+                    entry.isSymbolicLink -> when {
+                        entry.isDirectory -> "${linkStyle(it)}$RealSystemPathSeparator ${TextStyles.dim("->")} "
+                        else -> "${linkStyle(it)} ${TextStyles.dim("->")} "
+                    }
                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
                     entry.isRegularFile -> "${fileStyle(it)} "
-                    entry.isSymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
                     else -> "${TextColors.magenta(it)} "
                 }
             }
     }
 
-    private fun renderPath(path: Path, debugMode: Boolean): String {
+    private fun renderPath(path: Path): String {
         val pathString = path.toString().let {
             val home = UserHome.toString().removeSuffix("$RealSystemPathSeparator")
             if (it.startsWith(home)) " ~${it.removePrefix(home)}" else it
@@ -391,7 +368,7 @@ class UI(
             }
         }
 
-        if (state.debugMode) {
+        if (debugMode) {
             if (state.inQuickMacroMode) {
                 add(TextStyles.dim("M"))
             }
@@ -413,81 +390,11 @@ class UI(
         }
     }
 
-    private fun renderPermissions(stat: Stat): String {
-        val styleRead = TextColors.rgb(config.colors.permissionRead)
-        val styleWrite = TextColors.rgb(config.colors.permissionWrite)
-        val styleExecute = TextColors.rgb(config.colors.permissionExecute)
-
-        fun render(perm: Stat.Mode.Permissions): String {
-            val r = if (perm.canRead) styleRead("r") else TextStyles.dim("-")
-            val w = if (perm.canWrite) styleWrite("w") else TextStyles.dim("-")
-            val x = if (perm.canExecute) styleExecute("x") else TextStyles.dim("-")
-            return "$r$w$x"
-        }
-
-        return "${render(stat.mode.user)}${render(stat.mode.group)}${render(stat.mode.others)}"
-    }
-
-    private fun renderFileSize(bytes: Long?): String {
-        if (bytes == null) return ""
-
-        val numStyle = TextColors.rgb(config.colors.entrySize)
-        val unitStyle = numStyle + TextStyles.dim
-
-        val units = listOf("k", "M", "G", "T", "P")
-
-        if (bytes < 1000) {
-            return numStyle("$bytes")
-        }
-
-        var value = bytes / 1000.0
-        var i = 0
-        while (value >= 1000 && i + 1 < units.size) {
-            value /= 1000.0
-            i++
-        }
-
-        fun Double.format(): String {
-            toString().take(3).let {
-                if (it.endsWith('.')) return it.dropLast(1)
-                return it
-            }
-        }
-
-        return "${numStyle(value.format())}${unitStyle(units[i])}"
-    }
-
-    private fun renderModificationTime(instant: Instant): String {
-        val now = Clock.System.now()
-        val duration = now - instant
-        val format = if (duration.absoluteValue > 365.days) DateTimeComponents.Format {
-            day()
-            chars(" ")
-            monthName(MonthNames.ENGLISH_ABBREVIATED)
-            chars("  ")
-            year()
-        } else DateTimeComponents.Format {
-            day()
-            chars(" ")
-            monthName(MonthNames.ENGLISH_ABBREVIATED)
-            chars(" ")
-            hour()
-            chars(":")
-            minute()
-        }
-
-        val hoursSinceInstant = (duration.inWholeMinutes / 60.0).coerceAtLeast(0.0)
-        val factor = 2.0.pow(-hoursSinceInstant / config.modificationTime.halfBrightnessAtHours)
-
-        val brightnessRange = config.modificationTime.minimumBrightness..1.0
-        val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
-
-        val rgb = RGB(config.colors.modificationTime)
-        val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
-        return style(instant.format(format))
-    }
-
     companion object {
+
+        context(context: RunContext, configProvider: ConfigProvider)
+        operator fun invoke(actions: Actions) = UI(context, configProvider, actions)
+
         fun keyName(key: KeyboardEvent): String {
             var k = when (key.key) {
                 "Enter" -> "enter"
@@ -510,9 +417,9 @@ class UI(
         context(configProvider: ConfigProvider)
         val UIState.Entry?.style get() = when {
             this == null -> TextColors.magenta
+            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
             isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
             isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
-            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
             else -> TextColors.magenta
         }
     }
