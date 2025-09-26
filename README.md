@@ -144,7 +144,7 @@ home-manager.users.user.programs = {
 
 ## 🔧 Configuration
 
-To create or edit the config file you can use the `--edit-config` CLI option.
+To create or edit the config file you can use the `--edit-config` command line option.
 The default location for the file is `~/.config/nav.toml`.
 You can change this by setting the `NAV_CONFIG` environment variable:
 
@@ -166,11 +166,14 @@ $ENV:NAV_CONFIG = "$HOME\some\other\path\nav.toml"
 
 </details>
 
+You can also use the `--config` command line option to explicitly specify a config file.
+
 The default configuration looks as follows:
 
 ```toml
 # If not specified, uses the first that exists of the following:
 # $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
+# You can also use the --editor command line option to override this
 editor = "nano"
 
 hideHints = false
