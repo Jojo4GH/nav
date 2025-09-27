@@ -26,7 +26,6 @@ import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
 
 class NavCommand : CliktCommand(name = BinaryName) {
-
     val startingDirectory by argument(
         "DIRECTORY",
         help = "The directory to start in",
@@ -98,8 +97,11 @@ class NavCommand : CliktCommand(name = BinaryName) {
 
     private sealed interface InitOption {
         data object Info : InitOption
+
         data class Init(val shell: Shell) : InitOption
+
         data class ProfileLocation(val shell: Shell) : InitOption
+
         data class ProfileCommand(val shell: Shell) : InitOption
     }
 

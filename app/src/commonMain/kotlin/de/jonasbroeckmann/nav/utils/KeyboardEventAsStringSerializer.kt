@@ -9,16 +9,17 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
-
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("KeyboardEvent", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: KeyboardEvent) {
-        encoder.encodeString(buildList {
-            if (value.ctrl) add("ctrl")
-            if (value.shift) add("shift")
-            if (value.alt) add("alt")
-            add(value.key)
-        }.joinToString(MODIFIER_SEPARATOR))
+        encoder.encodeString(
+            buildList {
+                if (value.ctrl) add("ctrl")
+                if (value.shift) add("shift")
+                if (value.alt) add("alt")
+                add(value.key)
+            }.joinToString(MODIFIER_SEPARATOR)
+        )
     }
 
     override fun deserialize(decoder: Decoder): KeyboardEvent {

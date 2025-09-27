@@ -23,7 +23,6 @@ class App(
     context: RunContext,
     override val config: Config
 ) : RunContext by context, ConfigProvider {
-
     private val actions = Actions(config)
     private var state = State(
         directory = startingDirectory,
@@ -193,9 +192,11 @@ class App(
                 if (filtered.filteredItems.size == state.filteredItems.size) {
                     return Event.NewState(filtered)
                 }
-                return Event.NewState(filtered.withCursorOnFirst {
-                    it.path.name.startsWith(filter, ignoreCase = true)
-                })
+                return Event.NewState(
+                    filtered.withCursorOnFirst {
+                        it.path.name.startsWith(filter, ignoreCase = true)
+                    }
+                )
             }
         }
         return null
@@ -217,16 +218,21 @@ class App(
 
     sealed interface Event {
         data class NewState(val state: State) : Event
+
         sealed interface OutsideUI : Event
 
         data class OpenFile(val file: Path) : OutsideUI
+
         data object RunCommand : OutsideUI
+
         data class RunMacroCommand(
             val command: String,
             val eventAfterSuccessfulCommand: Event?,
             val eventAfterFailedCommand: Event?
         ) : OutsideUI
+
         data class ExitAt(val directory: Path) : OutsideUI
+
         data object Exit : OutsideUI
     }
 }

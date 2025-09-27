@@ -128,7 +128,6 @@ data class State(
             .toList()
     }
 
-
     data class Entry(
         val path: Path,
     ) {

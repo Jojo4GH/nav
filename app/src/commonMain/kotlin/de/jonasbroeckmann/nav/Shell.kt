@@ -5,7 +5,6 @@ import com.github.ajalt.mordant.terminal.Terminal
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.which
 
-
 enum class Shell(
     val shell: String,
     private val pathSanitizer: (String) -> String,

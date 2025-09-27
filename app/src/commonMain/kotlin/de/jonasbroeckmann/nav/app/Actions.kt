@@ -326,13 +326,14 @@ class Actions(config: Config) : ConfigProvider by config {
 sealed interface Action<Event : InputEvent?> {
     val description: State.() -> String?
 
-    context(state: State) fun style(): TextStyle?
+    context(state: State)
+    fun style(): TextStyle?
 
     fun matches(state: State, input: Event): Boolean
+
     fun isAvailable(state: State): Boolean
 
     fun perform(state: State, input: Event): App.Event?
-
 }
 
 data class MenuAction(
@@ -346,6 +347,7 @@ data class MenuAction(
     override fun style() = state.style()
 
     override fun matches(state: State, input: Nothing?) = isAvailable(state)
+
     override fun isAvailable(state: State) = state.condition()
 
     override fun perform(state: State, input: Nothing?) = state.action()
@@ -379,6 +381,7 @@ data class KeyAction(
     override fun style() = state.style()
 
     override fun matches(state: State, input: KeyboardEvent) = keyFilter(state, input) && isAvailable(state)
+
     override fun isAvailable(state: State) = state.condition()
 
     override fun perform(state: State, input: KeyboardEvent) = state.action(input)

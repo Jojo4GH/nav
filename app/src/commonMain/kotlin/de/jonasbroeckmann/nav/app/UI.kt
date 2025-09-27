@@ -15,15 +15,12 @@ import kotlinx.io.files.Path
 import kotlin.time.ExperimentalTime
 import de.jonasbroeckmann.nav.app.State as UIState
 
-
 @OptIn(ExperimentalTime::class)
 class UI(
     context: RunContext,
     configProvider: ConfigProvider,
     private val actions: Actions
-) : Animation<UIState>(
-    terminal = context.terminal
-), RunContext, ConfigProvider by configProvider {
+) : Animation<UIState>(terminal = context.terminal), RunContext, ConfigProvider by configProvider {
     override val command = context.command
 
     override fun renderData(data: UIState): Widget = context(data) {
@@ -122,13 +119,15 @@ class UI(
                             cell(column.render(entry))
                         }
                     }
-                    cell(Text(
-                        text = renderName(
-                            entry = entry,
-                            isSelected = isSelected,
-                            filter = filter
+                    cell(
+                        Text(
+                            text = renderName(
+                                entry = entry,
+                                isSelected = isSelected,
+                                filter = filter
+                            )
                         )
-                    ))
+                    )
                 }
             }
         }
@@ -206,7 +205,9 @@ class UI(
                         index += filter.length
                     }
                     result
-                } else it
+                } else {
+                    it
+                }
             }
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
@@ -276,9 +277,11 @@ class UI(
                 val isSelected = i == state.coercedMenuCursor
                 if (isSelected) {
                     cell(renderAction(actions.menuSubmit))
-                    cell(renderAction(item).let { rendered ->
-                        item.selectedStyle?.let { it(rendered) + " " } ?: rendered
-                    })
+                    cell(
+                        renderAction(item).let { rendered ->
+                            item.selectedStyle?.let { it(rendered) + " " } ?: rendered
+                        }
+                    )
                 } else {
                     cell("")
                     cell(renderAction(item))
@@ -392,7 +395,6 @@ class UI(
     }
 
     companion object {
-
         context(context: RunContext, configProvider: ConfigProvider)
         operator fun invoke(actions: Actions) = UI(context, configProvider, actions)
 
