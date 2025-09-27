@@ -14,7 +14,7 @@ import kotlin.time.Instant
 actual fun stat(path: Path): StatResult = memScoped {
     val result: stat = alloc()
     set_posix_errno(0)
-    stat(path.toString(), result.ptr)
+    lstat(path.toString(), result.ptr)
     return StatResult.fromErrno() ?: Stat(
         deviceId = result.st_dev,
         serialNumber = result.st_ino,
