@@ -2,7 +2,6 @@ package de.jonasbroeckmann.nav.utils
 
 import kotlin.experimental.ExperimentalNativeApi
 
-
 @OptIn(ExperimentalNativeApi::class)
 actual val PathsSeparator: Char = when (Platform.osFamily) {
     OsFamily.WINDOWS -> ';'
