@@ -31,6 +31,8 @@ jobs:
             ~/.konan
       - name: Detekt
         run: ./gradlew detektAll
+      - run: ls -la ~
+      - run: ls -la ~/.gradle
 
   assemble:
     runs-on: ubuntu-latest
