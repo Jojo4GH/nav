@@ -7,6 +7,7 @@ import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.getGroupNameFromId
 import de.jonasbroeckmann.nav.utils.getUserNameFromId
+import de.jonasbroeckmann.nav.utils.readLink
 import de.jonasbroeckmann.nav.utils.stat
 import kotlinx.io.files.Path
 
@@ -142,6 +143,7 @@ data class State(
 
         val userName by lazy { getUserNameFromId(stat.userId) }
         val groupName by lazy { getGroupNameFromId(stat.groupId) }
+        val linkTarget by lazy { readLink(path) }
 
         val error get() = statError?.message
     }

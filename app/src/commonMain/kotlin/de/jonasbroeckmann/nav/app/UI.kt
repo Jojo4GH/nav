@@ -215,9 +215,10 @@ class UI(
                 when {
                     entry.error != null -> "${TextStyles.dim(it)} "
                     entry.isSymbolicLink -> when {
-                        entry.isDirectory -> "${linkStyle(it)}$RealSystemPathSeparator ${TextStyles.dim("->")} "
-                        else -> "${linkStyle(it)} ${TextStyles.dim("->")} "
+                        entry.isDirectory -> "${linkStyle(it)}$RealSystemPathSeparator ${TextStyles.dim("-> ${entry.linkTarget}")} "
+                        else -> "${linkStyle(it)} ${TextStyles.dim("-> ${entry.linkTarget}")} "
                     }
+
                     entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
                     entry.isRegularFile -> "${fileStyle(it)} "
                     else -> "${TextColors.magenta(it)} "
@@ -237,6 +238,7 @@ class UI(
             elements.size > max -> {
                 elements.subList(0, 1) + listOf("…") + elements.subList(elements.size - (max - 2), elements.size)
             }
+
             else -> elements
         }
 
@@ -419,12 +421,13 @@ class UI(
         }
 
         context(configProvider: ConfigProvider)
-        val UIState.Entry?.style get() = when {
-            this == null -> TextColors.magenta
-            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
-            isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
-            isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
-            else -> TextColors.magenta
-        }
+        val UIState.Entry?.style
+            get() = when {
+                this == null -> TextColors.magenta
+                isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
+                isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
+                isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
+                else -> TextColors.magenta
+            }
     }
 }
