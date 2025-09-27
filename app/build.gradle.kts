@@ -95,6 +95,45 @@ tasks.register("detektAll") {
     dependsOn(tasks.withType<Detekt>().filter { !it.multiPlatformEnabled.get() })
 }
 
+abstract class VerifyVersion : DefaultTask() {
+    @Option(option = "against", description = "The version to verify")
+    @Optional
+    @Input
+    var verifyVersion: String? = null
+
+    @Input
+    lateinit var projectVersion: String
+
+    @InputFile
+    lateinit var pkgbuildFile: File
+
+    @TaskAction
+    fun verify() {
+        if (verifyVersion != null) {
+            require(projectVersion == verifyVersion) {
+                "Project version '$projectVersion' does not match the provided version '$verifyVersion'"
+            }
+        }
+        pkgbuildFile.useLines { lines ->
+            val (pkgver) = lines
+                .mapNotNull { line -> Regex("""^pkgver="(.*)"$""").matchEntire(line) }
+                .singleOrNull()
+                ?.destructured
+                ?: error("Could not find exactly one version line in install/PKGBUILD")
+            require(pkgver == projectVersion) {
+                "PKGBUILD version '$pkgver' does not match the project version '$projectVersion'"
+            }
+        }
+        println("Version '$projectVersion' verified successfully")
+    }
+}
+
+tasks.register<VerifyVersion>("verifyVersion") {
+    group = "verification"
+    projectVersion = project.version.toString()
+    pkgbuildFile = rootProject.file("install/PKGBUILD")
+}
+
 inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
     linkTask: KotlinNativeLink,
     name: String,

@@ -1,0 +1,20 @@
+name: gradle-setup-action
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: 21
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+    - name: Setup cache
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+        path: |
+          ${{ env.GRADLE_USER_HOME }}/caches
+          ${{ env.GRADLE_USER_HOME }}/notifications
+          ${{ env.GRADLE_USER_HOME }}/wrapper
+          ${{ env.KONAN_DATA_DIR }}
