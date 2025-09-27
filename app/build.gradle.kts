@@ -1,4 +1,5 @@
 import com.netflix.gradle.plugins.deb.Deb
+import dev.detekt.gradle.Detekt
 import org.gradle.crypto.checksum.Checksum
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
@@ -9,6 +10,7 @@ plugins {
     val kotlinVersion = "2.2.0"
     kotlin("multiplatform") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
+    id("dev.detekt") version "2.0.0-alpha.0"
     id("com.github.gmazzo.buildconfig") version "5.6.7"
     id("org.gradle.crypto.checksum") version "1.4.0"
     id("com.netflix.nebula.ospackage") version "12.1.1"
@@ -77,6 +79,20 @@ kotlin {
             implementation("com.kgit2:kommand:2.3.0")
         }
     }
+}
+
+dependencies {
+    detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
+}
+
+tasks.withType<Detekt>().configureEach {
+    exclude("de/jonasbroeckmann/nav/app/BuildConfig.kt")
+}
+
+tasks.register("detektAll") {
+    group = "verification"
+    description = "Run all detekt checks"
+    dependsOn(tasks.withType<Detekt>().filter { !it.multiPlatformEnabled.get() })
 }
 
 inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(

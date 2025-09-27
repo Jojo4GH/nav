@@ -1,4 +1,5 @@
 @file:UseSerializers(KeyboardEventAsStringSerializer::class)
+
 package de.jonasbroeckmann.nav
 
 import com.akuleshov7.ktoml.TomlInputConfig
@@ -63,23 +64,27 @@ data class Config private constructor(
             val home: KeyboardEvent = KeyboardEvent("Home"),
             val end: KeyboardEvent = KeyboardEvent("End")
         )
+
         @Serializable
         data class Menu(
             val up: KeyboardEvent = KeyboardEvent("PageUp"),
             val down: KeyboardEvent = KeyboardEvent("PageDown"),
         )
+
         @Serializable
         data class Nav(
             val up: KeyboardEvent = KeyboardEvent("ArrowLeft"),
             val into: KeyboardEvent = KeyboardEvent("ArrowRight"),
             val open: KeyboardEvent = KeyboardEvent("ArrowRight")
         )
+
         @Serializable
         data class Filter(
             val autocomplete: KeyboardEvent = KeyboardEvent("Tab"),
             val clear: KeyboardEvent = EscapeOrDelete
         )
     }
+
     @Serializable
     data class Colors(
         val path: String = Retro.path,
@@ -152,6 +157,7 @@ data class Config private constructor(
             )
         }
     }
+
     @Serializable
     data class Autocomplete(
         val style: Style = Style.CommonPrefixCycle,
@@ -161,15 +167,19 @@ data class Config private constructor(
         enum class Style {
             /** Auto complete the largest common prefix and stop */
             CommonPrefixStop,
+
             /** Auto complete the largest common prefix and cycle through all entries */
             CommonPrefixCycle
         }
+
         @Serializable
         enum class AutoNavigation {
             /** Do not auto navigate */
             None,
+
             /** Auto complete the entry and on second action navigate */
             OnSingleAfterCompletion,
+
             /** Auto complete the entry and navigate immediately (not recommended) */
             OnSingle
         }
@@ -242,10 +252,8 @@ data class Config private constructor(
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
         context(context: RunContext)
-        fun findExplicitPath(): Path? {
-            return context.command.configurationOptions.configPath?.let { Path(it) }
-                ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
-        }
+        fun findExplicitPath(): Path? = context.command.configurationOptions.configPath?.let { Path(it) }
+            ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
         context(context: RunContext)
         fun load() = loadInternal()
@@ -259,7 +267,9 @@ data class Config private constructor(
                 // fill in default editor
                 if (it.editorCommand == null) {
                     it.copy(editorCommand = findDefaultEditorCommand())
-                } else it
+                } else {
+                    it
+                }
             }
 
         context(context: RunContext)
@@ -305,7 +315,7 @@ data class Config private constructor(
                     context.printlnOnDebug { $$"  $$$name is empty" }
                     return null
                 }
-                    context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
+                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
                 return value
             }
 
@@ -314,7 +324,7 @@ data class Config private constructor(
                     context.printlnOnDebug { $$"  $$name not found in $PATH" }
                     return null
                 }
-                    context.printlnOnDebug { "  Found $name at $path" }
+                context.printlnOnDebug { "  Found $name at $path" }
                 return "\"$path\"" // quote path to handle spaces
             }
 
@@ -333,7 +343,7 @@ data class Config private constructor(
         }
 
         val specifyEditorMessage: String get() {
-            return $$"""Please specify an editor via the --editor CLI option, the editor config option or the $EDITOR environment variable"""
+            return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
         }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
