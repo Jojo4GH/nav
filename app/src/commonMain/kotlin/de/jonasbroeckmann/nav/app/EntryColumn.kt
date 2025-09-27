@@ -61,6 +61,7 @@ enum class EntryColumn(
         Text(entry.groupName?.let { TextColors.rgb(config.colors.group)(it) } ?: TextStyles.dim("?"))
     }),
 
+    @Suppress("detekt:MagicNumber")
     EntrySize("Size", render@{ entry ->
         val bytes = entry.size ?: return@render Text("", align = TextAlign.RIGHT)
 
@@ -93,6 +94,7 @@ enum class EntryColumn(
         )
     }),
 
+    @Suppress("detekt:MagicNumber")
     @OptIn(ExperimentalTime::class)
     LastModified("Last Modified", { entry ->
         val instant = entry.stat.lastModificationTime

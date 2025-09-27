@@ -85,6 +85,10 @@ dependencies {
     detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
 }
 
+tasks.withType<Detekt>().configureEach {
+    exclude("de/jonasbroeckmann/nav/app/BuildConfig.kt")
+}
+
 tasks.register("detektAll") {
     group = "verification"
     description = "Run all detekt checks"
