@@ -22,7 +22,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.ExperimentalTime
 
-@Suppress("unused")
+@Suppress("unused", "detekt:Wrapping")
 @Serializable(with = EntryColumn.Companion::class)
 enum class EntryColumn(
     title: String,
@@ -33,7 +33,6 @@ enum class EntryColumn(
     context(config: ConfigProvider)
     override fun render(entry: State.Entry): Widget = config.render(entry)
 } {
-
     Permissions("Permissions", { entry ->
         val styleRead = TextColors.rgb(config.colors.permissionRead)
         val styleWrite = TextColors.rgb(config.colors.permissionWrite)

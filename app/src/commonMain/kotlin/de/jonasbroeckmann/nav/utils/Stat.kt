@@ -5,7 +5,6 @@ import kotlin.jvm.JvmInline
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-
 fun Path.stat(): StatResult = stat(this)
 
 expect fun stat(path: Path): StatResult
@@ -15,7 +14,9 @@ sealed interface StatResult {
         val message: String
 
         @JvmInline value class NotFound(override val message: String) : Error
+
         @JvmInline value class InvalidArgument(override val message: String) : Error
+
         @JvmInline value class Other(override val message: String) : Error
     }
 
@@ -93,8 +94,8 @@ data class Stat(
     }
 }
 
-
 infix fun UInt.mask(mask: Int): Boolean = (this and mask.toUInt()) == mask.toUInt()
+
 infix fun UShort.mask(mask: Int): Boolean = (this.toUInt() and mask.toUInt()) == mask.toUInt()
 
 infix fun UInt.bit(i: Int): Boolean = ((this shr i) and 1u) != 0u

@@ -167,6 +167,7 @@ data class Config private constructor(
         enum class Style {
             /** Auto complete the largest common prefix and stop */
             CommonPrefixStop,
+
             /** Auto complete the largest common prefix and cycle through all entries */
             CommonPrefixCycle
         }
@@ -175,8 +176,10 @@ data class Config private constructor(
         enum class AutoNavigation {
             /** Do not auto navigate */
             None,
+
             /** Auto complete the entry and on second action navigate */
             OnSingleAfterCompletion,
+
             /** Auto complete the entry and navigate immediately (not recommended) */
             OnSingle
         }
@@ -264,7 +267,9 @@ data class Config private constructor(
                 // fill in default editor
                 if (it.editorCommand == null) {
                     it.copy(editorCommand = findDefaultEditorCommand())
-                } else it
+                } else {
+                    it
+                }
             }
 
         context(context: RunContext)
@@ -310,7 +315,7 @@ data class Config private constructor(
                     context.printlnOnDebug { $$"  $$$name is empty" }
                     return null
                 }
-                    context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
+                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
                 return value
             }
 
@@ -319,7 +324,7 @@ data class Config private constructor(
                     context.printlnOnDebug { $$"  $$name not found in $PATH" }
                     return null
                 }
-                    context.printlnOnDebug { "  Found $name at $path" }
+                context.printlnOnDebug { "  Found $name at $path" }
                 return "\"$path\"" // quote path to handle spaces
             }
 
