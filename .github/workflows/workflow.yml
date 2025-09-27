@@ -25,14 +25,14 @@ jobs:
         with:
           key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
           path: |
-            ~/.gradle/caches
-            ~/.gradle/notifications
-            ~/.gradle/wrapper
-            ~/.konan
+            ${{ github.workspace }}/.gradle/caches
+            ${{ github.workspace }}/.gradle/notifications
+            ${{ github.workspace }}/.gradle/wrapper
+            ${{ github.workspace }}/.konan
       - name: Detekt
         run: ./gradlew detektAll
-      - run: ls -la ~
-      - run: ls -la ~/.gradle
+      - run: ls -la ${{ github.workspace }}
+      - run: ls -la ${{ github.workspace }}/.gradle
 
   assemble:
     runs-on: ubuntu-latest
@@ -51,10 +51,10 @@ jobs:
         with:
           key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
           path: |
-            ~/.gradle/caches
-            ~/.gradle/notifications
-            ~/.gradle/wrapper
-            ~/.konan
+            ${{ github.workspace }}/.gradle/caches
+            ${{ github.workspace }}/.gradle/notifications
+            ${{ github.workspace }}/.gradle/wrapper
+            ${{ github.workspace }}/.konan
       - name: Build
         run: ./gradlew assemble
 
@@ -76,9 +76,9 @@ jobs:
         with:
           key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
           path: |
-            ~/.gradle/caches
-            ~/.gradle/notifications
-            ~/.gradle/wrapper
-            ~/.konan
+            ${{ github.workspace }}/.gradle/caches
+            ${{ github.workspace }}/.gradle/notifications
+            ${{ github.workspace }}/.gradle/wrapper
+            ${{ github.workspace }}/.konan
       - name: Check
         run: ./gradlew check
