@@ -1,0 +1,42 @@
+name: Package
+
+on:
+  push:
+    tags:
+      - 'v*.*.**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to verify against'
+        required: false
+        default: ''
+
+jobs:
+  verifyVersion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+      - uses: ./.github/actions/gradle-setup-action
+      - run: ./gradlew verifyVersion --against=${GITHUB_REF#refs/tags/v}
+        if: github.ref_type == 'tag'
+      - run: ./gradlew verifyVersion --against=${{ inputs.version }}
+        if: inputs.version != ''
+      - run: ./gradlew verifyVersion
+        if: github.ref_type != 'tag' && inputs.version == ''
+
+  packageAll:
+    runs-on: ubuntu-latest
+    needs: verifyVersion
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+      - uses: ./.github/actions/gradle-setup-action
+      - run: ./gradlew packageAll
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            app/build/packages/*
+            app/build/checksums/*
