@@ -88,7 +88,7 @@ dependencies {
 tasks.register("detektAll") {
     group = "verification"
     description = "Run all detekt checks"
-    dependsOn(tasks.withType<Detekt>())
+    dependsOn(tasks.withType<Detekt>().filter { !it.multiPlatformEnabled.get() })
 }
 
 inline fun <reified T : AbstractArchiveTask> TaskContainer.registerPackage(
