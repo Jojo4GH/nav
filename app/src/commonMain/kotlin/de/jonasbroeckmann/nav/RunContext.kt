@@ -14,7 +14,6 @@ interface RunContext {
     val shell: Shell? get() = command.configurationOptions.shell
 
     companion object {
-
         operator fun invoke(
             terminal: Terminal,
             command: NavCommand

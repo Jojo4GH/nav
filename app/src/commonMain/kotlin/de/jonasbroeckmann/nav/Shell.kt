@@ -5,7 +5,6 @@ import com.github.ajalt.mordant.terminal.Terminal
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.which
 
-
 enum class Shell(
     val shell: String,
     private val pathSanitizer: (String) -> String,
@@ -19,65 +18,65 @@ enum class Shell(
         shell = "bash",
         pathSanitizer = UnixPathSanitizer,
         initScript = { binary, navFileInHome ->
-            """
+            $$"""
             function nav () {
-                "$binary" --shell bash "${'$'}@"
-                navFile="${'$'}HOME/$navFileInHome"
-                if [ -f "${'$'}navFile" ]; then
-                    newDir=${'$'}(cat "${'$'}navFile")
-                    if [ -n "${'$'}newDir" ]; then
-                        cd "${'$'}newDir" || exit
-                        rm -f "${'$'}navFile"
+                "$$binary" --shell bash "$@"
+                navFile="$HOME/$$navFileInHome"
+                if [ -f "$navFile" ]; then
+                    newDir=$(cat "$navFile")
+                    if [ -n "$newDir" ]; then
+                        cd "$newDir" || exit
+                        rm -f "$navFile"
                     fi
                 fi
             }
             """.trimIndent()
         },
         profileLocation = "~/.bashrc",
-        profileCommand = "eval \"\$(${NavCommand.BinaryName} --init bash)\"",
+        profileCommand = $$"""eval "$($${NavCommand.BinaryName} --init bash)"""",
         execCommandArgs = { listOf("-c", it) }
     ),
     ZSH(
         shell = "zsh",
         pathSanitizer = UnixPathSanitizer,
         initScript = { binary, navFileInHome ->
-            """
+            $$"""
             function nav {
-                "$binary" --shell zsh "${'$'}@"
-                navFile="${'$'}HOME/$navFileInHome"
-                if [[ -f "${'$'}navFile" ]]; then
-                    newDir=$(cat "${'$'}navFile")
-                    if [[ -n "${'$'}newDir" ]]; then
-                        cd "${'$'}newDir" || exit
-                        rm -f "${'$'}navFile"
+                "$$binary" --shell zsh "$@"
+                navFile="$HOME/$$navFileInHome"
+                if [[ -f "$navFile" ]]; then
+                    newDir=$(cat "$navFile")
+                    if [[ -n "$newDir" ]]; then
+                        cd "$newDir" || exit
+                        rm -f "$navFile"
                     fi
                 fi
             }
             """.trimIndent()
         },
         profileLocation = "~/.zshrc",
-        profileCommand = "eval \"\$(${NavCommand.BinaryName} --init zsh)\"",
+        profileCommand = $$"""eval "$($${NavCommand.BinaryName} --init zsh)"""",
         execCommandArgs = { listOf("-c", it) }
     ),
     POWERSHELL(
         shell = "powershell",
         pathSanitizer = WindowsPathSanitizer,
         initScript = { binary, navFileInHome ->
-            """
+            $$"""
             function nav {
-                & "$binary" --shell powershell @args
-                ${'$'}navFile = "${'$'}HOME\$navFileInHome"
-                if (Test-Path ${'$'}navFile) {
-                    ${'$'}newDir = Get-Content ${'$'}navFile
-                    if (${'$'}newDir) {
-                        Set-Location ${'$'}newDir
-                        Remove-Item ${'$'}navFile
+                & "$$binary" --shell powershell @args
+                $navFile = "$HOME\$$navFileInHome"
+                if (Test-Path $navFile) {
+                    $newDir = Get-Content $navFile
+                    if ($newDir) {
+                        Set-Location $newDir
+                        Remove-Item $navFile
                     }
                 }
             }
             """.trimIndent()
         },
-        profileLocation = "\$PROFILE",
+        profileLocation = $$"$PROFILE",
         profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init powershell | Out-String)",
         execCommandArgs = { listOf("-NoProfile", "-c", it) }
     ),
@@ -85,21 +84,21 @@ enum class Shell(
         shell = "pwsh",
         pathSanitizer = WindowsPathSanitizer,
         initScript = { binary, navFileInHome ->
-            """
+            $$"""
             function nav {
-                & "$binary" --shell pwsh @args
-                ${'$'}navFile = "${'$'}HOME\$navFileInHome"
-                if (Test-Path ${'$'}navFile) {
-                    ${'$'}newDir = Get-Content ${'$'}navFile
-                    if (${'$'}newDir) {
-                        Set-Location ${'$'}newDir
-                        Remove-Item ${'$'}navFile
+                & "$$binary" --shell pwsh @args
+                $navFile = "$HOME\$$navFileInHome"
+                if (Test-Path $navFile) {
+                    $newDir = Get-Content $navFile
+                    if ($newDir) {
+                        Set-Location $newDir
+                        Remove-Item $navFile
                     }
                 }
             }
             """.trimIndent()
         },
-        profileLocation = "\$PROFILE",
+        profileLocation = $$"$PROFILE",
         profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init pwsh | Out-String)",
         execCommandArgs = { listOf("-NoProfile", "-c", it) }
     );
@@ -119,13 +118,15 @@ enum class Shell(
 
     fun printInitInfo(terminal: Terminal) {
         terminal.println(TextStyles.underline(shell))
-        terminal.println(listOfNotNull(
-            "Add the following to the end of $profileLocation:",
-            profileDescription,
-            "",
-            "\t$profileCommand",
-            "",
-        ).joinToString("\n"))
+        terminal.println(
+            listOfNotNull(
+                "Add the following to the end of $profileLocation:",
+                profileDescription,
+                "",
+                "\t$profileCommand",
+                "",
+            ).joinToString("\n")
+        )
     }
 
     companion object {

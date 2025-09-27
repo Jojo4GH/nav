@@ -1,0 +1,82 @@
+name: Build & Check
+
+on: push
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+  KONAN_DATA_DIR: ${{ github.workspace }}/.konan
+
+jobs:
+  detektAll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Setup cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          path: |
+            ${{ github.workspace }}/.gradle/caches
+            ${{ github.workspace }}/.gradle/notifications
+            ${{ github.workspace }}/.gradle/wrapper
+            ${{ github.workspace }}/.konan
+      - name: Detekt
+        run: ./gradlew detektAll
+
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Setup cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          path: |
+            ${{ github.workspace }}/.gradle/caches
+            ${{ github.workspace }}/.gradle/notifications
+            ${{ github.workspace }}/.gradle/wrapper
+            ${{ github.workspace }}/.konan
+      - name: Build
+        run: ./gradlew assemble
+
+  check:
+    runs-on: ubuntu-latest
+    needs: assemble
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Setup cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          path: |
+            ${{ github.workspace }}/.gradle/caches
+            ${{ github.workspace }}/.gradle/notifications
+            ${{ github.workspace }}/.gradle/wrapper
+            ${{ github.workspace }}/.konan
+      - name: Check
+        run: ./gradlew check

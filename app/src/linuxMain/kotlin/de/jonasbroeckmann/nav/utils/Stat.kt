@@ -10,7 +10,6 @@ import platform.posix.*
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-
 @OptIn(ExperimentalForeignApi::class, ExperimentalTime::class, UnsafeNumber::class)
 actual fun stat(path: Path): StatResult = memScoped {
     val result: stat = alloc()

@@ -22,7 +22,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.ExperimentalTime
 
-@Suppress("unused")
+@Suppress("unused", "detekt:Wrapping")
 @Serializable(with = EntryColumn.Companion::class)
 enum class EntryColumn(
     title: String,
@@ -33,7 +33,6 @@ enum class EntryColumn(
     context(config: ConfigProvider)
     override fun render(entry: State.Entry): Widget = config.render(entry)
 } {
-
     Permissions("Permissions", { entry ->
         val styleRead = TextColors.rgb(config.colors.permissionRead)
         val styleWrite = TextColors.rgb(config.colors.permissionWrite)
@@ -61,6 +60,7 @@ enum class EntryColumn(
         Text(entry.groupName?.let { TextColors.rgb(config.colors.group)(it) } ?: TextStyles.dim("?"))
     }),
 
+    @Suppress("detekt:MagicNumber")
     EntrySize("Size", render@{ entry ->
         val bytes = entry.size ?: return@render Text("", align = TextAlign.RIGHT)
 
@@ -93,6 +93,7 @@ enum class EntryColumn(
         )
     }),
 
+    @Suppress("detekt:MagicNumber")
     @OptIn(ExperimentalTime::class)
     LastModified("Last Modified", { entry ->
         val instant = entry.stat.lastModificationTime
