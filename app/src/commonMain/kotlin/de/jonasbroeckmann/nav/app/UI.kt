@@ -180,6 +180,7 @@ class UI(
         }
     }
 
+    @Suppress("detekt:CyclomaticComplexMethod")
     private fun renderName(entry: UIState.Entry, isSelected: Boolean, filter: String): String {
         val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
         val dirStyle = TextColors.rgb(config.colors.directory)
@@ -395,6 +396,7 @@ class UI(
         context(context: RunContext, configProvider: ConfigProvider)
         operator fun invoke(actions: Actions) = UI(context, configProvider, actions)
 
+        @Suppress("detekt:CyclomaticComplexMethod")
         fun keyName(key: KeyboardEvent): String {
             var k = when (key.key) {
                 "Enter" -> "enter"

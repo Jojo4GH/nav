@@ -60,6 +60,7 @@ class App(
         exitProcess(0)
     }
 
+    @Suppress("detekt:CyclomaticComplexMethod")
     private fun Event.handle(): Boolean = when (this) {
         is Event.NewState -> {
             if (debugMode) {
@@ -159,6 +160,7 @@ class App(
         }
     }
 
+    @Suppress("detekt:CyclomaticComplexMethod", "detekt:ReturnCount")
     private fun InputEvent.process(): Event? {
         if (this !is KeyboardEvent) return null
         if (isCtrlC) return Event.Exit

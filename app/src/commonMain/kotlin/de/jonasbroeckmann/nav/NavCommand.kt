@@ -48,7 +48,8 @@ class NavCommand : CliktCommand(name = BinaryName) {
         val configPath by option(
             "--config",
             metavar = "PATH",
-            help = """Explicitly specify the config file to use (default: looks for config file at $${Config.ENV_VAR_NAME} or "${Config.DefaultPath}")"""
+            help = "Explicitly specify the config file to use " +
+                "(default: looks for config file at $${Config.ENV_VAR_NAME} or \"${Config.DefaultPath}\")"
         )
 
         val shell by option(
