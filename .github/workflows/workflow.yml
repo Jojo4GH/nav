@@ -31,8 +31,6 @@ jobs:
             ${{ github.workspace }}/.konan
       - name: Detekt
         run: ./gradlew detektAll
-      - run: ls -la ${{ github.workspace }}
-      - run: ls -la ${{ github.workspace }}/.gradle
 
   assemble:
     runs-on: ubuntu-latest
