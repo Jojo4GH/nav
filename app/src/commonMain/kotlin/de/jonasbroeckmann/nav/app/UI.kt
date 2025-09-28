@@ -109,7 +109,9 @@ class UI(
             ) { entry, isSelected ->
                 row {
                     val error = entry.error
-
+                        ?.lineSequence()
+                        ?.joinToString(" ")
+                        ?.trim { it.isWhitespace() }
                     if (error != null) {
                         cell(TextColors.red(error)) {
                             columnSpan = config.shownColumns.size
