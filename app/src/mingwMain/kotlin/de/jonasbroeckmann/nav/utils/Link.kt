@@ -54,6 +54,7 @@ internal inline fun <R> Path.useHandle(
         block(handle)
     } finally {
         if (CloseHandle(handle) == 0) {
+            @Suppress("detekt:ThrowingExceptionFromFinally")
             throw IllegalStateException(
                 "CloseHandle for \"${this@useHandle}\" failed: ${getMessageForErrorCode(GetLastError())}"
             )
