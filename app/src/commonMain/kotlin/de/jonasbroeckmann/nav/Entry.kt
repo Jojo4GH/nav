@@ -60,10 +60,13 @@ interface Entry {
 
 @OptIn(ExperimentalTime::class)
 internal abstract class EntryBase(override val path: Path) : Entry {
-    protected val statResult: StatResult by lazy { path.stat() }
+    private var statError: String? = null
+    protected val statResult: StatResult by lazy {
+        path.stat().also { statError = it.error?.message }
+    }
     protected val stat get() = statResult as? Stat
 
-    override val error: String? get() = statResult.error?.message
+    override val error: String? get() = statError
 
     override val type: Entry.Type get() = when {
         stat?.mode?.isSymbolicLink == true -> SymbolicLink
