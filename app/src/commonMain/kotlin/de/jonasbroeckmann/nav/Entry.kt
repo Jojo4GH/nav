@@ -2,23 +2,79 @@ package de.jonasbroeckmann.nav
 
 import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.StatResult
-import de.jonasbroeckmann.nav.utils.getGroupNameFromId
-import de.jonasbroeckmann.nav.utils.getUserNameFromId
+import de.jonasbroeckmann.nav.utils.error
 import de.jonasbroeckmann.nav.utils.stat
 import kotlinx.io.files.Path
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
-class Entry(val path: Path) {
-    private val statResult: StatResult by lazy { path.stat() }
-    private val statError get() = statResult as? StatResult.Error
+expect fun Path.entry(): Entry
 
-    val stat get() = statResult as? Stat ?: Stat.None
-    val isDirectory get() = stat.mode.isDirectory
-    val isRegularFile get() = stat.mode.isRegularFile
-    val isSymbolicLink get() = stat.mode.isSymbolicLink
-    val size get() = stat.size.takeIf { it >= 0 && !isDirectory }
+@OptIn(ExperimentalTime::class)
+interface Entry {
+    val path: Path
 
-    val userName by lazy { getUserNameFromId(stat.userId) }
-    val groupName by lazy { getGroupNameFromId(stat.groupId) }
+    val error: String?
 
-    val error get() = statError?.message
+    val type: Type
+
+    val userPermissions: Permissions?
+    val groupPermissions: Permissions?
+    val othersPermissions: Permissions?
+
+    val hardlinkCount: UInt?
+
+    val userName: String?
+    val groupName: String?
+
+    val size: Long?
+
+    val lastModificationTime: Instant?
+
+    data class Permissions(
+        val canRead: Boolean = false,
+        val canWrite: Boolean = false,
+        val canExecute: Boolean = false
+    )
+
+    enum class Type {
+        Directory,
+        RegularFile,
+        SymbolicLink,
+        Unknown
+    }
 }
+
+@OptIn(ExperimentalTime::class)
+internal abstract class EntryBase(override val path: Path) : Entry {
+    protected val statResult: StatResult by lazy { path.stat() }
+    protected val stat get() = statResult as? Stat
+
+    override val error: String? get() = statResult.error?.message
+
+    override val type: Entry.Type get() = when {
+        stat?.mode?.isSymbolicLink == true -> SymbolicLink
+        stat?.mode?.isDirectory == true -> Directory
+        stat?.mode?.isRegularFile == true -> RegularFile
+        else -> Unknown
+    }
+
+    override val userPermissions get() = stat?.mode?.user?.toEntryPermissions()
+    override val groupPermissions get() = stat?.mode?.group?.toEntryPermissions()
+    override val othersPermissions get() = stat?.mode?.others?.toEntryPermissions()
+
+    override val hardlinkCount get() = stat?.hardlinkCount
+
+    override val userName: String? get() = null
+    override val groupName: String? get() = null
+
+    override val size get() = stat?.size?.takeIf { it >= 0 && type != Directory }
+
+    override val lastModificationTime get() = stat?.lastModificationTime
+}
+
+internal fun Stat.Mode.Permissions.toEntryPermissions() = Entry.Permissions(
+    canRead = canRead,
+    canWrite = canWrite,
+    canExecute = canExecute
+)

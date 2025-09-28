@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import de.jonasbroeckmann.nav.Entry
+import de.jonasbroeckmann.nav.entry
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import kotlinx.io.files.Path
@@ -92,7 +93,7 @@ data class State(
     }
 
     fun navigatedInto(entry: Entry?): State {
-        if (entry == null || !entry.isDirectory) return this
+        if (entry == null || entry.type != Directory) return this
         return copy(
             directory = entry.path,
             items = entry.path.entries(),
@@ -118,9 +119,9 @@ data class State(
         private fun Path.entries(): List<Entry> = children()
             .asSequence()
             .map { it.cleaned() } // fix broken paths
-            .map { Entry(it) }
+            .map { it.entry() }
             .sortedBy { it.path.name }
-            .sortedByDescending { it.isDirectory }
+            .sortedByDescending { it.type == Directory }
             .toList()
     }
 }

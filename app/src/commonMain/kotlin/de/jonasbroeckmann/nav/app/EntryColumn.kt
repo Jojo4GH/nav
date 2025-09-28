@@ -8,7 +8,6 @@ import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.utils.Stat
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames
@@ -22,6 +21,7 @@ import kotlin.math.pow
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Suppress("unused", "detekt:Wrapping")
 @Serializable(with = EntryColumn.Companion::class)
@@ -39,18 +39,18 @@ enum class EntryColumn(
         val styleWrite = TextColors.rgb(config.colors.permissionWrite)
         val styleExecute = TextColors.rgb(config.colors.permissionExecute)
 
-        fun render(perm: Stat.Mode.Permissions): String {
-            val r = if (perm.canRead) styleRead("r") else TextStyles.dim("-")
-            val w = if (perm.canWrite) styleWrite("w") else TextStyles.dim("-")
-            val x = if (perm.canExecute) styleExecute("x") else TextStyles.dim("-")
+        fun render(perm: Entry.Permissions?): String {
+            val r = if (perm?.canRead == true) styleRead("r") else TextStyles.dim("-")
+            val w = if (perm?.canWrite == true) styleWrite("w") else TextStyles.dim("-")
+            val x = if (perm?.canExecute == true) styleExecute("x") else TextStyles.dim("-")
             return "$r$w$x"
         }
 
-        Text("${render(entry.stat.mode.user)}${render(entry.stat.mode.group)}${render(entry.stat.mode.others)}")
+        Text("${render(entry.userPermissions)}${render(entry.groupPermissions)}${render(entry.othersPermissions)}")
     }),
 
     HardLinkCount("#HL", { entry ->
-        Text(TextColors.rgb(config.colors.hardlinkCount)("${entry.stat.hardlinkCount}"))
+        Text(TextColors.rgb(config.colors.hardlinkCount)("${entry.hardlinkCount}"))
     }),
 
     UserName("User", { entry ->
@@ -97,7 +97,7 @@ enum class EntryColumn(
     @Suppress("detekt:MagicNumber")
     @OptIn(ExperimentalTime::class)
     LastModified("Last Modified", { entry ->
-        val instant = entry.stat.lastModificationTime
+        val instant = entry.lastModificationTime ?: Instant.fromEpochMilliseconds(0L)
         val now = Clock.System.now()
         val duration = now - instant
         val format = if (duration.absoluteValue > 365.days) DateTimeComponents.Format {

@@ -3,6 +3,7 @@ package de.jonasbroeckmann.nav.utils
 import kotlinx.io.files.Path
 import platform.windows.*
 
+@Suppress("detekt:MagicNumber")
 value class FileAttributes(private val raw: UInt) : FileAttributesResult {
     val isReadOnly get() = raw mask FILE_ATTRIBUTE_READONLY
     val isHidden get() = raw mask FILE_ATTRIBUTE_HIDDEN
@@ -33,6 +34,8 @@ sealed interface FileAttributesResult {
         val message by lazy { getMessageForErrorCode(code) ?: "Error $code" }
     }
 }
+
+val FileAttributesResult.error get() = this as? FileAttributesResult.Error
 
 fun Path.fileAttributes(): FileAttributesResult {
     val attributes = GetFileAttributesW(toString())
