@@ -3,7 +3,7 @@ package de.jonasbroeckmann.nav.utils
 import kotlinx.io.files.Path
 import platform.windows.*
 
-value class FileAttributes(private val raw: UInt) {
+value class FileAttributes(private val raw: UInt) : FileAttributesResult {
     val isReadOnly get() = raw mask FILE_ATTRIBUTE_READONLY
     val isHidden get() = raw mask FILE_ATTRIBUTE_HIDDEN
     val isSystem get() = raw mask FILE_ATTRIBUTE_SYSTEM
@@ -28,7 +28,16 @@ value class FileAttributes(private val raw: UInt) {
     val isRecallOnDataAccess get() = raw mask 0x00400000
 }
 
-fun Path.fileAttributes() = when (val attributes = GetFileAttributesW(toString())) {
-    INVALID_FILE_ATTRIBUTES -> null
-    else -> FileAttributes(attributes)
+sealed interface FileAttributesResult {
+    data class Error(val code: UInt) : FileAttributesResult {
+        val message by lazy { getMessageForErrorCode(code) ?: "Error $code" }
+    }
+}
+
+fun Path.fileAttributes(): FileAttributesResult {
+    val attributes = GetFileAttributesW(toString())
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        return FileAttributesResult.Error(GetLastError())
+    }
+    return FileAttributes(attributes)
 }
