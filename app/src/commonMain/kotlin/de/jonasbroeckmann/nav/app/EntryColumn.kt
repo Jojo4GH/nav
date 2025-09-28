@@ -7,6 +7,7 @@ import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.Entry
 import de.jonasbroeckmann.nav.utils.Stat
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
@@ -26,12 +27,12 @@ import kotlin.time.ExperimentalTime
 @Serializable(with = EntryColumn.Companion::class)
 enum class EntryColumn(
     title: String,
-    render: ConfigProvider.(State.Entry) -> Widget
+    render: ConfigProvider.(Entry) -> Widget
 ) : EntryColumnRenderer by object : EntryColumnRenderer {
     override val title = title
 
     context(config: ConfigProvider)
-    override fun render(entry: State.Entry): Widget = config.render(entry)
+    override fun render(entry: Entry): Widget = config.render(entry)
 } {
     Permissions("Permissions", { entry ->
         val styleRead = TextColors.rgb(config.colors.permissionRead)

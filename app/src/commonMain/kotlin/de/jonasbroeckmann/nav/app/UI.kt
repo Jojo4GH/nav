@@ -7,6 +7,7 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.Entry
 import de.jonasbroeckmann.nav.RunContext
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
@@ -54,7 +55,7 @@ class UI(
     }
 
     private fun renderTable(
-        entries: List<UIState.Entry>,
+        entries: List<Entry>,
         cursor: Int,
         filter: String,
         additionalRows: Int
@@ -134,11 +135,11 @@ class UI(
     }
 
     private fun SectionBuilder.renderEntries(
-        entries: List<UIState.Entry>,
+        entries: List<Entry>,
         cursor: Int,
         otherRows: Int,
         renderMore: SectionBuilder.(Int) -> Unit,
-        renderEntry: SectionBuilder.(UIState.Entry, Boolean) -> Unit
+        renderEntry: SectionBuilder.(Entry, Boolean) -> Unit
     ) {
         var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
         if (config.limitToTerminalHeight) {
@@ -180,7 +181,7 @@ class UI(
     }
 
     @Suppress("detekt:CyclomaticComplexMethod")
-    private fun renderName(entry: UIState.Entry, isSelected: Boolean, filter: String): String {
+    private fun renderName(entry: Entry, isSelected: Boolean, filter: String): String {
         val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
         val dirStyle = TextColors.rgb(config.colors.directory)
         val fileStyle = TextColors.rgb(config.colors.file)
@@ -419,7 +420,7 @@ class UI(
         }
 
         context(configProvider: ConfigProvider)
-        val UIState.Entry?.style get() = when {
+        val Entry?.style get() = when {
             this == null -> TextColors.magenta
             isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
             isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
