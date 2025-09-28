@@ -48,14 +48,14 @@ class Actions(config: Config) : ConfigProvider by config {
     )
     val navigateInto = KeyAction(
         config.keys.nav.into,
-        condition = { currentEntry?.type == Directory },
+        condition = { currentEntry?.type == Directory || currentEntry?.linkTarget?.targetEntry?.type == Directory },
         action = { NewState(navigatedInto(currentEntry)) }
     )
     val navigateOpen = KeyAction(
         config.keys.nav.open,
         description = { "open in ${config.editorCommand ?: "editor"}" },
         style = { TextColors.rgb(config.colors.file) },
-        condition = { currentEntry?.type == RegularFile },
+        condition = { currentEntry?.type == RegularFile || currentEntry?.linkTarget?.targetEntry?.type == RegularFile },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
     )
 

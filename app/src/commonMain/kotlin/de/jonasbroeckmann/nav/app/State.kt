@@ -93,13 +93,16 @@ data class State(
     }
 
     fun navigatedInto(entry: Entry?): State {
-        if (entry == null || entry.type != Directory) return this
-        return copy(
-            directory = entry.path,
-            items = entry.path.entries(),
-            cursor = 0,
-            filter = ""
-        )
+        return when {
+            entry == null -> this
+            entry.type == Directory || entry.linkTarget?.targetEntry?.type == Directory -> copy(
+                directory = entry.path,
+                items = entry.path.entries(),
+                cursor = 0,
+                filter = ""
+            )
+            else -> this
+        }
     }
 
     fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
