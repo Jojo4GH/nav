@@ -183,9 +183,6 @@ class UI(
     @Suppress("detekt:CyclomaticComplexMethod")
     private fun renderName(entry: Entry, isSelected: Boolean, filter: String): String {
         val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
-        val dirStyle = TextColors.rgb(config.colors.directory)
-        val fileStyle = TextColors.rgb(config.colors.file)
-        val linkStyle = TextColors.rgb(config.colors.link)
         val selectedStyle = TextStyles.inverse
         return entry.path.name
             .let {
@@ -212,15 +209,7 @@ class UI(
             }
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
-            .let {
-                when (entry.type) {
-                    else if entry.error != null -> "${TextStyles.dim(it)} "
-                    SymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
-                    Directory -> "${dirStyle(it)}$RealSystemPathSeparator"
-                    RegularFile -> "${fileStyle(it)} "
-                    Unknown -> "${TextColors.magenta(it)} "
-                }
-            }
+            .dressUpEntryName(entry, showLinkTarget = true)
     }
 
     private fun renderPath(path: Path): String {
@@ -423,6 +412,30 @@ class UI(
             Directory -> TextColors.rgb(configProvider.config.colors.directory)
             RegularFile -> TextColors.rgb(configProvider.config.colors.file)
             Unknown -> TextColors.magenta
+        }
+
+        context(configProvider: ConfigProvider)
+        fun String.dressUpEntryName(entry: Entry, showLinkTarget: Boolean = false): String {
+            val dirStyle = TextColors.rgb(configProvider.config.colors.directory)
+            val fileStyle = TextColors.rgb(configProvider.config.colors.file)
+            val linkStyle = TextColors.rgb(configProvider.config.colors.link)
+            return when (entry.type) {
+                else if entry.error != null -> "${TextStyles.dim(this)} "
+                SymbolicLink -> when (showLinkTarget) {
+                    true -> {
+                        val linkTarget = entry.linkTarget
+                        val renderedLinkTarget = linkTarget?.path?.toString()?.dressUpEntryName(
+                            linkTarget.targetEntry,
+                            showLinkTarget = false
+                        ) ?: "${TextStyles.dim("?")} "
+                        "${linkStyle(this)} ${TextStyles.dim("->")} $renderedLinkTarget"
+                    }
+                    false -> "${linkStyle(this)} "
+                }
+                Directory -> "${dirStyle(this)}$RealSystemPathSeparator"
+                RegularFile -> "${fileStyle(this)} "
+                Unknown -> "${TextColors.magenta(this)} "
+            }
         }
     }
 }
