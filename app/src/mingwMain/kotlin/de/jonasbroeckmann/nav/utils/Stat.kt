@@ -12,6 +12,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalForeignApi::class, ExperimentalTime::class)
 actual fun stat(path: Path): StatResult = memScoped {
     val result: stat = alloc()
+//    OpenF
     _set_errno(0)
     stat(path.toString(), result.ptr)
     return StatResult.fromErrno() ?: Stat(

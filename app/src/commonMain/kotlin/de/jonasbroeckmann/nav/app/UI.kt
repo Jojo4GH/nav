@@ -213,15 +213,12 @@ class UI(
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
             .let {
-                when {
-                    entry.error != null -> "${TextStyles.dim(it)} "
-                    entry.isSymbolicLink -> when {
-                        entry.isDirectory -> "${linkStyle(it)}$RealSystemPathSeparator ${TextStyles.dim("->")} "
-                        else -> "${linkStyle(it)} ${TextStyles.dim("->")} "
-                    }
-                    entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
-                    entry.isRegularFile -> "${fileStyle(it)} "
-                    else -> "${TextColors.magenta(it)} "
+                when (entry.type) {
+                    else if entry.error != null -> "${TextStyles.dim(it)} "
+                    SymbolicLink -> "${linkStyle(it)} ${TextStyles.dim("->")} "
+                    Directory -> "${dirStyle(it)}$RealSystemPathSeparator"
+                    RegularFile -> "${fileStyle(it)} "
+                    Unknown -> "${TextColors.magenta(it)} "
                 }
             }
     }
@@ -420,12 +417,12 @@ class UI(
         }
 
         context(configProvider: ConfigProvider)
-        val Entry?.style get() = when {
-            this == null -> TextColors.magenta
-            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
-            isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
-            isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
-            else -> TextColors.magenta
+        val Entry?.style get() = when (this?.type) {
+            null -> TextColors.magenta
+            SymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
+            Directory -> TextColors.rgb(configProvider.config.colors.directory)
+            RegularFile -> TextColors.rgb(configProvider.config.colors.file)
+            Unknown -> TextColors.magenta
         }
     }
 }

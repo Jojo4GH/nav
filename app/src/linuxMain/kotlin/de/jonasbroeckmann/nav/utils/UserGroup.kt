@@ -7,7 +7,7 @@ import platform.posix.getgrgid
 import platform.posix.getpwuid
 
 @OptIn(ExperimentalForeignApi::class)
-actual fun getUserNameFromId(uid: UInt): String? = getpwuid(uid)?.pointed?.pw_name?.toKString()
+fun getUserNameFromId(uid: UInt): String? = getpwuid(uid)?.pointed?.pw_name?.toKString()
 
 @OptIn(ExperimentalForeignApi::class)
-actual fun getGroupNameFromId(gid: UInt): String? = getgrgid(gid)?.pointed?.gr_name?.toKString()
+fun getGroupNameFromId(gid: UInt): String? = getgrgid(gid)?.pointed?.gr_name?.toKString()

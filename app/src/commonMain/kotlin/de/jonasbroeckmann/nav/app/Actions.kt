@@ -48,14 +48,14 @@ class Actions(config: Config) : ConfigProvider by config {
     )
     val navigateInto = KeyAction(
         config.keys.nav.into,
-        condition = { currentEntry?.isDirectory == true },
+        condition = { currentEntry?.type == Directory },
         action = { NewState(navigatedInto(currentEntry)) }
     )
     val navigateOpen = KeyAction(
         config.keys.nav.open,
         description = { "open in ${config.editorCommand ?: "editor"}" },
         style = { TextColors.rgb(config.colors.file) },
-        condition = { currentEntry?.isRegularFile == true },
+        condition = { currentEntry?.type == RegularFile },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
     )
 
@@ -216,12 +216,12 @@ class Actions(config: Config) : ConfigProvider by config {
     context(state: State)
     private fun Config.EntryMacro.condition(): Boolean {
         val currentEntry = state.currentEntry
-        return when {
-            currentEntry == null -> false
-            currentEntry.isSymbolicLink -> onSymbolicLink
-            currentEntry.isDirectory -> onDirectory
-            currentEntry.isRegularFile -> onFile
-            else -> false
+        return when (currentEntry?.type) {
+            null -> false
+            SymbolicLink -> onSymbolicLink
+            Directory -> onDirectory
+            RegularFile -> onFile
+            Unknown -> false
         }
     }
 
@@ -286,22 +286,23 @@ class Actions(config: Config) : ConfigProvider by config {
             description = {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
-                val style = when {
-                    currentEntry.isSymbolicLink -> TextColors.rgb(config.colors.link)
-                    currentEntry.isDirectory -> TextColors.rgb(config.colors.directory)
-                    currentEntry.isRegularFile -> TextColors.rgb(config.colors.file)
-                    else -> TextColors.magenta
+                val style = when (currentEntry.type) {
+                    SymbolicLink -> TextColors.rgb(config.colors.link)
+                    Directory -> TextColors.rgb(config.colors.directory)
+                    RegularFile -> TextColors.rgb(config.colors.file)
+                    Unknown -> TextColors.magenta
                 }
                 style("Delete: ${currentEntry.path.name}")
             },
-            condition = { currentEntry.let { it != null && !it.isDirectory } },
+            condition = { currentEntry.let { it != null && it.type != Directory } },
             action = {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
-                when {
-                    currentEntry.isSymbolicLink -> SystemFileSystem.delete(currentEntry.path)
-                    currentEntry.isDirectory -> SystemFileSystem.delete(currentEntry.path)
-                    currentEntry.isRegularFile -> SystemFileSystem.delete(currentEntry.path)
+                when (currentEntry.type) {
+                    SymbolicLink -> SystemFileSystem.delete(currentEntry.path)
+                    Directory -> SystemFileSystem.delete(currentEntry.path)
+                    RegularFile -> SystemFileSystem.delete(currentEntry.path)
+                    Unknown -> { /* no-op */ }
                 }
                 NewState(updatedEntries())
             }
