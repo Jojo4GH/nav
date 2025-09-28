@@ -13,7 +13,7 @@ fun readLink(path: Path): ReadLinkResult = memScoped {
     val buffer = allocArray<ByteVar>(bufferSize)
     val length = readlink(path.toString(), buffer, bufferSize.toULong())
     if (length < 0) {
-        return ReadLinkResult.Error(strerror(errno)?.toKString() ?: "Unknown error (${errno})")
+        return ReadLinkResult.Error(strerror(errno)?.toKString() ?: "Unknown error ($errno)")
     }
     buffer[length] = 0
     val result = Path(buffer.toKString())
@@ -28,9 +28,11 @@ sealed interface ReadLinkResult {
     sealed interface Success : ReadLinkResult {
         val value: Path
         val target: Path
+
         data class Absolute(override val value: Path) : Success {
             override val target get() = value
         }
+
         data class Relative(val origin: Path, override val value: Path) : Success {
             override val target get() = origin / value
         }
