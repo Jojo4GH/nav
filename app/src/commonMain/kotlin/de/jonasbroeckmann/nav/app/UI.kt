@@ -350,6 +350,7 @@ class UI(
 
             render(actions.autocompleteFilter)
             render(actions.clearFilter)
+            render(actions.exitMenu)
 
             render(actions.discardCommand)
 
