@@ -69,7 +69,7 @@ class Actions(config: Config) : ConfigProvider by config {
     val exit = KeyAction(
         config.keys.cancel,
         description = { "exit" },
-        condition = { filter.isEmpty() && !isTypingCommand },
+        condition = { filter.isEmpty() && !isTypingCommand && !isMenuOpen },
         action = { Exit }
     )
 
@@ -149,6 +149,12 @@ class Actions(config: Config) : ConfigProvider by config {
         config.keys.menu.up,
         description = { "close menu" },
         condition = { isMenuOpen && coercedMenuCursor == 0 },
+        action = { NewState(withMenuCursor(null)) }
+    )
+    val exitMenu = KeyAction(
+        config.keys.cancel,
+        description = { "close menu" },
+        condition = { filter.isEmpty() && isMenuOpen && !isTypingCommand },
         action = { NewState(withMenuCursor(null)) }
     )
     val menuDown = KeyAction(
@@ -320,7 +326,7 @@ class Actions(config: Config) : ConfigProvider by config {
         navigateUp, navigateInto, navigateOpen,
         exitCD, exit,
         autocompleteFilter, clearFilter, discardCommand,
-        menuDown, menuUp, openMenu, closeMenu, menuSubmit,
+        menuDown, menuUp, openMenu, closeMenu, exitMenu, menuSubmit,
     )
 }
 
