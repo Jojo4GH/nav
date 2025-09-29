@@ -17,7 +17,7 @@ plugins {
 }
 
 group = "de.jonasbroeckmann.nav"
-version = "1.4.3"
+version = "1.4.4"
 
 description = "The interactive and stylish replacement for ls & cd!"
 
