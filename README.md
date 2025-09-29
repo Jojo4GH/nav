@@ -12,6 +12,37 @@ The interactive and stylish replacement for ls & cd!
 
 ---
 
+[![GitHub][latest-release-badge]][latest-release]
+[![GitHub][license-badge]](LICENSE.md)
+[![Build][build-badge]][github-actions]
+[![Checks][checks-badge]][github-actions]
+[![Package][package-badge]][github-actions]
+
+[![Kotlin Multiplatform][kotlin-multiplatform-badge]][kotlin-multiplatform]
+[![Linux X64 Platform][linux-x64-platform-badge]][kotlin-native]
+[![Linux ARM64 Platform][linux-arm64-platform-badge]][kotlin-native]
+[![MinGW X64 Platform][mingw-x64-platform-badge]][kotlin-native]
+[![JVM Platform][jvm-platform-badge]][kotlin-jvm]
+
+[latest-release-badge]: https://img.shields.io/github/v/release/Jojo4GH/nav?label=Latest
+[latest-release]: https://github.com/Jojo4GH/nav/releases/latest
+[license-badge]: https://img.shields.io/github/license/Jojo4GH/nav?label=License
+
+[build-badge]: https://img.shields.io/github/actions/workflow/status/Jojo4GH/nav/workflow.yml?branch=master&label=Build
+[checks-badge]: https://img.shields.io/github/check-runs/Jojo4GH/nav/master?label=Checks
+[package-badge]: https://img.shields.io/github/actions/workflow/status/Jojo4GH/nav/package.yml?branch=master&label=Package
+[github-actions]: https://github.com/Jojo4GH/nav/actions
+
+[kotlin-multiplatform-badge]: https://img.shields.io/badge/Kotlin_Multiplatform-grey?logo=kotlin
+[linux-x64-platform-badge]: https://img.shields.io/badge/Native-Linux_X64-e082f3
+[linux-arm64-platform-badge]: https://img.shields.io/badge/Native-Linux_ARM64-e082f3
+[mingw-x64-platform-badge]: https://img.shields.io/badge/Native-MinGW_X64-e082f3
+[jvm-platform-badge]: https://img.shields.io/badge/Platform-JVM-4dbb5f
+
+[kotlin-multiplatform]: https://kotlinlang.org/docs/multiplatform.html
+[kotlin-native]: https://kotlinlang.org/docs/native-overview.html
+[kotlin-jvm]: https://kotlinlang.org/docs/jvm-get-started.html
+
 Ever tried to find that one config file hidden deep in your directory tree?
 Or maybe you just want to quickly jump to a directory and inspect some files on the way?  
 ✨ **nav** is here to help! ✨  
