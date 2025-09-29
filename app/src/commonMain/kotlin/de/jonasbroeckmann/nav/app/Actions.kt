@@ -18,60 +18,71 @@ import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
+import kotlin.reflect.KProperty
 
 class Actions(config: Config) : ConfigProvider by config {
+    private val registered = mutableListOf<KeyAction>()
+    val ordered: List<KeyAction> get() = registered
+
+    private fun KeyAction.registered(): KeyAction {
+        val i = registered.size
+        return copy(
+            condition = {
+                isAvailable(this) &&
+                    registered.asSequence().take(i).none { prioritized ->
+                        triggers.any { it in prioritized.triggers } && prioritized.isAvailable(this)
+                    }
+            }
+        ).also {
+            registered += it
+        }
+    }
+
     val cursorUp = KeyAction(
         config.keys.cursor.up,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(cursor - 1)) }
-    )
+    ).registered()
     val cursorDown = KeyAction(
         config.keys.cursor.down,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(cursor + 1)) }
-    )
+    ).registered()
     val cursorHome = KeyAction(
         config.keys.cursor.home,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(0)) }
-    )
+    ).registered()
     val cursorEnd = KeyAction(
         config.keys.cursor.end,
         condition = { filteredItems.isNotEmpty() },
         action = { NewState(withCursor(filteredItems.lastIndex)) }
-    )
+    ).registered()
 
     val navigateUp = KeyAction(
         config.keys.nav.up,
         condition = { directory.parent != null },
         action = { NewState(navigatedUp()) }
-    )
+    ).registered()
     val navigateInto = KeyAction(
         config.keys.nav.into,
         condition = { currentEntry?.type == Directory || currentEntry?.linkTarget?.targetEntry?.type == Directory },
         action = { NewState(navigatedInto(currentEntry)) }
-    )
+    ).registered()
     val navigateOpen = KeyAction(
         config.keys.nav.open,
         description = { "open in ${config.editorCommand ?: "editor"}" },
         style = { TextColors.rgb(config.colors.file) },
         condition = { currentEntry?.type == RegularFile || currentEntry?.linkTarget?.targetEntry?.type == RegularFile },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
-    )
+    ).registered()
 
-    val exitCD = KeyAction(
-        config.keys.submit,
-        description = { "exit here" },
-        style = { TextColors.rgb(config.colors.path) },
-        condition = { directory != WorkingDirectory && filter.isEmpty() && !isTypingCommand && !isMenuOpen },
-        action = { ExitAt(directory) }
-    )
-    val exit = KeyAction(
+    val discardCommand = KeyAction(
         config.keys.cancel,
-        description = { "exit" },
-        condition = { filter.isEmpty() && !isTypingCommand && !isMenuOpen },
-        action = { Exit }
-    )
+        description = { "discard command" },
+        condition = { isTypingCommand },
+        action = { NewState(withCommand(null)) }
+    ).registered()
 
     val autocompleteFilter = KeyAction(
         config.keys.filter.autocomplete, config.keys.filter.autocomplete.copy(shift = true),
@@ -125,54 +136,66 @@ class Actions(config: Config) : ConfigProvider by config {
 
             NewState(completedState)
         }
-    )
+    ).registered()
     val clearFilter = KeyAction(
         config.keys.filter.clear,
         description = { "clear filter" },
-        condition = { filter.isNotEmpty() && !isTypingCommand },
+        condition = { filter.isNotEmpty() },
         action = { NewState(filtered("")) }
-    )
-    val discardCommand = KeyAction(
-        config.keys.cancel,
-        description = { "discard command" },
-        condition = { isTypingCommand },
-        action = { NewState(withCommand(null)) }
-    )
+    ).registered()
 
-    val openMenu = KeyAction(
-        config.keys.menu.down,
-        description = { "more" },
-        condition = { !isMenuOpen },
-        action = { NewState(withMenuCursor(0)) }
-    )
+    val exitMenu = KeyAction(
+        config.keys.cancel,
+        description = { "close menu" },
+        condition = { isMenuOpen },
+        action = { NewState(withMenuCursor(null)) }
+    ).registered()
     val closeMenu = KeyAction(
         config.keys.menu.up,
         description = { "close menu" },
         condition = { isMenuOpen && coercedMenuCursor == 0 },
         action = { NewState(withMenuCursor(null)) }
-    )
-    val exitMenu = KeyAction(
-        config.keys.cancel,
-        description = { "close menu" },
-        condition = { filter.isEmpty() && isMenuOpen && !isTypingCommand },
-        action = { NewState(withMenuCursor(null)) }
-    )
+    ).registered()
+    val openMenu = KeyAction(
+        config.keys.menu.down,
+        description = { "more" },
+        condition = { !isMenuOpen },
+        action = { NewState(withMenuCursor(0)) }
+    ).registered()
     val menuDown = KeyAction(
         config.keys.menu.down,
         condition = { isMenuOpen && coercedMenuCursor < availableMenuActions.lastIndex },
         action = { NewState(withMenuCursor(coercedMenuCursor + 1)) }
-    )
+    ).registered()
     val menuUp = KeyAction(
         config.keys.menu.up,
         condition = { isMenuOpen && coercedMenuCursor > 0 },
         action = { NewState(withMenuCursor(coercedMenuCursor - 1)) }
-    )
+    ).registered()
+
+    val menuSubmit = KeyAction(
+        config.keys.submit,
+        condition = { isMenuOpen },
+        action = { currentMenuAction?.perform(this, null) }
+    ).registered()
+
+    val exitCD = KeyAction(
+        config.keys.submit,
+        description = { "exit here" },
+        style = { TextColors.rgb(config.colors.path) },
+        condition = { directory != WorkingDirectory },
+        action = { ExitAt(directory) }
+    ).registered()
+    val exit = KeyAction(
+        config.keys.cancel,
+        description = { "exit" },
+        condition = { true },
+        action = { Exit }
+    ).registered()
 
     val quickMacroActions = listOf(
         KeyAction(
-            keyFilter = { state, key ->
-                state.inQuickMacroMode && key.copy(ctrl = false) == config.keys.cancel
-            },
+            triggers = listOf(KeyAction.Trigger(key = config.keys.cancel, inQuickMacroMode = true)),
             displayKey = { config.keys.cancel },
             description = {
                 "cancel"
@@ -183,13 +206,11 @@ class Actions(config: Config) : ConfigProvider by config {
             action = {
                 NewState(copy(inQuickMacroMode = false))
             }
-        )
+        ).registered()
     ) + config.entryMacros.mapNotNull { macro ->
         if (macro.quickMacroKey == null) return@mapNotNull null
         KeyAction(
-            keyFilter = { state, key ->
-                state.inQuickMacroMode && key.copy(ctrl = false) == macro.quickMacroKey
-            },
+            triggers = listOf(KeyAction.Trigger(key = macro.quickMacroKey, inQuickMacroMode = true)),
             displayKey = { macro.quickMacroKey },
             description = {
                 currentEntry?.let { macro.computeDescription(it) }
@@ -201,7 +222,7 @@ class Actions(config: Config) : ConfigProvider by config {
             action = {
                 macro.runCommand()
             }
-        )
+        ).registered()
     }
 
     private val macroMenuActions = config.entryMacros.map { macro ->
@@ -314,20 +335,6 @@ class Actions(config: Config) : ConfigProvider by config {
             }
         ),
     )
-
-    val menuSubmit = KeyAction(
-        config.keys.submit,
-        condition = { isMenuOpen },
-        action = { currentMenuAction?.perform(this, null) }
-    )
-
-    val ordered = listOf(
-        cursorUp, cursorDown, cursorHome, cursorEnd,
-        navigateUp, navigateInto, navigateOpen,
-        exitCD, exit,
-        autocompleteFilter, clearFilter, discardCommand,
-        menuDown, menuUp, openMenu, closeMenu, exitMenu, menuSubmit,
-    )
 }
 
 sealed interface Action<Event : InputEvent?> {
@@ -361,7 +368,7 @@ data class MenuAction(
 }
 
 data class KeyAction(
-    val keyFilter: (State, KeyboardEvent) -> Boolean,
+    val triggers: List<Trigger>,
     val displayKey: (State) -> KeyboardEvent? = { null },
     override val description: State.() -> String? = { null },
     private val style: State.() -> TextStyle? = { null },
@@ -376,7 +383,7 @@ data class KeyAction(
         condition: State.() -> Boolean,
         action: State.(KeyboardEvent) -> App.Event?
     ) : this(
-        keyFilter = { _, key -> keys.any { it == key } },
+        triggers = keys.map { Trigger(it, false) },
         displayKey = displayKey,
         description = description,
         style = style,
@@ -387,11 +394,29 @@ data class KeyAction(
     context(state: State)
     override fun style() = state.style()
 
-    override fun matches(state: State, input: KeyboardEvent) = keyFilter(state, input) && isAvailable(state)
+    override fun matches(state: State, input: KeyboardEvent): Boolean {
+        val trigger = Trigger(input, state.inQuickMacroMode)
+        return trigger in triggers && isAvailable(state)
+    }
 
     override fun isAvailable(state: State) = state.condition()
 
     override fun perform(state: State, input: KeyboardEvent) = state.action(input)
+
+    data class Trigger private constructor(
+        val key: KeyboardEvent,
+        val inQuickMacroMode: Boolean
+    ) {
+        companion object {
+            operator fun invoke(
+                key: KeyboardEvent,
+                inQuickMacroMode: Boolean
+            ) = Trigger(
+                key = if (inQuickMacroMode) key.copy(ctrl = false) else key,
+                inQuickMacroMode = inQuickMacroMode
+            )
+        }
+    }
 }
 
 fun <E : InputEvent?> Action<E>.tryPerform(state: State, input: E, terminal: Terminal): App.Event? {
