@@ -23,6 +23,8 @@ sealed interface StatResult {
     companion object
 }
 
+val StatResult.error get() = this as? StatResult.Error
+
 @OptIn(ExperimentalTime::class)
 data class Stat(
     val deviceId: ULong,
@@ -52,44 +54,6 @@ data class Stat(
             val canRead: Boolean,
             val canWrite: Boolean,
             val canExecute: Boolean
-        ) {
-            companion object {
-                val None = Permissions(
-                    canRead = false,
-                    canWrite = false,
-                    canExecute = false
-                )
-            }
-        }
-
-        companion object {
-            val None = Mode(
-                isBlockDevice = false,
-                isCharacterDevice = false,
-                isPipe = false,
-                isRegularFile = false,
-                isDirectory = false,
-                isSymbolicLink = false,
-                isSocket = false,
-                user = Permissions.None,
-                group = Permissions.None,
-                others = Permissions.None
-            )
-        }
-    }
-
-    companion object {
-        val None = Stat(
-            deviceId = 0uL,
-            serialNumber = 0uL,
-            mode = Mode.None,
-            userId = 0u,
-            groupId = 0u,
-            hardlinkCount = 0u,
-            size = 0L,
-            lastAccessTime = Instant.fromEpochMilliseconds(0L),
-            lastModificationTime = Instant.fromEpochMilliseconds(0L),
-            lastStatusChangeTime = Instant.fromEpochMilliseconds(0L)
         )
     }
 }

@@ -207,7 +207,7 @@ data class Config private constructor(
     ) {
         context(state: State, configProvider: ConfigProvider)
         fun computeDescription(
-            currentEntry: State.Entry
+            currentEntry: Entry
         ) = description.replacePlaceholders(
             state = state,
             currentEntry = currentEntry
@@ -215,7 +215,7 @@ data class Config private constructor(
 
         context(state: State)
         fun computeCommand(
-            currentEntry: State.Entry
+            currentEntry: Entry
         ) = command.replacePlaceholders(
             state = state,
             currentEntry = currentEntry
@@ -223,7 +223,7 @@ data class Config private constructor(
 
         private fun String.replacePlaceholders(
             state: State,
-            currentEntry: State.Entry
+            currentEntry: Entry
         ) = this
             .replace(PLACEHOLDER_INITIAL_DIR, WorkingDirectory.toString())
             .replace(PLACEHOLDER_DIR, state.directory.toString())

@@ -7,6 +7,7 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.Entry
 import de.jonasbroeckmann.nav.RunContext
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
@@ -54,7 +55,7 @@ class UI(
     }
 
     private fun renderTable(
-        entries: List<UIState.Entry>,
+        entries: List<Entry>,
         cursor: Int,
         filter: String,
         additionalRows: Int
@@ -108,7 +109,9 @@ class UI(
             ) { entry, isSelected ->
                 row {
                     val error = entry.error
-
+                        ?.lineSequence()
+                        ?.joinToString(" ")
+                        ?.trim { it.isWhitespace() }
                     if (error != null) {
                         cell(TextColors.red(error)) {
                             columnSpan = config.shownColumns.size
@@ -134,11 +137,11 @@ class UI(
     }
 
     private fun SectionBuilder.renderEntries(
-        entries: List<UIState.Entry>,
+        entries: List<Entry>,
         cursor: Int,
         otherRows: Int,
         renderMore: SectionBuilder.(Int) -> Unit,
-        renderEntry: SectionBuilder.(UIState.Entry, Boolean) -> Unit
+        renderEntry: SectionBuilder.(Entry, Boolean) -> Unit
     ) {
         var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
         if (config.limitToTerminalHeight) {
@@ -180,11 +183,8 @@ class UI(
     }
 
     @Suppress("detekt:CyclomaticComplexMethod")
-    private fun renderName(entry: UIState.Entry, isSelected: Boolean, filter: String): String {
+    private fun renderName(entry: Entry, isSelected: Boolean, filter: String): String {
         val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
-        val dirStyle = TextColors.rgb(config.colors.directory)
-        val fileStyle = TextColors.rgb(config.colors.file)
-        val linkStyle = TextColors.rgb(config.colors.link)
         val selectedStyle = TextStyles.inverse
         return entry.path.name
             .let {
@@ -211,18 +211,7 @@ class UI(
             }
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
-            .let {
-                when {
-                    entry.error != null -> "${TextStyles.dim(it)} "
-                    entry.isSymbolicLink -> when {
-                        entry.isDirectory -> "${linkStyle(it)}$RealSystemPathSeparator ${TextStyles.dim("->")} "
-                        else -> "${linkStyle(it)} ${TextStyles.dim("->")} "
-                    }
-                    entry.isDirectory -> "${dirStyle(it)}$RealSystemPathSeparator"
-                    entry.isRegularFile -> "${fileStyle(it)} "
-                    else -> "${TextColors.magenta(it)} "
-                }
-            }
+            .dressUpEntryName(entry, showLinkTarget = true)
     }
 
     private fun renderPath(path: Path): String {
@@ -419,12 +408,36 @@ class UI(
         }
 
         context(configProvider: ConfigProvider)
-        val UIState.Entry?.style get() = when {
-            this == null -> TextColors.magenta
-            isSymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
-            isDirectory -> TextColors.rgb(configProvider.config.colors.directory)
-            isRegularFile -> TextColors.rgb(configProvider.config.colors.file)
-            else -> TextColors.magenta
+        val Entry?.style get() = when (this?.type) {
+            null -> TextColors.magenta
+            SymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
+            Directory -> TextColors.rgb(configProvider.config.colors.directory)
+            RegularFile -> TextColors.rgb(configProvider.config.colors.file)
+            Unknown -> TextColors.magenta
+        }
+
+        context(configProvider: ConfigProvider)
+        fun String.dressUpEntryName(entry: Entry, showLinkTarget: Boolean = false): String {
+            val dirStyle = TextColors.rgb(configProvider.config.colors.directory)
+            val fileStyle = TextColors.rgb(configProvider.config.colors.file)
+            val linkStyle = TextColors.rgb(configProvider.config.colors.link)
+            return when (entry.type) {
+                else if entry.error != null -> "${TextStyles.dim(this)} "
+                SymbolicLink -> when (showLinkTarget) {
+                    true -> {
+                        val linkTarget = entry.linkTarget
+                        val renderedLinkTarget = linkTarget?.path?.toString()?.dressUpEntryName(
+                            linkTarget.targetEntry,
+                            showLinkTarget = false
+                        ) ?: "${TextStyles.dim("?")} "
+                        "${linkStyle(this)} ${TextStyles.dim("->")} $renderedLinkTarget"
+                    }
+                    false -> "${linkStyle(this)} "
+                }
+                Directory -> "${dirStyle(this)}$RealSystemPathSeparator"
+                RegularFile -> "${fileStyle(this)} "
+                Unknown -> "${TextColors.magenta(this)} "
+            }
         }
     }
 }
