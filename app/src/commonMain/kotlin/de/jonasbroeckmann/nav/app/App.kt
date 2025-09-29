@@ -5,6 +5,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.danger
+import com.github.ajalt.mordant.terminal.info
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
@@ -15,6 +16,7 @@ import de.jonasbroeckmann.nav.RunContext
 import de.jonasbroeckmann.nav.dangerThrowable
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.exitProcess
+import de.jonasbroeckmann.nav.utils.which
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -84,7 +86,7 @@ class App(
         }
         is Event.RunCommand -> {
             state.command?.let { command ->
-                val exitCode = runCommandFromUI(command)
+                val exitCode = runCommandFromUIWithShell(command)
                 if (exitCode != null && exitCode != 0) {
                     terminal.danger("Received exit code $exitCode")
                 }
@@ -94,7 +96,7 @@ class App(
         }
         is Event.RunMacroCommand -> {
             state = state.inQuickMacroMode(false)
-            when (runCommandFromUI(command)) {
+            when (runCommandFromUIWithShell(command)) {
                 null -> true
                 0 -> eventAfterSuccessfulCommand?.handle() ?: true
                 else -> eventAfterFailedCommand?.handle() ?: true
@@ -102,19 +104,34 @@ class App(
         }
     }
 
-    private fun runCommandFromUI(
+    private fun runCommandFromUIWithShell(
         command: String,
         cwd: Path = state.directory,
         configuration: Command.() -> Command = { this }
     ): Int? {
-        ui.clear() // hide UI before running command
         val (exe, args) = when (val shell = shell) {
             null -> {
-                val parts = command.split(" ")
-                parts.first() to parts.drop(1)
+                terminal.danger("I do not know how to interpret the command without a shell: $command")
+                terminal.info("Use --init-help to get more information or use --shell to force a shell.")
+                return null
             }
             else -> shell.shell to shell.execCommandArgs(command)
         }
+        return runCommandFromUI(
+            exe = exe,
+            args = args,
+            cwd = cwd,
+            configuration = configuration
+        )
+    }
+
+    private fun runCommandFromUI(
+        exe: String,
+        args: List<String>,
+        cwd: Path = state.directory,
+        configuration: Command.() -> Command = { this }
+    ): Int? {
+        ui.clear() // hide UI before running command
         printlnOnDebug { "Running $exe with args $args" }
         val exitCode = try {
             // run command
@@ -137,12 +154,22 @@ class App(
             terminal.danger("Could not open file. No editor configured")
             return null
         }
+        // if the command is quoted or a single word, we assume it's a single path to the executable
+        val fullPath = Regex("\"(.+)\"").matchEntire(editorCommand)?.groupValues[1]
+            ?: editorCommand.takeUnless { it.any { c -> c.isWhitespace() } }
+        if (fullPath != null) {
+            return runCommandFromUI(
+                exe = which(fullPath)?.toString() ?: fullPath,
+                args = listOf("$file")
+            ) { stdin(Stdio.Inherit) }
+        }
+        // otherwise we assume it's a complex command that needs to be interpreted by a shell
         var fileString = "$file"
-        if (" " in fileString) {
+        if (fileString.any { c -> c.isWhitespace() }) {
             // try to escape spaces in file path
             fileString = "\"$fileString\""
         }
-        return runCommandFromUI("$editorCommand $fileString") { stdin(Stdio.Inherit) }
+        return runCommandFromUIWithShell("$editorCommand $fileString") { stdin(Stdio.Inherit) }
     }
 
     private val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
