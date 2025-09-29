@@ -350,16 +350,14 @@ class UI(
 
             render(actions.autocompleteFilter)
             render(actions.clearFilter)
-            render(actions.exitMenu)
 
             render(actions.discardCommand)
 
             render(actions.exitCD)
             render(actions.exit)
 
-            if (!state.isMenuOpen) {
-                render(actions.openMenu)
-            }
+            render(actions.openMenu)
+            render(actions.exitMenu)
         }
 
         if (debugMode) {

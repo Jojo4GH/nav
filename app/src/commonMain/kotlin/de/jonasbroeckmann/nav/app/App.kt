@@ -207,8 +207,9 @@ class App(
             state = state.inQuickMacroMode(false)
         }
         for (action in actions.ordered) {
-            if (!action.matches(state, this)) continue
-            return action.tryPerform(state, this, terminal)
+            if (action.matches(state, this)) {
+                return action.tryPerform(state, this, terminal)
+            }
         }
         val command = state.command
         if (command != null) {
