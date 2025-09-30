@@ -18,7 +18,6 @@ import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
-import kotlin.reflect.KProperty
 
 class Actions(config: Config) : ConfigProvider by config {
     private val registered = mutableListOf<KeyAction>()
