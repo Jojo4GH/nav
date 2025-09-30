@@ -156,7 +156,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             ansiLevel = configurationOptions.forceAnsiLevel
                 ?: AnsiLevel.NONE.takeIf { configurationOptions.renderMode.forceNoColor }
                 ?: when (detected.ansiLevel) {
-                    NONE -> AnsiLevel.ANSI16
+                    NONE -> AnsiLevel.ANSI16 // at least ANSI16 if not forced
                     else -> null
                 }
         )
@@ -207,8 +207,6 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         }
 
         val app = App(config)
-
-        terminal.println("Accessibility: ${app.accessibilityDecorations}")
 
         if (configurationOptions.editConfig) {
             val configPath = Config.findExplicitPath() ?: Config.DefaultPath

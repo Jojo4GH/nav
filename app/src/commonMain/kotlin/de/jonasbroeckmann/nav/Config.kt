@@ -5,11 +5,8 @@ package de.jonasbroeckmann.nav
 import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
-import com.github.ajalt.colormath.Color
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.Config.PartialColors.Theme.Retro
-import de.jonasbroeckmann.nav.Config.PartialColors.Theme.Simple
 import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.EntryColumn.*
 import de.jonasbroeckmann.nav.app.State
@@ -92,7 +89,7 @@ data class Config private constructor(
     @Serializable
     data class PartialColors(
         val theme: Theme = Retro,
-        val simpleTheme: Theme = Simple,
+        val simpleTheme: Theme = Monochrome,
 
         val path: String? = null,
         val filter: String? = null,
@@ -143,9 +140,18 @@ data class Config private constructor(
                 color3 = "009FFD"
             )),
             /**
-             * A simple theme supporting even basic terminal ANSI levels.
+             * Only monochrome colors.
              */
-            Simple(themed(
+            Monochrome(themed(
+                main = "FFFFFF",
+                color1 = "FFFFFF",
+                color2 = "FFFFFF",
+                color3 = "FFFFFF"
+            )),
+            /**
+             * A simple theme supporting even basic 16 color terminals.
+             */
+            SimpleColor(themed(
                 main = "00FF00",   // bright green
                 color1 = "FF00FF", // bright magenta
                 color2 = "FFFF00", // bright yellow
