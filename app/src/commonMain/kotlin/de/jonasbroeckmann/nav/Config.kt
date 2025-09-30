@@ -24,7 +24,7 @@ data class Config private constructor(
     val clearOnExit: Boolean = true,
 
     val limitToTerminalHeight: Boolean = true,
-    val maxVisibleEntries: Int = 20,
+    val maxVisibleEntries: Int = 40,
     val maxVisiblePathElements: Int = 6,
     val inputTimeoutMillis: Int = 4,
     val suppressInitCheck: Boolean = false,
