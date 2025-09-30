@@ -26,9 +26,8 @@ class App(
     override val config: Config
 ) : RunContext by context, ConfigProvider {
     private val actions = Actions(config)
-    private var state = State(
-        directory = startingDirectory,
-        cursor = 0,
+    private var state = State.initial(
+        startingDirectory = startingDirectory,
         allMenuActions = { actions.menuActions }
     )
     private val ui = UI(actions)
@@ -40,7 +39,7 @@ class App(
             ui.update(state)
             val inputEvent = readInput()
             printlnOnDebug { "Received input event: $inputEvent" }
-            if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
+            if (inputEvent is KeyboardEvent) state = state.withLastReceivedEvent(inputEvent)
             val appEvent = inputEvent.process()
             if (appEvent == null) {
                 continue
@@ -213,18 +212,12 @@ class App(
         }
         val command = state.command
         if (command != null) {
-            tryUpdateTextField(command)?.let { return Event.NewState(state.withCommand(it)) }
+            tryUpdateTextField(command)?.let { newCommand ->
+                return Event.NewState(state.withCommand(newCommand))
+            }
         } else {
-            tryUpdateTextField(state.filter)?.let { filter ->
-                val filtered = state.filtered(filter)
-                if (filtered.filteredItems.size == state.filteredItems.size) {
-                    return Event.NewState(filtered)
-                }
-                return Event.NewState(
-                    filtered.withCursorOnFirst {
-                        it.path.name.startsWith(filter, ignoreCase = true)
-                    }
-                )
+            tryUpdateTextField(state.filter)?.let { newFilter ->
+                return Event.NewState(state.withFilter(newFilter))
             }
         }
         return null

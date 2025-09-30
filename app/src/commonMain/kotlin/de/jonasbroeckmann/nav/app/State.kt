@@ -7,7 +7,7 @@ import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import kotlinx.io.files.Path
 
-data class State(
+data class State private constructor(
     val directory: Path,
     val items: List<Entry> = directory.entries(),
     val cursor: Int,
@@ -41,15 +41,24 @@ data class State(
 
     fun withCommand(command: String?) = copy(command = command)
 
-    fun withCursor(cursor: Int) = copy(
+    fun withCursorCoerced(cursor: Int) = copy(
+        cursor = cursor.coerceAtMost(filteredItems.lastIndex).coerceAtLeast(0)
+    )
+
+    fun withCursorShifted(offset: Int) = withCursorCoerced(
         cursor = when {
             filteredItems.isEmpty() -> 0
-            else -> cursor.mod(filteredItems.size)
+            else -> (cursor + offset).mod(filteredItems.size)
         }
     )
 
-    fun withCursorOnFirst(predicate: (Entry) -> Boolean): State = copy(
-        cursor = filteredItems.indexOfFirst { predicate(it) }.coerceAtLeast(0)
+    fun withCursorOn(preferredEntry: String?, default: Int = cursor) = when (preferredEntry) {
+        null -> withCursorCoerced(default)
+        else -> withCursorOnFirst(default = default) { it.path.name == preferredEntry }
+    }
+
+    fun withCursorOnFirst(default: Int = cursor, predicate: (Entry) -> Boolean): State = withCursorCoerced(
+        cursor = filteredItems.indexOfFirst { predicate(it) }.takeIf { it >= 0 } ?: default
     )
 
     fun withCursorOnNext(predicate: (Entry) -> Boolean): State = withCursorOnNextInOffsets(
@@ -75,10 +84,15 @@ data class State(
         return this
     }
 
-    fun filtered(filter: String): State {
+    fun withFilter(filter: String): State {
         val tmp = copy(filter = filter)
-        val newCursor = if (tmp.filteredItems.size < filteredItems.size) 0 else tmp.cursor
-        return tmp.copy(items = tmp.items, cursor = newCursor)
+        return if (filteredItems.size > tmp.filteredItems.size) {
+            // if we filtered something out, move the cursor to the best match
+            tmp.withCursorCoerced(0)
+        } else {
+            // otherwise try to stay on the same entry
+            tmp.withCursorOn(currentEntry?.path?.name)
+        }
     }
 
     fun navigatedUp(): State {
@@ -106,17 +120,15 @@ data class State(
     }
 
     fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
-        val tmp = copy(items = directory.entries())
-        return when (preferredEntry) {
-            null -> tmp.copy(cursor = 0)
-            else -> tmp.withCursorOnFirst { it.path.name == preferredEntry }
-        }
+        return copy(items = directory.entries()).withCursorOn(preferredEntry)
     }
 
     fun inQuickMacroMode(enabled: Boolean = true) = when (enabled) {
         true -> copy(inQuickMacroMode = true).withMenuCursor(null)
         false -> copy(inQuickMacroMode = false)
     }
+
+    fun withLastReceivedEvent(event: KeyboardEvent?) = copy(lastReceivedEvent = event)
 
     companion object {
         private fun Path.entries(): List<Entry> = children()
@@ -126,5 +138,14 @@ data class State(
             .sortedBy { it.path.name }
             .sortedByDescending { it.type == Directory }
             .toList()
+
+        fun initial(
+            startingDirectory: Path,
+            allMenuActions: () -> List<MenuAction>
+        ) = State(
+            directory = startingDirectory,
+            cursor = 0,
+            allMenuActions = allMenuActions
+        )
     }
 }
