@@ -58,6 +58,16 @@ class UI(
         }
     }
 
+    private val selectedNamePrefix get() = when {
+        accessibilityDecorations -> "▊"
+        else -> ""
+    }
+
+    private val unselectedNamePrefix get() = when {
+        accessibilityDecorations -> " "
+        else -> ""
+    }
+
     private fun renderTable(
         entries: List<Entry>,
         cursor: Int,
@@ -91,7 +101,7 @@ class UI(
                 config.shownColumns.forEach { column ->
                     cell(column.title)
                 }
-                cell("Name")
+                cell("${unselectedNamePrefix}Name")
             }
             additionalRows += 1
         }
@@ -105,7 +115,7 @@ class UI(
                         config.shownColumns.forEach { _ ->
                             cell("")
                         }
-                        cell("… $n more") {
+                        cell("$unselectedNamePrefix… $n more") {
                             style = TextStyles.dim.style
                         }
                     }
@@ -216,6 +226,7 @@ class UI(
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
             .dressUpEntryName(entry, showLinkTarget = true)
+            .let { if (isSelected) "$selectedNamePrefix$it" else "$unselectedNamePrefix$it" }
     }
 
     private fun renderPath(path: Path): String {
