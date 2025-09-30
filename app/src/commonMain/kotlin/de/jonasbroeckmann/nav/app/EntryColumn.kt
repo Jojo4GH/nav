@@ -6,8 +6,8 @@ import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.Entry
+import de.jonasbroeckmann.nav.FullContext
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames
@@ -119,7 +119,10 @@ enum class EntryColumn(
         val hoursSinceInstant = (duration.inWholeMinutes / 60.0).coerceAtLeast(0.0)
         val factor = 2.0.pow(-hoursSinceInstant / config.modificationTime.halfBrightnessAtHours)
 
-        val brightnessRange = config.modificationTime.minimumBrightness..1.0
+        val minimumBrightness = config.modificationTime.minimumBrightness.let {
+            if (accessibilitySimpleColors) it.coerceAtLeast(0.5) else it
+        }
+        val brightnessRange = minimumBrightness..1.0
         val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
 
         val rgb = RGB(colors.modificationTime)

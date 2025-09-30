@@ -10,6 +10,7 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.Config
 import de.jonasbroeckmann.nav.Entry.Type.*
+import de.jonasbroeckmann.nav.FullContext
 import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
 import de.jonasbroeckmann.nav.app.UI.Companion.style

@@ -11,9 +11,8 @@ import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
-import de.jonasbroeckmann.nav.Colors
 import de.jonasbroeckmann.nav.Config
-import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.FullContext
 import de.jonasbroeckmann.nav.NavCommand.Companion.BinaryName
 import de.jonasbroeckmann.nav.PartialContext
 import de.jonasbroeckmann.nav.dangerThrowable
@@ -24,12 +23,6 @@ import de.jonasbroeckmann.nav.utils.which
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-
-interface FullContext : PartialContext, ConfigProvider {
-    val editorCommand: String?
-    val colors: Colors
-    val accessibilityDecorations: Boolean
-}
 
 class App(
     context: PartialContext,
@@ -55,6 +48,14 @@ class App(
             true -> config.partialColors.simpleTheme.colors
             false -> config.partialColors.theme.colors
         }
+    }
+    override val accessibilitySimpleColors by lazy {
+        command.configurationOptions.renderMode.accessibility.simpleColors
+            ?: config.accessibility.simpleColors
+            ?: when (terminal.terminalInfo.ansiLevel) {
+                TRUECOLOR, ANSI256 -> false
+                ANSI16, NONE -> true
+            }
     }
     override val accessibilityDecorations by lazy {
         command.configurationOptions.renderMode.accessibility.decorations

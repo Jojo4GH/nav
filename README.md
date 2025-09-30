@@ -265,9 +265,9 @@ autoNavigation = "OnSingleAfterCompletion"
 
 [colors] # Configure how nav looks
 
-# Possible values for themes are: Retro, Simple, Original
+# Possible values for themes are: Retro, Monochrome, SimpleColor, Original
 theme = "Retro"
-simpleTheme = "Simple" # Used for terminals with less color capabilities (see: accessibility.simpleColors)
+simpleTheme = "Monochrome" # Used for terminals with less color capabilities (see: accessibility.simpleColors)
 
 # The following colors can also be explizitly set (default: theme/simpleTheme colors):
 path = "FFFFFF"

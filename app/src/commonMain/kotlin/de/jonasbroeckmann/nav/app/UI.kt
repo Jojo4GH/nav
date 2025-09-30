@@ -8,6 +8,7 @@ import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.Entry
 import de.jonasbroeckmann.nav.Entry.Type.*
+import de.jonasbroeckmann.nav.FullContext
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
