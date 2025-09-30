@@ -18,7 +18,6 @@ import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
-import kotlin.reflect.KProperty
 
 class Actions(config: Config) : ConfigProvider by config {
     private val registered = mutableListOf<KeyAction>()
@@ -41,22 +40,22 @@ class Actions(config: Config) : ConfigProvider by config {
     val cursorUp = KeyAction(
         config.keys.cursor.up,
         condition = { filteredItems.isNotEmpty() },
-        action = { NewState(withCursor(cursor - 1)) }
+        action = { NewState(withCursorShifted(-1)) }
     ).registered()
     val cursorDown = KeyAction(
         config.keys.cursor.down,
         condition = { filteredItems.isNotEmpty() },
-        action = { NewState(withCursor(cursor + 1)) }
+        action = { NewState(withCursorShifted(+1)) }
     ).registered()
     val cursorHome = KeyAction(
         config.keys.cursor.home,
         condition = { filteredItems.isNotEmpty() },
-        action = { NewState(withCursor(0)) }
+        action = { NewState(withCursorCoerced(0)) }
     ).registered()
     val cursorEnd = KeyAction(
         config.keys.cursor.end,
         condition = { filteredItems.isNotEmpty() },
-        action = { NewState(withCursor(filteredItems.lastIndex)) }
+        action = { NewState(withCursorCoerced(filteredItems.lastIndex)) }
     ).registered()
 
     val navigateUp = KeyAction(
@@ -92,16 +91,18 @@ class Actions(config: Config) : ConfigProvider by config {
             val commonPrefix = items
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
+                .ifEmpty { return@KeyAction null }
                 .commonPrefix()
-            val filteredState = filtered(commonPrefix)
+
+            val filteredState = withFilter(commonPrefix)
             val hasFilterChanged = !filteredState.filter.equals(filter, ignoreCase = true)
 
             // Handle autocomplete
             val completedState = when (config.autocomplete.style) {
-                Config.Autocomplete.Style.CommonPrefixStop -> {
+                CommonPrefixStop -> {
                     filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
                 }
-                Config.Autocomplete.Style.CommonPrefixCycle -> {
+                CommonPrefixCycle -> {
                     if (hasFilterChanged) {
                         // Go to first
                         filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
@@ -141,7 +142,7 @@ class Actions(config: Config) : ConfigProvider by config {
         config.keys.filter.clear,
         description = { "clear filter" },
         condition = { filter.isNotEmpty() },
-        action = { NewState(filtered("")) }
+        action = { NewState(withFilter("")) }
     ).registered()
 
     val exitMenu = KeyAction(
@@ -204,7 +205,7 @@ class Actions(config: Config) : ConfigProvider by config {
                 inQuickMacroMode
             },
             action = {
-                NewState(copy(inQuickMacroMode = false))
+                NewState(inQuickMacroMode(false))
             }
         ).registered()
     ) + config.entryMacros.mapNotNull { macro ->
@@ -275,7 +276,7 @@ class Actions(config: Config) : ConfigProvider by config {
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.sink(directory / filter).close()
-                NewState(filtered("").updatedEntries(filter))
+                NewState(withFilter("").updatedEntries(filter))
             }
         ),
         MenuAction(
@@ -284,7 +285,7 @@ class Actions(config: Config) : ConfigProvider by config {
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.createDirectories(directory / filter)
-                NewState(filtered("").updatedEntries(filter))
+                NewState(withFilter("").updatedEntries(filter))
             }
         ),
         MenuAction(
