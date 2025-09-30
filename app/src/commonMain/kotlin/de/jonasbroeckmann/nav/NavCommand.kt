@@ -151,9 +151,14 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     override val command get() = this
 
     override val terminal by lazy {
+        val detected by lazy { Terminal().terminalInfo }
         Terminal(
             ansiLevel = configurationOptions.forceAnsiLevel
                 ?: AnsiLevel.NONE.takeIf { configurationOptions.renderMode.forceNoColor }
+                ?: when (detected.ansiLevel) {
+                    NONE -> AnsiLevel.ANSI16
+                    else -> null
+                }
         )
     }
 
