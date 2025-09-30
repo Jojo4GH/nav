@@ -9,7 +9,7 @@ import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.Config
-import de.jonasbroeckmann.nav.ConfigProvider
+import de.jonasbroeckmann.nav.Entry.Type.*
 import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
 import de.jonasbroeckmann.nav.app.UI.Companion.style
@@ -19,7 +19,7 @@ import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 
-class Actions(config: Config) : ConfigProvider by config {
+class Actions(context: FullContext) : FullContext by context {
     val cursorUp = KeyAction(
         config.keys.cursor.up,
         condition = { filteredItems.isNotEmpty() },
@@ -53,8 +53,8 @@ class Actions(config: Config) : ConfigProvider by config {
     )
     val navigateOpen = KeyAction(
         config.keys.nav.open,
-        description = { "open in ${config.editorCommand ?: "editor"}" },
-        style = { TextColors.rgb(config.colors.file) },
+        description = { "open in ${editorCommand ?: "editor"}" },
+        style = { TextColors.rgb(colors.file) },
         condition = { currentEntry?.type == RegularFile || currentEntry?.linkTarget?.targetEntry?.type == RegularFile },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
     )
@@ -62,7 +62,7 @@ class Actions(config: Config) : ConfigProvider by config {
     val exitCD = KeyAction(
         config.keys.submit,
         description = { "exit here" },
-        style = { TextColors.rgb(config.colors.path) },
+        style = { TextColors.rgb(colors.path) },
         condition = { directory != WorkingDirectory && filter.isEmpty() && !isTypingCommand && !isMenuOpen },
         action = { ExitAt(directory) }
     )
@@ -250,7 +250,7 @@ class Actions(config: Config) : ConfigProvider by config {
         *macroMenuActions,
         MenuAction(
             description = { "New file: \"${filter}\"" },
-            style = { TextColors.rgb(config.colors.file) },
+            style = { TextColors.rgb(colors.file) },
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.sink(directory / filter).close()
@@ -259,7 +259,7 @@ class Actions(config: Config) : ConfigProvider by config {
         ),
         MenuAction(
             description = { "New directory: \"${filter}\"" },
-            style = { TextColors.rgb(config.colors.directory) },
+            style = { TextColors.rgb(colors.directory) },
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.createDirectories(directory / filter)
@@ -268,7 +268,7 @@ class Actions(config: Config) : ConfigProvider by config {
         ),
         MenuAction(
             description = { "Run command here" },
-            style = { TextColors.rgb(config.colors.path) },
+            style = { TextColors.rgb(colors.path) },
             condition = { !isTypingCommand },
             action = { NewState(withCommand("")) }
         ),
@@ -280,7 +280,7 @@ class Actions(config: Config) : ConfigProvider by config {
                 } else {
                     TextColors.rgb("FFFFFF")("${command}_")
                 }
-                "${TextColors.rgb(config.colors.path)("❯")} $cmdStr"
+                "${TextColors.rgb(colors.path)("❯")} $cmdStr"
             },
             selectedStyle = null,
             condition = { isTypingCommand },
@@ -293,9 +293,9 @@ class Actions(config: Config) : ConfigProvider by config {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
                 val style = when (currentEntry.type) {
-                    SymbolicLink -> TextColors.rgb(config.colors.link)
-                    Directory -> TextColors.rgb(config.colors.directory)
-                    RegularFile -> TextColors.rgb(config.colors.file)
+                    SymbolicLink -> TextColors.rgb(colors.link)
+                    Directory -> TextColors.rgb(colors.directory)
+                    RegularFile -> TextColors.rgb(colors.file)
                     Unknown -> TextColors.magenta
                 }
                 style("Delete: ${currentEntry.path.name}")
