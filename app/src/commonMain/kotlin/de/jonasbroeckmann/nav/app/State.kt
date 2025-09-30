@@ -24,9 +24,12 @@ data class State private constructor(
 ) {
     val filteredItems: List<Entry> by lazy {
         if (filter.isEmpty()) return@lazy items
+        val lowercaseFilter = filter.lowercase()
         items
-            .filter { filter.lowercase() in it.path.name.lowercase() }
-            .sortedByDescending { it.path.name.startsWith(filter) } // intentionally
+            .filter { lowercaseFilter in it.path.name.lowercase() }
+            // TODO replace with scoring algorithm
+            .sortedByDescending { it.path.name.startsWith(filter, ignoreCase = true) }
+            .sortedByDescending { it.path.name.startsWith(filter) }
     }
     val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
 
