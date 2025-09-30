@@ -96,7 +96,11 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             NoColor("no-color", Accessibility(simpleColors = true, decorations = true), forceNoColor = true)
         }
 
-        val forceAnsi by option().choice(AnsiLevel.entries.associateBy { it.name })
+        val forceAnsiLevel by option(
+            "--force-ansi",
+            metavar = "LEVEL",
+            help = "Forces a specific ANSI level (overrides auto-detection)"
+        ).choice(AnsiLevel.entries.associateBy { it.name })
     }
 
     private val initOption by mutuallyExclusiveOptions<InitOption>(
@@ -148,7 +152,8 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     override val terminal by lazy {
         Terminal(
-            ansiLevel = configurationOptions.forceAnsi ?: if (configurationOptions.renderMode.forceNoColor) AnsiLevel.NONE else null,
+            ansiLevel = configurationOptions.forceAnsiLevel
+                ?: AnsiLevel.NONE.takeIf { configurationOptions.renderMode.forceNoColor }
         )
     }
 
