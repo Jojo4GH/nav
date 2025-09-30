@@ -1,14 +1,13 @@
 package de.jonasbroeckmann.nav.app
 
-import com.github.ajalt.mordant.animation.Animation
+import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.*
 import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.ConfigProvider
 import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.RunContext
+import de.jonasbroeckmann.nav.Entry.Type.*
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
@@ -18,13 +17,18 @@ import de.jonasbroeckmann.nav.app.State as UIState
 
 @OptIn(ExperimentalTime::class)
 class UI(
-    context: RunContext,
-    configProvider: ConfigProvider,
+    context: FullContext,
     private val actions: Actions
-) : Animation<UIState>(terminal = context.terminal), RunContext, ConfigProvider by configProvider {
-    override val command = context.command
+) : FullContext by context {
+    private val animation = terminal.animation<UIState> { render(it) }
 
-    override fun renderData(data: UIState): Widget = context(data) {
+    fun update(state: UIState) = animation.update(state)
+
+    fun clear() = animation.clear()
+
+    fun stop() = animation.stop()
+
+    private fun render(data: UIState): Widget = context(data) {
         verticalLayout {
             printlnOnDebug { "Updating UI ..." }
 
@@ -174,7 +178,7 @@ class UI(
 
     private fun renderFilter(filter: String, showCursor: Boolean): String {
         if (filter.isEmpty()) return ""
-        val style = TextColors.rgb(config.colors.filter) + TextStyles.bold
+        val style = TextColors.rgb(colors.filter) + TextStyles.bold
         return buildString {
             append(" $RealSystemPathSeparator ")
             append(style(filter))
@@ -184,7 +188,7 @@ class UI(
 
     @Suppress("detekt:CyclomaticComplexMethod")
     private fun renderName(entry: Entry, isSelected: Boolean, filter: String): String {
-        val filterMarkerStyle = TextColors.rgb(config.colors.filterMarker) + TextStyles.bold
+        val filterMarkerStyle = TextColors.rgb(colors.filterMarker) + TextStyles.bold
         val selectedStyle = TextStyles.inverse
         return entry.path.name
             .let {
@@ -229,7 +233,7 @@ class UI(
             else -> elements
         }
 
-        val style = TextColors.rgb(config.colors.path)
+        val style = TextColors.rgb(colors.path)
         return style(shortened.joinToString(" $RealSystemPathSeparator ")).let {
             if (debugMode) "$path\n$it" else it
         }
@@ -282,7 +286,7 @@ class UI(
 
     context(state: UIState)
     private fun renderAction(action: Action<*>): String {
-        val styleKey = TextColors.rgb(config.colors.keyHints) + TextStyles.bold
+        val styleKey = TextColors.rgb(colors.keyHints) + TextStyles.bold
         val keyStr = when (action) {
             is KeyAction -> action.displayKey(state)?.let { styleKey(keyName(it)) }
             is MenuAction -> null
@@ -385,9 +389,6 @@ class UI(
     }
 
     companion object {
-        context(context: RunContext, configProvider: ConfigProvider)
-        operator fun invoke(actions: Actions) = UI(context, configProvider, actions)
-
         @Suppress("detekt:CyclomaticComplexMethod")
         fun keyName(key: KeyboardEvent): String {
             var k = when (key.key) {
@@ -408,20 +409,20 @@ class UI(
             return k
         }
 
-        context(configProvider: ConfigProvider)
+        context(context: FullContext)
         val Entry?.style get() = when (this?.type) {
             null -> TextColors.magenta
-            SymbolicLink -> TextColors.rgb(configProvider.config.colors.link)
-            Directory -> TextColors.rgb(configProvider.config.colors.directory)
-            RegularFile -> TextColors.rgb(configProvider.config.colors.file)
+            SymbolicLink -> TextColors.rgb(context.colors.link)
+            Directory -> TextColors.rgb(context.colors.directory)
+            RegularFile -> TextColors.rgb(context.colors.file)
             Unknown -> TextColors.magenta
         }
 
-        context(configProvider: ConfigProvider)
+        context(context: FullContext)
         fun String.dressUpEntryName(entry: Entry, showLinkTarget: Boolean = false): String {
-            val dirStyle = TextColors.rgb(configProvider.config.colors.directory)
-            val fileStyle = TextColors.rgb(configProvider.config.colors.file)
-            val linkStyle = TextColors.rgb(configProvider.config.colors.link)
+            val dirStyle = TextColors.rgb(context.colors.directory)
+            val fileStyle = TextColors.rgb(context.colors.file)
+            val linkStyle = TextColors.rgb(context.colors.link)
             return when (entry.type) {
                 else if entry.error != null -> "${TextStyles.dim(this)} "
                 SymbolicLink -> when (showLinkTarget) {

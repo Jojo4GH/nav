@@ -27,17 +27,17 @@ import kotlin.time.Instant
 @Serializable(with = EntryColumn.Companion::class)
 enum class EntryColumn(
     title: String,
-    render: ConfigProvider.(Entry) -> Widget
+    render: FullContext.(Entry) -> Widget
 ) : EntryColumnRenderer by object : EntryColumnRenderer {
     override val title = title
 
-    context(config: ConfigProvider)
-    override fun render(entry: Entry): Widget = config.render(entry)
+    context(context: FullContext)
+    override fun render(entry: Entry): Widget = context.render(entry)
 } {
     Permissions("Permissions", { entry ->
-        val styleRead = TextColors.rgb(config.colors.permissionRead)
-        val styleWrite = TextColors.rgb(config.colors.permissionWrite)
-        val styleExecute = TextColors.rgb(config.colors.permissionExecute)
+        val styleRead = TextColors.rgb(colors.permissionRead)
+        val styleWrite = TextColors.rgb(colors.permissionWrite)
+        val styleExecute = TextColors.rgb(colors.permissionExecute)
 
         fun render(perm: Entry.Permissions?): String {
             val r = if (perm?.canRead == true) styleRead("r") else TextStyles.dim("-")
@@ -50,22 +50,22 @@ enum class EntryColumn(
     }),
 
     HardLinkCount("#HL", { entry ->
-        Text(TextColors.rgb(config.colors.hardlinkCount)("${entry.hardlinkCount}"))
+        Text(TextColors.rgb(colors.hardlinkCount)("${entry.hardlinkCount}"))
     }),
 
     UserName("User", { entry ->
-        Text(entry.userName?.let { TextColors.rgb(config.colors.user)(it) } ?: TextStyles.dim("?"))
+        Text(entry.userName?.let { TextColors.rgb(colors.user)(it) } ?: TextStyles.dim("?"))
     }),
 
     GroupName("Group", { entry ->
-        Text(entry.groupName?.let { TextColors.rgb(config.colors.group)(it) } ?: TextStyles.dim("?"))
+        Text(entry.groupName?.let { TextColors.rgb(colors.group)(it) } ?: TextStyles.dim("?"))
     }),
 
     @Suppress("detekt:MagicNumber")
     EntrySize("Size", render@{ entry ->
         val bytes = entry.size ?: return@render Text("", align = TextAlign.RIGHT)
 
-        val numStyle = TextColors.rgb(config.colors.entrySize)
+        val numStyle = TextColors.rgb(colors.entrySize)
         val unitStyle = numStyle + TextStyles.dim
 
         val units = listOf("k", "M", "G", "T", "P")
@@ -122,7 +122,7 @@ enum class EntryColumn(
         val brightnessRange = config.modificationTime.minimumBrightness..1.0
         val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
 
-        val rgb = RGB(config.colors.modificationTime)
+        val rgb = RGB(colors.modificationTime)
         val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
         Text(style(instant.format(format)))
     });

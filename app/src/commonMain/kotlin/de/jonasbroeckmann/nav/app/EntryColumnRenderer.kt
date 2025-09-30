@@ -7,6 +7,6 @@ import de.jonasbroeckmann.nav.Entry
 interface EntryColumnRenderer {
     val title: String
 
-    context(config: ConfigProvider)
+    context(context: FullContext)
     fun render(entry: Entry): Widget
 }
