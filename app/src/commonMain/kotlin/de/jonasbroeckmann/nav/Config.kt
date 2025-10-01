@@ -6,10 +6,12 @@ import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.EntryColumn.*
 import de.jonasbroeckmann.nav.app.State
+import de.jonasbroeckmann.nav.config.Themes
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.serialization.SerialName
@@ -95,112 +97,76 @@ data class Config private constructor(
         val filter: String? = null,
         val filterMarker: String? = null,
         val keyHints: String? = null,
+        val keyHintLabels: String? = null,
+        val genericElements: String? = null,
 
         val permissionRead: String? = null,
         val permissionWrite: String? = null,
         val permissionExecute: String? = null,
+        val permissionHeader: String? = null,
         val hardlinkCount: String? = null,
+        val hardlinkCountHeader: String? = null,
         val user: String? = null,
+        val userHeader: String? = null,
         val group: String? = null,
+        val groupHeader: String? = null,
         val entrySize: String? = null,
+        val entrySizeHeader: String? = null,
         val modificationTime: String? = null,
+        val modificationTimeHeader: String? = null,
 
         val directory: String? = null,
         val file: String? = null,
-        val link: String? = null
+        val link: String? = null,
+        val nameHeader: String? = null,
+        val nameDecorations: String? = null,
     ) {
-        infix fun filledWith(colors: Colors): Colors = Colors(
-            path = this.path ?: colors.path,
-            filter = this.filter ?: colors.filter,
-            filterMarker = this.filterMarker ?: colors.filterMarker,
-            keyHints = this.keyHints ?: colors.keyHints,
-            permissionRead = this.permissionRead ?: colors.permissionRead,
-            permissionWrite = this.permissionWrite ?: colors.permissionWrite,
-            permissionExecute = this.permissionExecute ?: colors.permissionExecute,
-            hardlinkCount = this.hardlinkCount ?: colors.hardlinkCount,
-            user = this.user ?: colors.user,
-            group = this.group ?: colors.group,
-            entrySize = this.entrySize ?: colors.entrySize,
-            modificationTime = this.modificationTime ?: colors.modificationTime,
-            directory = this.directory ?: colors.directory,
-            file = this.file ?: colors.file,
-            link = this.link ?: colors.link
+        infix fun filledWith(styles: Styles): Styles = Styles(
+            path = path?.parseColor() ?: styles.path,
+            filter = filter?.parseColor() ?: styles.filter,
+            filterMarker = filterMarker?.parseColor() ?: styles.filterMarker,
+            keyHints = keyHints?.parseColor() ?: styles.keyHints,
+            keyHintLabels = keyHintLabels?.parseColor() ?: styles.keyHintLabels,
+            genericElements = genericElements?.parseColor() ?: styles.genericElements,
+            permissionRead = permissionRead?.parseColor() ?: styles.permissionRead,
+            permissionWrite = permissionWrite?.parseColor() ?: styles.permissionWrite,
+            permissionExecute = permissionExecute?.parseColor() ?: styles.permissionExecute,
+            permissionHeader = permissionHeader?.parseColor() ?: styles.permissionHeader,
+            hardlinkCount = hardlinkCount?.parseColor() ?: styles.hardlinkCount,
+            hardlinkCountHeader = hardlinkCountHeader?.parseColor() ?: styles.hardlinkCountHeader,
+            user = user?.parseColor() ?: styles.user,
+            userHeader = userHeader?.parseColor() ?: styles.userHeader,
+            group = group?.parseColor() ?: styles.group,
+            groupHeader = groupHeader?.parseColor() ?: styles.groupHeader,
+            entrySize = entrySize?.parseColor() ?: styles.entrySize,
+            entrySizeHeader = entrySizeHeader?.parseColor() ?: styles.entrySizeHeader,
+            modificationTime = modificationTime?.parseColor() ?: styles.modificationTime,
+            modificationTimeHeader = modificationTimeHeader?.parseColor() ?: styles.modificationTimeHeader,
+            directory = directory?.parseColor() ?: styles.directory,
+            file = file?.parseColor() ?: styles.file,
+            link = link?.parseColor() ?: styles.link,
+            nameHeader = nameHeader?.parseColor() ?: styles.nameHeader,
+            nameDecorations = nameDecorations?.parseColor() ?: styles.nameDecorations,
         )
 
         @Suppress("unused")
         @Serializable
-        enum class Theme(val colors: Colors) {
-            /**
-             * The default theme with a retro look.
-             */
-            Retro(themed(
-                main = "00DBB7",
-                color1 = "F71674",
-                color2 = "F5741D",
-                color3 = "009FFD"
-            )),
-            /**
-             * Only monochrome colors.
-             */
-            Monochrome(themed(
-                main = "FFFFFF",
-                color1 = "FFFFFF",
-                color2 = "FFFFFF",
-                color3 = "FFFFFF"
-            )),
-            /**
-             * A simple theme supporting even basic 16 color terminals.
-             */
-            SimpleColor(themed(
-                main = "00FF00",   // bright green
-                color1 = "FF00FF", // bright magenta
-                color2 = "FFFF00", // bright yellow
-                color3 = "00FFFF", // bright cyan
-            )),
-            Original(Colors(
-                path = "1DFF7B",
-                filter = "FFFFFF",
-                filterMarker = "FF0000",
-                keyHints = "FFFFFF",
-
-                permissionRead = "C50F1F",
-                permissionWrite = "13A10E",
-                permissionExecute = "3B78FF",
-                hardlinkCount = "13A10E",
-                user = "C50F1F",
-                group = "C50F1F",
-                entrySize = "FFFF00",
-                modificationTime = "00FF00",
-
-                directory = "2FA2FF",
-                file = "FFFFFF",
-                link = "00FFFF"
-            ))
+        enum class Theme(val styles: Styles) {
+            Retro(Themes.Retro),
+            Monochrome(Themes.Monochrome),
+            SimpleColor(Themes.SimpleColor),
+            Random(Themes.Random),
+            Sunset(Themes.Sunset),
+            Xmas(Themes.Xmas),
+            Hub(Themes.Hub),
+            Ice(Themes.Ice),
+            Darcula(Themes.Darcula),
+            AtomOneDark(Themes.AtomOneDark),
+            HackerHacker(Themes.HackerHacker),
         }
 
         companion object {
-            fun themed(
-                main: String,
-                color1: String,
-                color2: String,
-                color3: String
-            ) = Colors(
-                path = main,
-                filter = main,
-                filterMarker = main,
-                keyHints = "FFFFFF",
-                permissionRead = color1,
-                permissionWrite = color2,
-                permissionExecute = color3,
-                hardlinkCount = color2,
-                user = color1,
-                group = color1,
-                entrySize = color2,
-                modificationTime = color3,
-                directory = color1,
-                file = color2,
-                link = color3
-            )
+            private fun String.parseColor() = rgb(this)
         }
     }
 

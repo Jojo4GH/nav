@@ -36,7 +36,8 @@ class App(
             ?: config.editor
             ?: findDefaultEditorCommand()
     }
-    override val colors by lazy {
+
+    override val styles by lazy {
         // override from command line argument or config or fill in based on terminal capabilities
         val useSimpleColors = command.configurationOptions.renderMode.accessibility.simpleColors
             ?: config.accessibility.simpleColors
@@ -45,10 +46,11 @@ class App(
                 ANSI16, NONE -> true
             }
         config.partialColors filledWith when (useSimpleColors) {
-            true -> config.partialColors.simpleTheme.colors
-            false -> config.partialColors.theme.colors
+            true -> config.partialColors.simpleTheme.styles
+            false -> config.partialColors.theme.styles
         }
     }
+
     override val accessibilitySimpleColors by lazy {
         command.configurationOptions.renderMode.accessibility.simpleColors
             ?: config.accessibility.simpleColors
