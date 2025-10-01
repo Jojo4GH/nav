@@ -225,7 +225,7 @@ data class Config private constructor(
         val afterFailedCommand: AfterMacroCommand = afterCommand,
         val quickMacroKey: KeyboardEvent? = null
     ) {
-        context(state: State, configProvider: ConfigProvider)
+        context(state: State)
         fun computeDescription(
             currentEntry: Entry
         ) = description.replacePlaceholders(
@@ -305,8 +305,4 @@ data class Config private constructor(
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
     }
-}
-
-interface ConfigProvider {
-    val config: Config
 }
