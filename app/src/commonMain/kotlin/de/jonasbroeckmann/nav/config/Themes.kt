@@ -6,7 +6,6 @@ import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
 
 object Themes {
-
     /**
      * The default theme with a retro look.
      */

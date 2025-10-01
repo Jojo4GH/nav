@@ -2,13 +2,13 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.App.Event.*
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.ui.UI.Companion.style
+import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.UI
+import de.jonasbroeckmann.nav.app.ui.UI.Companion.style
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div

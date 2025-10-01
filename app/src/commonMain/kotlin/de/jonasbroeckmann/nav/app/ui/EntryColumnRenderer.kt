@@ -1,11 +1,10 @@
 package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.rendering.Widget
-import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.Entry
 
 interface EntryColumnRenderer {
-
     context(_: FullContext)
     val title: String
 
