@@ -6,10 +6,12 @@ import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.terminal.danger
+import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.EntryColumn
+import de.jonasbroeckmann.nav.app.EntryColumn.*
 import de.jonasbroeckmann.nav.app.State
+import de.jonasbroeckmann.nav.config.Themes
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.serialization.SerialName
@@ -18,8 +20,7 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable
 data class Config private constructor(
-    @SerialName("editor")
-    val editorCommand: String? = null,
+    val editor: String? = null,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
 
@@ -40,7 +41,9 @@ data class Config private constructor(
 
     val keys: Keys = Keys(),
 
-    val colors: Colors = Colors.Retro,
+    @SerialName("colors")
+    val partialColors: PartialColors = PartialColors(),
+    val accessibility: Accessibility = Accessibility(),
     val autocomplete: Autocomplete = Autocomplete(),
     val modificationTime: ModificationTime = ModificationTime(),
 
@@ -86,77 +89,92 @@ data class Config private constructor(
     }
 
     @Serializable
-    data class Colors(
-        val path: String = Retro.path,
-        val filter: String = Retro.filter,
-        val filterMarker: String = Retro.filterMarker,
-        val keyHints: String = Retro.keyHints,
+    data class PartialColors(
+        val theme: Theme = Retro,
+        val simpleTheme: Theme = Monochrome,
 
-        val permissionRead: String = Retro.permissionRead,
-        val permissionWrite: String = Retro.permissionWrite,
-        val permissionExecute: String = Retro.permissionExecute,
-        val hardlinkCount: String = Retro.hardlinkCount,
-        val user: String = Retro.user,
-        val group: String = Retro.group,
-        val entrySize: String = Retro.entrySize,
-        val modificationTime: String = Retro.modificationTime,
+        val path: String? = null,
+        val filter: String? = null,
+        val filterMarker: String? = null,
+        val keyHints: String? = null,
+        val keyHintLabels: String? = null,
+        val genericElements: String? = null,
 
-        val directory: String = Retro.directory,
-        val file: String = Retro.file,
-        val link: String = Retro.link
+        val permissionRead: String? = null,
+        val permissionWrite: String? = null,
+        val permissionExecute: String? = null,
+        val permissionHeader: String? = null,
+        val hardlinkCount: String? = null,
+        val hardlinkCountHeader: String? = null,
+        val user: String? = null,
+        val userHeader: String? = null,
+        val group: String? = null,
+        val groupHeader: String? = null,
+        val entrySize: String? = null,
+        val entrySizeHeader: String? = null,
+        val modificationTime: String? = null,
+        val modificationTimeHeader: String? = null,
+
+        val directory: String? = null,
+        val file: String? = null,
+        val link: String? = null,
+        val nameHeader: String? = null,
+        val nameDecorations: String? = null,
     ) {
+        infix fun filledWith(styles: Styles): Styles = Styles(
+            path = path?.parseColor() ?: styles.path,
+            filter = filter?.parseColor() ?: styles.filter,
+            filterMarker = filterMarker?.parseColor() ?: styles.filterMarker,
+            keyHints = keyHints?.parseColor() ?: styles.keyHints,
+            keyHintLabels = keyHintLabels?.parseColor() ?: styles.keyHintLabels,
+            genericElements = genericElements?.parseColor() ?: styles.genericElements,
+            permissionRead = permissionRead?.parseColor() ?: styles.permissionRead,
+            permissionWrite = permissionWrite?.parseColor() ?: styles.permissionWrite,
+            permissionExecute = permissionExecute?.parseColor() ?: styles.permissionExecute,
+            permissionHeader = permissionHeader?.parseColor() ?: styles.permissionHeader,
+            hardlinkCount = hardlinkCount?.parseColor() ?: styles.hardlinkCount,
+            hardlinkCountHeader = hardlinkCountHeader?.parseColor() ?: styles.hardlinkCountHeader,
+            user = user?.parseColor() ?: styles.user,
+            userHeader = userHeader?.parseColor() ?: styles.userHeader,
+            group = group?.parseColor() ?: styles.group,
+            groupHeader = groupHeader?.parseColor() ?: styles.groupHeader,
+            entrySize = entrySize?.parseColor() ?: styles.entrySize,
+            entrySizeHeader = entrySizeHeader?.parseColor() ?: styles.entrySizeHeader,
+            modificationTime = modificationTime?.parseColor() ?: styles.modificationTime,
+            modificationTimeHeader = modificationTimeHeader?.parseColor() ?: styles.modificationTimeHeader,
+            directory = directory?.parseColor() ?: styles.directory,
+            file = file?.parseColor() ?: styles.file,
+            link = link?.parseColor() ?: styles.link,
+            nameHeader = nameHeader?.parseColor() ?: styles.nameHeader,
+            nameDecorations = nameDecorations?.parseColor() ?: styles.nameDecorations,
+        )
+
+        @Suppress("unused")
+        @Serializable
+        enum class Theme(val styles: Styles) {
+            Retro(Themes.Retro),
+            Monochrome(Themes.Monochrome),
+            SimpleColor(Themes.SimpleColor),
+            Random(Themes.Random),
+            Sunset(Themes.Sunset),
+            Xmas(Themes.Xmas),
+            Hub(Themes.Hub),
+            Ice(Themes.Ice),
+            Darcula(Themes.Darcula),
+            AtomOneDark(Themes.AtomOneDark),
+            HackerHacker(Themes.HackerHacker),
+        }
+
         companion object {
-            @Suppress("unused")
-            val Original = Colors(
-                path = "1DFF7B",
-                filter = "FFFFFF",
-                filterMarker = "FF0000",
-                keyHints = "FFFFFF",
-
-                permissionRead = "C50F1F",
-                permissionWrite = "13A10E",
-                permissionExecute = "3B78FF",
-                hardlinkCount = "13A10E",
-                user = "C50F1F",
-                group = "C50F1F",
-                entrySize = "FFFF00",
-                modificationTime = "00FF00",
-
-                directory = "2FA2FF",
-                file = "FFFFFF",
-                link = "00FFFF"
-            )
-            val Retro = themed(
-                main = "00DBB7",
-                color1 = "F71674",
-                color2 = "F5741D",
-                color3 = "009FFD"
-            )
-
-            fun themed(
-                main: String,
-                color1: String,
-                color2: String,
-                color3: String
-            ) = Colors(
-                path = main,
-                filter = main,
-                filterMarker = main,
-                keyHints = "FFFFFF",
-                permissionRead = color1,
-                permissionWrite = color2,
-                permissionExecute = color3,
-                hardlinkCount = color2,
-                user = color1,
-                group = color1,
-                entrySize = color2,
-                modificationTime = color3,
-                directory = color1,
-                file = color2,
-                link = color3
-            )
+            private fun String.parseColor() = rgb(this)
         }
     }
+
+    @Serializable
+    data class Accessibility(
+        val decorations: Boolean? = null,
+        val simpleColors: Boolean? = null
+    )
 
     @Serializable
     data class Autocomplete(
@@ -251,29 +269,12 @@ data class Config private constructor(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        context(context: RunContext)
+        context(context: PartialContext)
         fun findExplicitPath(): Path? = context.command.configurationOptions.configPath?.let { Path(it) }
             ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
-        context(context: RunContext)
-        fun load() = loadInternal()
-            .let {
-                // override editor from command line argument
-                val editorCommandFromCLI = context.command.configurationOptions.editor
-                if (editorCommandFromCLI != null) {
-                    context.printlnOnDebug { "Using editor from command line argument: $editorCommandFromCLI" }
-                    return it.copy(editorCommand = editorCommandFromCLI)
-                }
-                // fill in default editor
-                if (it.editorCommand == null) {
-                    it.copy(editorCommand = findDefaultEditorCommand())
-                } else {
-                    it
-                }
-            }
-
-        context(context: RunContext)
-        private fun loadInternal(): Config {
+        context(context: PartialContext)
+        fun load(): Config {
             try {
                 val explicitPath = findExplicitPath()?.also {
                     require(it.exists()) { "The specified config does not exist: $it" }
@@ -298,52 +299,6 @@ data class Config private constructor(
                 context.terminal.warning("Using default config")
                 return Config()
             }
-        }
-
-        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
-
-        context(context: RunContext)
-        private fun findDefaultEditorCommand(): String? {
-            context.printlnOnDebug { "Searching for default editor:" }
-
-            fun checkEnvVar(name: String): String? {
-                val value = getenv(name)?.trim() ?: run {
-                    context.printlnOnDebug { $$"  $$$name not set" }
-                    return null
-                }
-                if (value.isBlank()) {
-                    context.printlnOnDebug { $$"  $$$name is empty" }
-                    return null
-                }
-                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
-                return value
-            }
-
-            fun checkProgram(name: String): String? {
-                val path = which(name) ?: run {
-                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
-                    return null
-                }
-                context.printlnOnDebug { "  Found $name at $path" }
-                return "\"$path\"" // quote path to handle spaces
-            }
-
-            return sequence {
-                yield(checkEnvVar("EDITOR"))
-                yield(checkEnvVar("VISUAL"))
-                DefaultEditorPrograms.forEach { name ->
-                    yield(checkProgram(name))
-                }
-            }.filterNotNull().firstOrNull().also {
-                if (it == null) {
-                    context.terminal.danger("Could not find a default editor")
-                    context.terminal.warning(specifyEditorMessage)
-                }
-            }
-        }
-
-        val specifyEditorMessage: String get() {
-            return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
         }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")

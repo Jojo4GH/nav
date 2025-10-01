@@ -231,7 +231,7 @@ shownColumns = [
     "LastModified",     # Time of last modification
 ]
 
-[keys]
+[keys] # Configure how nav is controlled
 
 submit = "Enter"
 cancel = "Escape"
@@ -251,24 +251,7 @@ menu.down = "PageDown"
 filter.autocomplete = "Tab"
 filter.clear = "Escape"
 
-[colors]
-
-path = "00DBB7"
-filter = "00DBB7"
-filterMarker = "00DBB7"
-keyHints = "FFFFFF"
-
-permissionRead = "F71674"
-permissionWrite = "F5741D"
-permissionExecute = "009FFD"
-entrySize = "F5741D"
-modificationTime = "009FFD"
-
-directory = "F71674"
-file = "F5741D"
-link = "009FFD"
-
-[autocomplete]
+[autocomplete] # Configure the auto complete behavior
 
 # Controls the behavior of the auto complete feature
 # - "CommonPrefixCycle": Auto completes the largest common prefix and cycles through all entries
@@ -280,10 +263,60 @@ style = "CommonPrefixCycle"
 # - "OnSingle": Auto completes the entry and navigates immediately (not recommended)
 autoNavigation = "OnSingleAfterCompletion"
 
-[modificationTime]
+[colors] # Configure how nav looks
+
+# Possible values for themes are:
+# - "Retro" (default theme)
+# - "Monochrome" (default simpleTheme)
+# - "SimpleColor"
+# - "Random"
+# - "Sunset"
+# - "Xmas"
+# - "Hub"
+# - "Ice"
+# - "Darcula"
+# - "AtomOneDark"
+theme = "Retro"
+simpleTheme = "Monochrome" # Used for terminals with less color capabilities (see: accessibility.simpleColors)
+
+# The following colors can also be explizitly set (default: theme/simpleTheme colors):
+path = "#FFFFFF"
+filter = "#FFFFFF"
+filterMarker = "#FFFFFF"
+keyHints = "#FFFFFF"
+keyHintLabels = "#FFFFFF"
+genericElements = "#FFFFFF"
+
+permissionRead = "#FFFFFF"
+permissionWrite = "#FFFFFF"
+permissionExecute = "#FFFFFF"
+permissionHeader = "#FFFFFF"
+hardlinkCount = "#FFFFFF"
+hardlinkCountHeader = "#FFFFFF"
+user = "#FFFFFF"
+userHeader = "#FFFFFF"
+group = "#FFFFFF"
+groupHeader = "#FFFFFF"
+entrySize = "#FFFFFF"
+entrySizeHeader = "#FFFFFF"
+modificationTime = "#FFFFFF"
+modificationTimeHeader = "#FFFFFF"
+
+directory = "#FFFFFF"
+file = "#FFFFFF"
+link = "#FFFFFF"
+nameHeader = "#FFFFFF"
+nameDecoration = "#FFFFFF"
+
+[modificationTime] # Configure how the modification time is rendered
 
 minimumBrightness = 0.4
 halfBrightnessAtHours = 12.0
+
+[accessibility] # Configure accessibility options
+
+simpleColors = false # Whether to use the simple color theme (default: auto)
+decorations = false # Whether to show decorations (default: auto)
 ```
 
 For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
