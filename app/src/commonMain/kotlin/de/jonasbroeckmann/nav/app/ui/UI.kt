@@ -8,10 +8,10 @@ import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.Action
-import de.jonasbroeckmann.nav.app.Actions
-import de.jonasbroeckmann.nav.app.KeyAction
-import de.jonasbroeckmann.nav.app.MenuAction
+import de.jonasbroeckmann.nav.app.actions.Action
+import de.jonasbroeckmann.nav.app.actions.Actions
+import de.jonasbroeckmann.nav.app.actions.KeyAction
+import de.jonasbroeckmann.nav.app.actions.MenuAction
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
