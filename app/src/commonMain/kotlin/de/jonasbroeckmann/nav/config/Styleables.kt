@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.config
 
 import com.github.ajalt.mordant.rendering.TextStyle
 

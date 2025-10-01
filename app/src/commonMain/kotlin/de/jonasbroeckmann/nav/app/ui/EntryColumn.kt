@@ -1,12 +1,12 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.rendering.TextAlign
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.FullContext
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.FullContext
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames

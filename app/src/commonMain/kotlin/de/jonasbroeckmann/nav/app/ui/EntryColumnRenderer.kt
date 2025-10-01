@@ -1,8 +1,8 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.rendering.Widget
-import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.FullContext
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.FullContext
 
 interface EntryColumnRenderer {
 

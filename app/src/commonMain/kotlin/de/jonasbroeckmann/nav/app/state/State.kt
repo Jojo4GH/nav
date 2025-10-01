@@ -1,8 +1,7 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.entry
+import de.jonasbroeckmann.nav.app.MenuAction
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import kotlinx.io.files.Path
