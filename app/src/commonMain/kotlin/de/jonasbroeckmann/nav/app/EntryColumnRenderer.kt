@@ -5,6 +5,8 @@ import de.jonasbroeckmann.nav.Entry
 import de.jonasbroeckmann.nav.FullContext
 
 interface EntryColumnRenderer {
+
+    context(_: FullContext)
     val title: String
 
     context(context: FullContext)

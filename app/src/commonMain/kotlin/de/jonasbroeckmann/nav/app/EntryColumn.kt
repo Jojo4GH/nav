@@ -1,6 +1,5 @@
 package de.jonasbroeckmann.nav.app
 
-import com.github.ajalt.colormath.model.RGB
 import com.github.ajalt.mordant.rendering.TextAlign
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
@@ -26,46 +25,48 @@ import kotlin.time.Instant
 @Suppress("unused", "detekt:Wrapping")
 @Serializable(with = EntryColumn.Companion::class)
 enum class EntryColumn(
-    title: String,
+    title: FullContext.() -> String,
     render: FullContext.(Entry) -> Widget
 ) : EntryColumnRenderer by object : EntryColumnRenderer {
-    override val title = title
+
+    context(context: FullContext)
+    override val title get() = context.title()
 
     context(context: FullContext)
     override fun render(entry: Entry): Widget = context.render(entry)
 } {
-    Permissions("Permissions", { entry ->
-        val styleRead = TextColors.rgb(colors.permissionRead)
-        val styleWrite = TextColors.rgb(colors.permissionWrite)
-        val styleExecute = TextColors.rgb(colors.permissionExecute)
+    Permissions({ styles.permissionHeader("Permissions") }, { entry ->
+        val styleRead = styles.permissionRead
+        val styleWrite = styles.permissionWrite
+        val styleExecute = styles.permissionExecute
 
         fun render(perm: Entry.Permissions?): String {
-            val r = if (perm?.canRead == true) styleRead("r") else TextStyles.dim("-")
-            val w = if (perm?.canWrite == true) styleWrite("w") else TextStyles.dim("-")
-            val x = if (perm?.canExecute == true) styleExecute("x") else TextStyles.dim("-")
+            val r = if (perm?.canRead == true) styleRead("r") else (styleRead + TextStyles.dim)("-")
+            val w = if (perm?.canWrite == true) styleWrite("w") else (styleWrite + TextStyles.dim)("-")
+            val x = if (perm?.canExecute == true) styleExecute("x") else (styleExecute + TextStyles.dim)("-")
             return "$r$w$x"
         }
 
         Text("${render(entry.userPermissions)}${render(entry.groupPermissions)}${render(entry.othersPermissions)}")
     }),
 
-    HardLinkCount("#HL", { entry ->
-        Text(TextColors.rgb(colors.hardlinkCount)("${entry.hardlinkCount}"))
+    HardLinkCount({ styles.hardlinkCountHeader("#HL") }, { entry ->
+        Text(styles.hardlinkCount("${entry.hardlinkCount}"))
     }),
 
-    UserName("User", { entry ->
-        Text(entry.userName?.let { TextColors.rgb(colors.user)(it) } ?: TextStyles.dim("?"))
+    UserName({ styles.userHeader("User") }, { entry ->
+        Text(entry.userName?.let { styles.user(it) } ?: (styles.user + TextStyles.dim)("?"))
     }),
 
-    GroupName("Group", { entry ->
-        Text(entry.groupName?.let { TextColors.rgb(colors.group)(it) } ?: TextStyles.dim("?"))
+    GroupName({ styles.groupHeader("Group") }, { entry ->
+        Text(entry.groupName?.let { styles.group(it) } ?: (styles.user + TextStyles.dim)("?"))
     }),
 
     @Suppress("detekt:MagicNumber")
-    EntrySize("Size", render@{ entry ->
+    EntrySize({ styles.entrySizeHeader("Size") }, render@{ entry ->
         val bytes = entry.size ?: return@render Text("", align = TextAlign.RIGHT)
 
-        val numStyle = TextColors.rgb(colors.entrySize)
+        val numStyle = styles.entrySize
         val unitStyle = numStyle + TextStyles.dim
 
         val units = listOf("k", "M", "G", "T", "P")
@@ -96,7 +97,7 @@ enum class EntryColumn(
 
     @Suppress("detekt:MagicNumber")
     @OptIn(ExperimentalTime::class)
-    LastModified("Last Modified", { entry ->
+    LastModified({ styles.modificationTimeHeader("Last Modified") }, { entry ->
         val instant = entry.lastModificationTime ?: Instant.fromEpochMilliseconds(0L)
         val now = Clock.System.now()
         val duration = now - instant
@@ -125,7 +126,7 @@ enum class EntryColumn(
         val brightnessRange = minimumBrightness..1.0
         val brightness = factor * (brightnessRange.endInclusive - brightnessRange.start) + brightnessRange.start
 
-        val rgb = RGB(colors.modificationTime)
+        val rgb = (styles.modificationTime.color ?: TextColors.white).toSRGB()
         val style = TextColors.color(rgb.toHSV().copy(v = brightness.toFloat()))
         Text(style(instant.format(format)))
     });

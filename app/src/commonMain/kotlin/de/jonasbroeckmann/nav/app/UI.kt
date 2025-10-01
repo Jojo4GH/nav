@@ -7,7 +7,6 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.Entry.Type.*
 import de.jonasbroeckmann.nav.FullContext
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
@@ -86,10 +85,10 @@ class UI(
         if (entries.isEmpty()) {
             body {
                 if (filter.isNotEmpty()) {
-                    row { cell(Text(TextStyles.dim("No results …"))) }
+                    row { cell(Text(styles.nameDecorations("No results …"))) }
                     additionalRows += 1
                 } else {
-                    row { cell(Text(TextStyles.dim("There is nothing here"))) }
+                    row { cell(Text(styles.nameDecorations("There is nothing here"))) }
                     additionalRows += 1
                 }
             }
@@ -97,12 +96,11 @@ class UI(
         }
 
         header {
-            style = TextStyles.dim.style
             row {
                 config.shownColumns.forEach { column ->
                     cell(column.title)
                 }
-                cell("${unselectedNamePrefix}Name")
+                cell(styles.nameHeader("${unselectedNamePrefix}Name"))
             }
             additionalRows += 1
         }
@@ -117,7 +115,7 @@ class UI(
                             cell("")
                         }
                         cell("$unselectedNamePrefix… $n more") {
-                            style = TextStyles.dim.style
+                            style = styles.nameDecorations
                         }
                     }
                 }
@@ -189,9 +187,9 @@ class UI(
 
     private fun renderFilter(filter: String, showCursor: Boolean): String {
         if (filter.isEmpty()) return ""
-        val style = TextColors.rgb(colors.filter) + TextStyles.bold
+        val style = styles.filter + TextStyles.bold
         return buildString {
-            append(" $RealSystemPathSeparator ")
+            append(" ${styles.path("$RealSystemPathSeparator")} ")
             append(style(filter))
             if (showCursor) append(style("_"))
         }
@@ -199,7 +197,7 @@ class UI(
 
     @Suppress("detekt:CyclomaticComplexMethod")
     private fun renderName(entry: Entry, isSelected: Boolean, filter: String): String {
-        val filterMarkerStyle = TextColors.rgb(colors.filterMarker) + TextStyles.bold
+        val filterMarkerStyle = styles.filterMarker + TextStyles.bold
         val selectedStyle = TextStyles.inverse
         return entry.path.name
             .let {
@@ -227,7 +225,12 @@ class UI(
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
             .dressUpEntryName(entry, showLinkTarget = true)
-            .let { if (isSelected) "$selectedNamePrefix$it" else "$unselectedNamePrefix$it" }
+            .let {
+                when (isSelected) {
+                    true -> "${styles.path(selectedNamePrefix)}$it"
+                    false -> "${styles.nameDecorations(unselectedNamePrefix)}$it"
+                }
+            }
     }
 
     private fun renderPath(path: Path): String {
@@ -245,7 +248,7 @@ class UI(
             else -> elements
         }
 
-        val style = TextColors.rgb(colors.path)
+        val style = styles.path
         return style(shortened.joinToString(" $RealSystemPathSeparator ")).let {
             if (debugMode) "$path\n$it" else it
         }
@@ -266,7 +269,7 @@ class UI(
         if (state.isMenuOpen) {
             cell(renderMenu(collectAdditionalRows))
             if (!config.hideHints) {
-                cell("${TextStyles.dim("•")} ${renderMenuHints()}")
+                cell("${styles.genericElements("•")} ${renderMenuHints()}")
                 collectAdditionalRows(1)
             }
         }
@@ -278,7 +281,7 @@ class UI(
     ) = grid {
         state.availableMenuActions.forEachIndexed { i, item ->
             row {
-                cell(TextStyles.dim("│"))
+                cell(styles.genericElements("│"))
                 val isSelected = i == state.coercedMenuCursor
                 if (isSelected) {
                     cell(renderAction(actions.menuSubmit))
@@ -298,14 +301,13 @@ class UI(
 
     context(state: UIState)
     private fun renderAction(action: Action<*>): String {
-        val styleKey = TextColors.rgb(colors.keyHints) + TextStyles.bold
         val keyStr = when (action) {
-            is KeyAction -> action.displayKey(state)?.let { styleKey(keyName(it)) }
+            is KeyAction -> action.displayKey(state)?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
             is MenuAction -> null
         }
         val desc = action.description(state)
         val descStr = when (action) {
-            is KeyAction -> desc?.let { TextStyles.dim(it) }
+            is KeyAction -> desc?.let { styles.keyHintLabels(it) }
             is MenuAction -> desc
         }
         val str = listOfNotNull(
@@ -321,7 +323,7 @@ class UI(
     ): String {
         val scope = RenderHintsScope().apply(block)
         return scope.joinToString(
-            separator = TextStyles.dim(" • "),
+            separator = styles.genericElements(" • "),
             prefix = scope.prefix
         )
     }
@@ -345,13 +347,20 @@ class UI(
     context(state: UIState)
     private fun renderNavHints() = buildHints {
         if (state.inQuickMacroMode) {
-            prefix = state.currentEntry.style("Entry") + TextStyles.dim(" │ ")
+            val name = when (state.currentEntry?.type) {
+                Directory -> "dir"
+                RegularFile -> "file"
+                SymbolicLink -> "link"
+                Unknown -> "entry"
+                null -> "macro"
+            }
+            prefix = state.currentEntry.style(name) + styles.genericElements(" │ ")
             val availableMacros = actions.quickMacroActions.filter { it.isAvailable(state) }
             availableMacros.forEach {
                 render(it)
             }
             if (availableMacros.size <= 1) { // cancel is always available
-                add(TextStyles.dim("No entry macros available"))
+                add(styles.keyHintLabels("No entry macros available"))
             }
         } else {
             render(actions.navigateUp)
@@ -380,10 +389,10 @@ class UI(
 
         if (debugMode) {
             if (state.inQuickMacroMode) {
-                add(TextStyles.dim("M"))
+                add(debugStyle("M"))
             }
             if (state.lastReceivedEvent != null) {
-                add(TextStyles.dim("Key: ${keyName(state.lastReceivedEvent)}"))
+                add(debugStyle("Key: ${keyName(state.lastReceivedEvent)}"))
             }
         }
     }
@@ -396,9 +405,11 @@ class UI(
         group {
             if (state.coercedMenuCursor > 0) render(actions.menuUp)
             render(actions.menuDown)
-            if (this.isNotEmpty()) add(TextStyles.dim("navigate"))
+            if (this.isNotEmpty()) add(styles.keyHintLabels("navigate"))
         }
     }
+
+    private val debugStyle: TextStyle by lazy { TextColors.magenta }
 
     companion object {
         @Suppress("detekt:CyclomaticComplexMethod")
@@ -424,34 +435,29 @@ class UI(
         context(context: FullContext)
         val Entry?.style get() = when (this?.type) {
             null -> TextColors.magenta
-            SymbolicLink -> TextColors.rgb(context.colors.link)
-            Directory -> TextColors.rgb(context.colors.directory)
-            RegularFile -> TextColors.rgb(context.colors.file)
-            Unknown -> TextColors.magenta
+            SymbolicLink -> context.styles.link
+            Directory -> context.styles.directory
+            RegularFile -> context.styles.file
+            Unknown -> context.styles.nameDecorations
         }
 
         context(context: FullContext)
-        fun String.dressUpEntryName(entry: Entry, showLinkTarget: Boolean = false): String {
-            val dirStyle = TextColors.rgb(context.colors.directory)
-            val fileStyle = TextColors.rgb(context.colors.file)
-            val linkStyle = TextColors.rgb(context.colors.link)
-            return when (entry.type) {
-                else if entry.error != null -> "${TextStyles.dim(this)} "
-                SymbolicLink -> when (showLinkTarget) {
-                    true -> {
-                        val linkTarget = entry.linkTarget
-                        val renderedLinkTarget = linkTarget?.path?.toString()?.dressUpEntryName(
-                            linkTarget.targetEntry,
-                            showLinkTarget = false
-                        ) ?: "${TextStyles.dim("?")} "
-                        "${linkStyle(this)} ${TextStyles.dim("->")} $renderedLinkTarget"
-                    }
-                    false -> "${linkStyle(this)} "
+        fun String.dressUpEntryName(entry: Entry, showLinkTarget: Boolean = false): String = when (entry.type) {
+            else if entry.error != null -> "${context.styles.nameDecorations(this)} "
+            SymbolicLink -> when (showLinkTarget) {
+                true -> {
+                    val linkTarget = entry.linkTarget
+                    val renderedLinkTarget = linkTarget?.path?.toString()?.dressUpEntryName(
+                        linkTarget.targetEntry,
+                        showLinkTarget = false
+                    ) ?: "${context.styles.nameDecorations("?")} "
+                    "${context.styles.link(this)} ${context.styles.nameDecorations("->")} $renderedLinkTarget"
                 }
-                Directory -> "${dirStyle(this)}$RealSystemPathSeparator"
-                RegularFile -> "${fileStyle(this)} "
-                Unknown -> "${TextColors.magenta(this)} "
+                false -> "${context.styles.link(this)} "
             }
+            Directory -> "${context.styles.directory(this)}${context.styles.nameDecorations("$RealSystemPathSeparator")} "
+            RegularFile -> "${context.styles.file(this)} "
+            Unknown -> "${context.styles.nameDecorations(this)} "
         }
     }
 }

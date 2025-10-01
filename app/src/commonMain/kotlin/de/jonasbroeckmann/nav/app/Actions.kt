@@ -55,7 +55,7 @@ class Actions(context: FullContext) : FullContext by context {
     val navigateOpen = KeyAction(
         config.keys.nav.open,
         description = { "open in ${editorCommand ?: "editor"}" },
-        style = { TextColors.rgb(colors.file) },
+        style = { styles.file },
         condition = { currentEntry?.type == RegularFile || currentEntry?.linkTarget?.targetEntry?.type == RegularFile },
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
     )
@@ -63,7 +63,7 @@ class Actions(context: FullContext) : FullContext by context {
     val exitCD = KeyAction(
         config.keys.submit,
         description = { "exit here" },
-        style = { TextColors.rgb(colors.path) },
+        style = { styles.path },
         condition = { directory != WorkingDirectory && filter.isEmpty() && !isTypingCommand && !isMenuOpen },
         action = { ExitAt(directory) }
     )
@@ -251,7 +251,7 @@ class Actions(context: FullContext) : FullContext by context {
         *macroMenuActions,
         MenuAction(
             description = { "New file: \"${filter}\"" },
-            style = { TextColors.rgb(colors.file) },
+            style = { styles.file },
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.sink(directory / filter).close()
@@ -260,7 +260,7 @@ class Actions(context: FullContext) : FullContext by context {
         ),
         MenuAction(
             description = { "New directory: \"${filter}\"" },
-            style = { TextColors.rgb(colors.directory) },
+            style = { styles.directory },
             condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.createDirectories(directory / filter)
@@ -269,7 +269,7 @@ class Actions(context: FullContext) : FullContext by context {
         ),
         MenuAction(
             description = { "Run command here" },
-            style = { TextColors.rgb(colors.path) },
+            style = { styles.path },
             condition = { !isTypingCommand },
             action = { NewState(withCommand("")) }
         ),
@@ -281,7 +281,7 @@ class Actions(context: FullContext) : FullContext by context {
                 } else {
                     TextColors.rgb("FFFFFF")("${command}_")
                 }
-                "${TextColors.rgb(colors.path)("❯")} $cmdStr"
+                "${styles.path("❯")} $cmdStr"
             },
             selectedStyle = null,
             condition = { isTypingCommand },
@@ -294,9 +294,9 @@ class Actions(context: FullContext) : FullContext by context {
                 val currentEntry = currentEntry
                 requireNotNull(currentEntry)
                 val style = when (currentEntry.type) {
-                    SymbolicLink -> TextColors.rgb(colors.link)
-                    Directory -> TextColors.rgb(colors.directory)
-                    RegularFile -> TextColors.rgb(colors.file)
+                    SymbolicLink -> styles.link
+                    Directory -> styles.directory
+                    RegularFile -> styles.file
                     Unknown -> TextColors.magenta
                 }
                 style("Delete: ${currentEntry.path.name}")

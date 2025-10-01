@@ -265,28 +265,48 @@ autoNavigation = "OnSingleAfterCompletion"
 
 [colors] # Configure how nav looks
 
-# Possible values for themes are: Retro, Monochrome, SimpleColor, Original
+# Possible values for themes are:
+# - "Retro" (default theme)
+# - "Monochrome" (default simpleTheme)
+# - "SimpleColor"
+# - "Random"
+# - "Sunset"
+# - "Xmas"
+# - "Hub"
+# - "Ice"
+# - "Darcula"
+# - "AtomOneDark"
 theme = "Retro"
 simpleTheme = "Monochrome" # Used for terminals with less color capabilities (see: accessibility.simpleColors)
 
 # The following colors can also be explizitly set (default: theme/simpleTheme colors):
-path = "FFFFFF"
-filter = "FFFFFF"
-filterMarker = "FFFFFF"
-keyHints = "FFFFFF"
+path = "#FFFFFF"
+filter = "#FFFFFF"
+filterMarker = "#FFFFFF"
+keyHints = "#FFFFFF"
+keyHintLabels = "#FFFFFF"
+genericElements = "#FFFFFF"
 
-permissionRead = "FFFFFF"
-permissionWrite = "FFFFFF"
-permissionExecute = "FFFFFF"
-hardlinkCount = "FFFFFF"
-user = "FFFFFF"
-group = "FFFFFF"
-entrySize = "FFFFFF"
-modificationTime = "FFFFFF"
+permissionRead = "#FFFFFF"
+permissionWrite = "#FFFFFF"
+permissionExecute = "#FFFFFF"
+permissionHeader = "#FFFFFF"
+hardlinkCount = "#FFFFFF"
+hardlinkCountHeader = "#FFFFFF"
+user = "#FFFFFF"
+userHeader = "#FFFFFF"
+group = "#FFFFFF"
+groupHeader = "#FFFFFF"
+entrySize = "#FFFFFF"
+entrySizeHeader = "#FFFFFF"
+modificationTime = "#FFFFFF"
+modificationTimeHeader = "#FFFFFF"
 
-directory = "FFFFFF"
-file = "FFFFFF"
-link = "FFFFFF"
+directory = "#FFFFFF"
+file = "#FFFFFF"
+link = "#FFFFFF"
+nameHeader = "#FFFFFF"
+nameDecoration = "#FFFFFF"
 
 [modificationTime] # Configure how the modification time is rendered
 
