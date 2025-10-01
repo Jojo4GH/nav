@@ -69,9 +69,8 @@ class App(
     }
 
     private val actions = Actions(this)
-    private var state = State(
-        directory = startingDirectory,
-        cursor = 0,
+    private var state = State.initial(
+        startingDirectory = startingDirectory,
         allMenuActions = { actions.menuActions }
     )
     private val ui = UI(this, actions)
@@ -88,7 +87,7 @@ class App(
             ui.update(state)
             val inputEvent = readInput()
             printlnOnDebug { "Received input event: $inputEvent" }
-            if (inputEvent is KeyboardEvent) state = state.copy(lastReceivedEvent = inputEvent)
+            if (inputEvent is KeyboardEvent) state = state.withLastReceivedEvent(inputEvent)
             val appEvent = inputEvent.process()
             if (appEvent == null) {
                 continue
@@ -255,23 +254,18 @@ class App(
             state = state.inQuickMacroMode(false)
         }
         for (action in actions.ordered) {
-            if (!action.matches(state, this)) continue
-            return action.tryPerform(state, this, terminal)
+            if (action.matches(state, this)) {
+                return action.tryPerform(state, this, terminal)
+            }
         }
         val command = state.command
         if (command != null) {
-            tryUpdateTextField(command)?.let { return Event.NewState(state.withCommand(it)) }
+            tryUpdateTextField(command)?.let { newCommand ->
+                return Event.NewState(state.withCommand(newCommand))
+            }
         } else {
-            tryUpdateTextField(state.filter)?.let { filter ->
-                val filtered = state.filtered(filter)
-                if (filtered.filteredItems.size == state.filteredItems.size) {
-                    return Event.NewState(filtered)
-                }
-                return Event.NewState(
-                    filtered.withCursorOnFirst {
-                        it.path.name.startsWith(filter, ignoreCase = true)
-                    }
-                )
+            tryUpdateTextField(state.filter)?.let { newFilter ->
+                return Event.NewState(state.withFilter(newFilter))
             }
         }
         return null
