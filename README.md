@@ -279,7 +279,7 @@ autoNavigation = "OnSingleAfterCompletion"
 theme = "Retro"
 simpleTheme = "Monochrome" # Used for terminals with less color capabilities (see: accessibility.simpleColors)
 
-# The following colors can also be explizitly set (default: theme/simpleTheme colors):
+# The following colors can also be explicitly set (default: theme/simpleTheme colors):
 path = "#FFFFFF"
 filter = "#FFFFFF"
 filterMarker = "#FFFFFF"
