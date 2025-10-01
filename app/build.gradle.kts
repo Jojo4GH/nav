@@ -7,11 +7,11 @@ import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
 
 plugins {
-    val kotlinVersion = "2.2.0"
+    val kotlinVersion = "2.2.20"
     kotlin("multiplatform") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
     id("dev.detekt") version "2.0.0-alpha.0"
-    id("com.github.gmazzo.buildconfig") version "5.6.7"
+    id("com.github.gmazzo.buildconfig") version "5.6.8"
     id("org.gradle.crypto.checksum") version "1.4.0"
     id("com.netflix.nebula.ospackage") version "12.1.1"
 }
@@ -63,10 +63,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1-0.6.x-compat")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.0")
 
-            val ktomlVersion = "0.7.0"
+            val ktomlVersion = "0.7.1"
             implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
             implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
 
