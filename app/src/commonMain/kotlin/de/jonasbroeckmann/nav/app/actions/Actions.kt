@@ -1,23 +1,17 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.app.actions
 
-import com.github.ajalt.mordant.input.InputEvent
-import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
-import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import com.github.ajalt.mordant.terminal.Terminal
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
-import de.jonasbroeckmann.nav.Config
-import de.jonasbroeckmann.nav.Entry.Type.*
-import de.jonasbroeckmann.nav.FullContext
-import de.jonasbroeckmann.nav.NavCommand
 import de.jonasbroeckmann.nav.app.App.Event.*
-import de.jonasbroeckmann.nav.app.UI.Companion.style
+import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.Entry.Type.*
+import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.ui.UI
+import de.jonasbroeckmann.nav.app.ui.UI.Companion.style
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
-import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 
 class Actions(context: FullContext) : FullContext by context {
@@ -337,111 +331,4 @@ class Actions(context: FullContext) : FullContext by context {
             }
         ),
     )
-}
-
-sealed interface Action<Event : InputEvent?> {
-    val description: State.() -> String?
-
-    context(state: State)
-    fun style(): TextStyle?
-
-    fun matches(state: State, input: Event): Boolean
-
-    fun isAvailable(state: State): Boolean
-
-    fun perform(state: State, input: Event): App.Event?
-}
-
-data class MenuAction(
-    override val description: State.() -> String?,
-    private val style: State.() -> TextStyle? = { null },
-    val selectedStyle: TextStyle? = TextStyles.inverse.style,
-    private val condition: State.() -> Boolean,
-    private val action: State.() -> App.Event?
-) : Action<Nothing?> {
-    context(state: State)
-    override fun style() = state.style()
-
-    override fun matches(state: State, input: Nothing?) = isAvailable(state)
-
-    override fun isAvailable(state: State) = state.condition()
-
-    override fun perform(state: State, input: Nothing?) = state.action()
-}
-
-data class KeyAction(
-    val triggers: List<Trigger>,
-    val displayKey: (State) -> KeyboardEvent? = { null },
-    override val description: State.() -> String? = { null },
-    private val style: State.() -> TextStyle? = { null },
-    private val condition: State.() -> Boolean,
-    private val action: State.(KeyboardEvent) -> App.Event?
-) : Action<KeyboardEvent> {
-    constructor(
-        vararg keys: KeyboardEvent,
-        displayKey: (State) -> KeyboardEvent? = { keys.firstOrNull() },
-        description: State.() -> String? = { null },
-        style: State.() -> TextStyle? = { null },
-        condition: State.() -> Boolean,
-        action: State.(KeyboardEvent) -> App.Event?
-    ) : this(
-        triggers = keys.map { Trigger(it, false) },
-        displayKey = displayKey,
-        description = description,
-        style = style,
-        condition = condition,
-        action = action
-    )
-
-    context(state: State)
-    override fun style() = state.style()
-
-    override fun matches(state: State, input: KeyboardEvent): Boolean {
-        val trigger = Trigger(input, state.inQuickMacroMode)
-        return trigger in triggers && isAvailable(state)
-    }
-
-    override fun isAvailable(state: State) = state.condition()
-
-    override fun perform(state: State, input: KeyboardEvent) = state.action(input)
-
-    data class Trigger private constructor(
-        val key: KeyboardEvent,
-        val inQuickMacroMode: Boolean
-    ) {
-        companion object {
-            operator fun invoke(
-                key: KeyboardEvent,
-                inQuickMacroMode: Boolean
-            ) = Trigger(
-                key = if (inQuickMacroMode) key.copy(ctrl = false) else key,
-                inQuickMacroMode = inQuickMacroMode
-            )
-        }
-    }
-}
-
-fun <E : InputEvent?> Action<E>.tryPerform(state: State, input: E, terminal: Terminal): App.Event? {
-    try {
-        return perform(state, input)
-    } catch (e: IOException) {
-        val msg = e.message
-        when {
-            msg == null -> {
-                terminal.danger("An unknown error occurred")
-                terminal.info("If this should be considered a bug, please report it.")
-                return null
-            }
-            msg.contains("Permission denied", ignoreCase = true) -> {
-                terminal.danger("$msg")
-                terminal.info("Try running ${NavCommand.BinaryName} with elevated permissions :)")
-                return null
-            }
-            else -> {
-                terminal.danger("An unknown error occurred: $msg")
-                terminal.info("If this should be considered a bug, please report it.")
-                return null
-            }
-        }
-    }
 }

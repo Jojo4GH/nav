@@ -4,10 +4,8 @@ import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.Styles
 
 object Themes {
-
     /**
      * The default theme with a retro look.
      */

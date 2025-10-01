@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app.state
 
 import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.StatResult
@@ -6,57 +6,6 @@ import de.jonasbroeckmann.nav.utils.error
 import de.jonasbroeckmann.nav.utils.stat
 import kotlinx.io.files.Path
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
-
-expect fun Path.entry(): Entry
-
-@OptIn(ExperimentalTime::class)
-interface Entry {
-    /**
-     * This must always be an absolute path
-     */
-    val path: Path
-
-    val error: String?
-
-    val type: Type
-
-    val userPermissions: Permissions?
-    val groupPermissions: Permissions?
-    val othersPermissions: Permissions?
-
-    val hardlinkCount: UInt?
-
-    val userName: String?
-    val groupName: String?
-
-    val size: Long?
-
-    val lastModificationTime: Instant?
-
-    val linkTarget: Link?
-
-    data class Permissions(
-        val canRead: Boolean = false,
-        val canWrite: Boolean = false,
-        val canExecute: Boolean = false
-    )
-
-    enum class Type {
-        Directory,
-        RegularFile,
-        SymbolicLink,
-        Unknown
-    }
-
-    interface Link {
-        /**
-         * This might be relative or absolute
-         */
-        val path: Path
-        val targetEntry: Entry
-    }
-}
 
 @OptIn(ExperimentalTime::class)
 internal abstract class EntryBase(override val path: Path) : Entry {
@@ -91,7 +40,7 @@ internal abstract class EntryBase(override val path: Path) : Entry {
     override val linkTarget: Entry.Link? get() = null
 }
 
-internal fun Stat.Mode.Permissions.toEntryPermissions() = Entry.Permissions(
+private fun Stat.Mode.Permissions.toEntryPermissions() = Entry.Permissions(
     canRead = canRead,
     canWrite = canWrite,
     canExecute = canExecute

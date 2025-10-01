@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.command
 
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
