@@ -6,33 +6,81 @@ import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import com.github.ajalt.mordant.terminal.warning
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.CDFile
 import de.jonasbroeckmann.nav.Config
-import de.jonasbroeckmann.nav.ConfigProvider
-import de.jonasbroeckmann.nav.RunContext
+import de.jonasbroeckmann.nav.FullContext
+import de.jonasbroeckmann.nav.NavCommand.Companion.BinaryName
+import de.jonasbroeckmann.nav.PartialContext
 import de.jonasbroeckmann.nav.dangerThrowable
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.exitProcess
+import de.jonasbroeckmann.nav.utils.getenv
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class App(
-    context: RunContext,
+    context: PartialContext,
     override val config: Config
-) : RunContext by context, ConfigProvider {
-    private val actions = Actions(config)
+) : FullContext, PartialContext by context {
+
+    override val editorCommand by lazy {
+        // override editor from command line argument or config or fill in default editor
+        context.command.configurationOptions.editor
+            ?.also { context.printlnOnDebug { "Using editor from command line argument: $it" } }
+            ?: config.editor
+            ?: findDefaultEditorCommand()
+    }
+
+    override val styles by lazy {
+        // override from command line argument or config or fill in based on terminal capabilities
+        val useSimpleColors = command.configurationOptions.renderMode.accessibility.simpleColors
+            ?: config.accessibility.simpleColors
+            ?: when (terminal.terminalInfo.ansiLevel) {
+                TRUECOLOR, ANSI256 -> false
+                ANSI16, NONE -> true
+            }
+        config.partialColors filledWith when (useSimpleColors) {
+            true -> config.partialColors.simpleTheme.styles
+            false -> config.partialColors.theme.styles
+        }
+    }
+
+    override val accessibilitySimpleColors by lazy {
+        command.configurationOptions.renderMode.accessibility.simpleColors
+            ?: config.accessibility.simpleColors
+            ?: when (terminal.terminalInfo.ansiLevel) {
+                TRUECOLOR, ANSI256 -> false
+                ANSI16, NONE -> true
+            }
+    }
+    override val accessibilityDecorations by lazy {
+        command.configurationOptions.renderMode.accessibility.decorations
+            ?: config.accessibility.decorations
+            ?: when (terminal.terminalInfo.ansiLevel) {
+                TRUECOLOR, ANSI256, ANSI16 -> false
+                NONE -> true
+            }
+    }
+
+    private val actions = Actions(this)
     private var state = State.initial(
         startingDirectory = startingDirectory,
         allMenuActions = { actions.menuActions }
     )
-    private val ui = UI(actions)
+    private val ui = UI(this, actions)
 
     fun main(): Nothing {
+        if (!terminal.terminalInfo.interactive) {
+            terminal.danger("Cannot use $BinaryName in a non-interactive terminal")
+            exitProcess(1)
+        }
+
         terminal.cursor.hide(showOnExit = false)
 
         while (true) {
@@ -149,7 +197,7 @@ class App(
     }
 
     fun openInEditor(file: Path): Int? {
-        val editorCommand = config.editorCommand ?: run {
+        val editorCommand = editorCommand ?: run {
             terminal.danger("Could not open file. No editor configured")
             return null
         }
@@ -224,7 +272,7 @@ class App(
     }
 
     companion object {
-        context(context: RunContext)
+        context(context: PartialContext)
         operator fun invoke(config: Config) = App(context, config)
 
         private fun KeyboardEvent.tryUpdateTextField(str: String): String? {
@@ -234,6 +282,52 @@ class App(
                 key.length == 1 -> str + key
                 else -> null
             }
+        }
+
+        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
+
+        context(context: PartialContext)
+        private fun findDefaultEditorCommand(): String? {
+            context.printlnOnDebug { "Searching for default editor:" }
+
+            fun checkEnvVar(name: String): String? {
+                val value = getenv(name)?.trim() ?: run {
+                    context.printlnOnDebug { $$"  $$$name not set" }
+                    return null
+                }
+                if (value.isBlank()) {
+                    context.printlnOnDebug { $$"  $$$name is empty" }
+                    return null
+                }
+                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
+                return value
+            }
+
+            fun checkProgram(name: String): String? {
+                val path = which(name) ?: run {
+                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
+                    return null
+                }
+                context.printlnOnDebug { "  Found $name at $path" }
+                return "\"$path\"" // quote path to handle spaces
+            }
+
+            return sequence {
+                yield(checkEnvVar("EDITOR"))
+                yield(checkEnvVar("VISUAL"))
+                DefaultEditorPrograms.forEach { name ->
+                    yield(checkProgram(name))
+                }
+            }.filterNotNull().firstOrNull().also {
+                if (it == null) {
+                    context.terminal.danger("Could not find a default editor")
+                    context.terminal.warning(specifyEditorMessage)
+                }
+            }
+        }
+
+        private val specifyEditorMessage: String get() {
+            return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
         }
     }
 
