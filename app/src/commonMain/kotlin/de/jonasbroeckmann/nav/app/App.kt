@@ -10,16 +10,20 @@ import com.github.ajalt.mordant.terminal.warning
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
-import de.jonasbroeckmann.nav.CDFile
-import de.jonasbroeckmann.nav.Config
-import de.jonasbroeckmann.nav.FullContext
-import de.jonasbroeckmann.nav.NavCommand.Companion.BinaryName
-import de.jonasbroeckmann.nav.PartialContext
-import de.jonasbroeckmann.nav.dangerThrowable
-import de.jonasbroeckmann.nav.printlnOnDebug
+import de.jonasbroeckmann.nav.app.actions.Action
+import de.jonasbroeckmann.nav.app.actions.Actions
+import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.ui.UI
+import de.jonasbroeckmann.nav.command.CDFile
+import de.jonasbroeckmann.nav.command.NavCommand.Companion.BinaryName
+import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.command.dangerThrowable
+import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.exitProcess
 import de.jonasbroeckmann.nav.utils.getenv
 import de.jonasbroeckmann.nav.utils.which
+import kotlinx.io.IOException
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -28,7 +32,6 @@ class App(
     context: PartialContext,
     override val config: Config
 ) : FullContext, PartialContext by context {
-
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
         context.command.configurationOptions.editor
@@ -244,7 +247,7 @@ class App(
         if (state.inQuickMacroMode) {
             for (action in actions.quickMacroActions) {
                 if (!action.matches(state, this)) continue
-                return action.tryPerform(state, this, terminal)
+                return action.tryPerform(this)
             }
             if (key in setOf("Control", "Shift", "Alt")) {
                 return null
@@ -255,7 +258,7 @@ class App(
         }
         for (action in actions.ordered) {
             if (action.matches(state, this)) {
-                return action.tryPerform(state, this, terminal)
+                return action.tryPerform(this)
             }
         }
         val command = state.command
@@ -269,6 +272,29 @@ class App(
             }
         }
         return null
+    }
+
+    private fun <E : InputEvent?> Action<E>.tryPerform(input: E): Event? {
+        try {
+            return perform(state, input)
+        } catch (e: IOException) {
+            val msg = e.message
+            when {
+                msg == null -> {
+                    terminal.danger("An unknown error occurred")
+                    terminal.info("If this should be considered a bug, please report it.")
+                }
+                msg.contains("Permission denied", ignoreCase = true) -> {
+                    terminal.danger(msg)
+                    terminal.info("Try running $BinaryName with elevated permissions :)")
+                }
+                else -> {
+                    terminal.danger("An unknown error occurred: $msg")
+                    terminal.info("If this should be considered a bug, please report it.")
+                }
+            }
+            return null
+        }
     }
 
     companion object {

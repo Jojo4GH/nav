@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.command
 
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.buffered

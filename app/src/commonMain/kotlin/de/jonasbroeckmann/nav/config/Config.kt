@@ -1,6 +1,6 @@
 @file:UseSerializers(KeyboardEventAsStringSerializer::class)
 
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.config
 
 import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
@@ -8,10 +8,11 @@ import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.app.EntryColumn
-import de.jonasbroeckmann.nav.app.EntryColumn.*
-import de.jonasbroeckmann.nav.app.State
-import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.ui.EntryColumn
+import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.serialization.SerialName
@@ -121,6 +122,7 @@ data class Config private constructor(
         val nameHeader: String? = null,
         val nameDecorations: String? = null,
     ) {
+        @Suppress("detekt:CyclomaticComplexMethod")
         infix fun filledWith(styles: Styles): Styles = Styles(
             path = path?.parseColor() ?: styles.path,
             filter = filter?.parseColor() ?: styles.filter,
@@ -223,7 +225,7 @@ data class Config private constructor(
         val afterFailedCommand: AfterMacroCommand = afterCommand,
         val quickMacroKey: KeyboardEvent? = null
     ) {
-        context(state: State, configProvider: ConfigProvider)
+        context(state: State)
         fun computeDescription(
             currentEntry: Entry
         ) = description.replacePlaceholders(
@@ -303,8 +305,4 @@ data class Config private constructor(
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
     }
-}
-
-interface ConfigProvider {
-    val config: Config
 }

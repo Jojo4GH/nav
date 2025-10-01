@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app.state
 
 import kotlinx.io.files.Path
 
