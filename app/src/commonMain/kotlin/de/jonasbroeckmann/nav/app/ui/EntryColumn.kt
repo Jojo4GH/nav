@@ -5,8 +5,8 @@ import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.Entry
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.MonthNames
@@ -28,7 +28,6 @@ enum class EntryColumn(
     title: FullContext.() -> String,
     render: FullContext.(Entry) -> Widget
 ) : EntryColumnRenderer by object : EntryColumnRenderer {
-
     context(context: FullContext)
     override val title get() = context.title()
 

@@ -12,14 +12,14 @@ import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.Actions
-import de.jonasbroeckmann.nav.command.CDFile
-import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.command.NavCommand.Companion.BinaryName
-import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.UI
+import de.jonasbroeckmann.nav.command.CDFile
+import de.jonasbroeckmann.nav.command.NavCommand.Companion.BinaryName
+import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.exitProcess
 import de.jonasbroeckmann.nav.utils.getenv
 import de.jonasbroeckmann.nav.utils.which
@@ -32,7 +32,6 @@ class App(
     context: PartialContext,
     override val config: Config
 ) : FullContext, PartialContext by context {
-
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
         context.command.configurationOptions.editor

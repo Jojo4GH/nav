@@ -142,8 +142,6 @@ enum class Shell(
     }
 }
 
-typealias InitAction = Shell.(Terminal) -> Unit
-
 private val UnixPathSanitizer: (String) -> String = {
     it.replace(RealSystemPathSeparator, '/')
 }
