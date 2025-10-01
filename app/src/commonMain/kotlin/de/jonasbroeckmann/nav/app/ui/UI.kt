@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.input.KeyboardEvent
@@ -6,14 +6,18 @@ import com.github.ajalt.mordant.rendering.*
 import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.Entry
-import de.jonasbroeckmann.nav.FullContext
-import de.jonasbroeckmann.nav.printlnOnDebug
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.Action
+import de.jonasbroeckmann.nav.app.Actions
+import de.jonasbroeckmann.nav.app.KeyAction
+import de.jonasbroeckmann.nav.app.MenuAction
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
 import kotlin.time.ExperimentalTime
-import de.jonasbroeckmann.nav.app.State as UIState
+import de.jonasbroeckmann.nav.app.state.State as UIState
 
 @OptIn(ExperimentalTime::class)
 class UI(

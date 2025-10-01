@@ -1,6 +1,6 @@
 @file:UseSerializers(KeyboardEventAsStringSerializer::class)
 
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.config
 
 import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
@@ -8,10 +8,12 @@ import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.app.EntryColumn
-import de.jonasbroeckmann.nav.app.EntryColumn.*
-import de.jonasbroeckmann.nav.app.State
-import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.app.ui.EntryColumn
+import de.jonasbroeckmann.nav.app.ui.EntryColumn.*
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.serialization.SerialName

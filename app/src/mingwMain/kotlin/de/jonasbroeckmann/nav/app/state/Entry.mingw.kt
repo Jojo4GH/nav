@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app.state
 
 import de.jonasbroeckmann.nav.utils.FileAttributes
 import de.jonasbroeckmann.nav.utils.FileAttributesResult

@@ -1,4 +1,8 @@
-package de.jonasbroeckmann.nav
+package de.jonasbroeckmann.nav.app
+
+import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.config.ConfigProvider
+import de.jonasbroeckmann.nav.config.Styles
 
 interface FullContext : PartialContext, ConfigProvider {
     val editorCommand: String?
