@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.app.state
 
+import NativeEntry
 import de.jonasbroeckmann.nav.utils.ReadLinkResult
 import de.jonasbroeckmann.nav.utils.error
 import de.jonasbroeckmann.nav.utils.getGroupNameFromId
@@ -9,7 +10,7 @@ import kotlinx.io.files.Path
 
 actual fun Path.entry(): Entry = EntryImpl(this)
 
-private data class EntryImpl(override val path: Path) : EntryBase(path) {
+private data class EntryImpl(override val path: Path) : NativeEntry(path) {
     private var readLinkError: String? = null
     private val readLinkResult: ReadLinkResult? by lazy {
         if (type != SymbolicLink) return@lazy null

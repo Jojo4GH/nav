@@ -1,5 +1,8 @@
-package de.jonasbroeckmann.nav.app.state
-
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
+import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
+import de.jonasbroeckmann.nav.app.state.Entry.Type.SymbolicLink
+import de.jonasbroeckmann.nav.app.state.Entry.Type.Unknown
 import de.jonasbroeckmann.nav.utils.Stat
 import de.jonasbroeckmann.nav.utils.StatResult
 import de.jonasbroeckmann.nav.utils.error
@@ -8,10 +11,10 @@ import kotlinx.io.files.Path
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
-internal abstract class EntryBase(override val path: Path) : Entry {
+internal abstract class NativeEntry(override val path: Path) : Entry {
     private var statError: String? = null
     protected val statResult: StatResult by lazy {
-        path.stat().also { statError = it.error?.message }
+        stat(path).also { statError = it.error?.message }
     }
     protected val stat get() = statResult as? Stat
 
@@ -30,14 +33,9 @@ internal abstract class EntryBase(override val path: Path) : Entry {
 
     override val hardlinkCount get() = stat?.hardlinkCount
 
-    override val userName: String? get() = null
-    override val groupName: String? get() = null
-
     override val size get() = stat?.size?.takeIf { it >= 0 && type != Directory }
 
     override val lastModificationTime get() = stat?.lastModificationTime
-
-    override val linkTarget: Entry.Link? get() = null
 }
 
 private fun Stat.Mode.Permissions.toEntryPermissions() = Entry.Permissions(
