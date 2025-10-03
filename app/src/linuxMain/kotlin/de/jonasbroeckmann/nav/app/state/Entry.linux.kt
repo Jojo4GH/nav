@@ -19,6 +19,8 @@ private data class EntryImpl(override val path: Path) : NativeEntry(path) {
 
     override val error: String? get() = super.error ?: readLinkError
 
+    override val isHidden: Boolean = path.name.startsWith(".")
+
     override val userName by lazy { stat?.userId?.let { getUserNameFromId(it) } }
     override val groupName by lazy { stat?.groupId?.let { getGroupNameFromId(it) } }
 
