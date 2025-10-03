@@ -10,13 +10,14 @@ import com.github.ajalt.mordant.terminal.warning
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio
+import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.Actions
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.UI
 import de.jonasbroeckmann.nav.command.CDFile
-import de.jonasbroeckmann.nav.command.NavCommand.Companion.BinaryName
 import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.command.catchAllFatal
 import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.config.Config
@@ -78,7 +79,12 @@ class App(
     )
     private val ui = UI(this, actions)
 
-    fun main(): Nothing {
+    fun main(): Nothing = catchAllFatal(
+        cleanupOnError = {
+            ui.stop()
+            terminal.cursor.show()
+        }
+    ) {
         if (!terminal.terminalInfo.interactive) {
             terminal.danger("Cannot use $BinaryName in a non-interactive terminal")
             exitProcess(1)
