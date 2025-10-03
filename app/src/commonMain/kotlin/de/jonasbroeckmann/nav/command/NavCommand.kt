@@ -110,14 +110,14 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             .help {
                 helpLines(
                     "Configures how the $BinaryName is rendered:",
-                    *RenderModeOption.entries.map {
-                        theme.muted(when (it) {
-                            Auto -> "• ${it.label}: Automatically detect the best mode based on terminal capabilities (default)"
-                            Simple -> "• ${it.label}: Use a simple color theme"
-                            Accessible -> "• ${it.label}: Use accessibility decorations"
-                            SimpleAccessible -> "• ${it.label}: Use a simple color theme and accessibility decorations"
-                            NoColor -> "• ${it.label}: Disable colors (forces accessibility decorations)"
-                        })
+                    *RenderModeOption.entries.map { mode ->
+                        when (mode) {
+                            Auto -> "• ${mode.label}: Automatically detect the best mode based on terminal capabilities (default)"
+                            Simple -> "• ${mode.label}: Use a simple color theme"
+                            Accessible -> "• ${mode.label}: Use accessibility decorations"
+                            SimpleAccessible -> "• ${mode.label}: Use a simple color theme and accessibility decorations"
+                            NoColor -> "• ${mode.label}: Disable colors (forces accessibility decorations)"
+                        }.let { theme.muted(it) }
                     }.toTypedArray()
                 )
             }
@@ -142,12 +142,12 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             .help {
                 helpLines(
                     "Forces a specific ANSI level (overrides auto-detection):",
-                    AnsiLevel.entries.reversed().joinToString(" • ") {
-                        when (it) {
-                            AnsiLevel.TRUECOLOR -> "${it.name}: 24-bit colors"
-                            AnsiLevel.ANSI256 -> "${it.name}: 8-bit colors"
-                            AnsiLevel.ANSI16 -> "${it.name}: 4-bit colors"
-                            AnsiLevel.NONE -> "${it.name}: No colors"
+                    AnsiLevel.entries.reversed().joinToString(" • ") { level ->
+                        when (level) {
+                            AnsiLevel.TRUECOLOR -> "${level.name}: 24-bit colors"
+                            AnsiLevel.ANSI256 -> "${level.name}: 8-bit colors"
+                            AnsiLevel.ANSI16 -> "${level.name}: 4-bit colors"
+                            AnsiLevel.NONE -> "${level.name}: No colors"
                         }
                     }.let { theme.muted(it) }
                 )
@@ -304,7 +304,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     }
 
     companion object {
-        private val directoryArgumentName = "directory"
+        private val directoryArgumentName get() = "directory"
 
         private fun helpLines(vararg lines: String) = lines.joinToString("\u0085")
 
@@ -325,14 +325,19 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     private class NavHelpFormatter(context: Context) : MordantHelpFormatter(context) {
         override fun styleUsageTitle(title: String) = theme.style("style1")(title)
+
         override fun styleSectionTitle(title: String) = theme.style("style1")(title)
+
         override fun normalizeParameter(name: String) = when (name) {
             localization.optionsMetavar() -> theme.style("style2")(super.normalizeParameter(name))
             directoryArgumentName -> theme.style("main")(super.normalizeParameter(name))
             else -> super.normalizeParameter(name)
         }
+
         override fun styleOptionName(name: String) = theme.style("style2")(name)
+
         override fun styleArgumentName(name: String) = name
+
         override fun styleMetavar(metavar: String) = theme.style("style3")(metavar)
     }
 
