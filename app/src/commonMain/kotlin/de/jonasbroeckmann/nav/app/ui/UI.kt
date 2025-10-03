@@ -228,7 +228,7 @@ class UI(
             }
             .let { if (isSelected) selectedStyle(it) else it }
             .let { "\u0006$it" } // prevent filter highlighting from getting removed
-            .dressUpEntryName(entry, showLinkTarget = true)
+            .dressUpEntryName(entry, isSelected = isSelected, showLinkTarget = true)
             .let {
                 when (isSelected) {
                     true -> "${styles.path(selectedNamePrefix)}$it"
@@ -444,22 +444,31 @@ class UI(
         }
 
         context(context: FullContext)
-        fun String.dressUpEntryName(entry: Entry, showLinkTarget: Boolean = false): String = when (entry.type) {
-            else if entry.error != null -> "${context.styles.nameDecorations(this)} "
-            SymbolicLink -> when (showLinkTarget) {
-                true -> {
-                    val linkTarget = entry.linkTarget
-                    val renderedLinkTarget = linkTarget?.path?.toString()?.dressUpEntryName(
-                        linkTarget.targetEntry,
-                        showLinkTarget = false
-                    ) ?: "${context.styles.nameDecorations("?")} "
-                    "${context.styles.link(this)} ${context.styles.nameDecorations("->")} $renderedLinkTarget"
-                }
-                false -> "${context.styles.link(this)} "
+        private fun String.dressUpEntryName(entry: Entry, isSelected: Boolean, showLinkTarget: Boolean = false): String {
+            fun common(string: String): String = when {
+                !isSelected && entry.isHidden == true -> TextStyles.dim(string)
+                else -> string
             }
-            Directory -> "${context.styles.directory(this)}${context.styles.nameDecorations("$RealSystemPathSeparator")} "
-            RegularFile -> "${context.styles.file(this)} "
-            Unknown -> "${context.styles.nameDecorations(this)} "
+            return when (entry.type) {
+                else if entry.error != null -> "${common(context.styles.nameDecorations(this))} "
+                SymbolicLink -> when (showLinkTarget) {
+                    true -> {
+                        val linkTarget = entry.linkTarget
+                        val renderedLinkTarget = linkTarget?.path?.toString()?.dressUpEntryName(
+                            linkTarget.targetEntry,
+                            isSelected = isSelected,
+                            showLinkTarget = false
+                        ) ?: "${context.styles.nameDecorations("?")} "
+                        "${common("${context.styles.link(this)} ${context.styles.nameDecorations("->")}")} $renderedLinkTarget"
+                    }
+
+                    false -> "${common(context.styles.link(this))} "
+                }
+
+                Directory -> "${common("${context.styles.directory(this)}${context.styles.nameDecorations("$RealSystemPathSeparator")}")} "
+                RegularFile -> "${common(context.styles.file(this))} "
+                Unknown -> "${common(context.styles.nameDecorations(this))} "
+            }
         }
     }
 }
