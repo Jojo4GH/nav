@@ -1,6 +1,5 @@
 package de.jonasbroeckmann.nav.app.state
 
-import NativeEntry
 import de.jonasbroeckmann.nav.utils.ReadLinkResult
 import de.jonasbroeckmann.nav.utils.error
 import de.jonasbroeckmann.nav.utils.getGroupNameFromId
