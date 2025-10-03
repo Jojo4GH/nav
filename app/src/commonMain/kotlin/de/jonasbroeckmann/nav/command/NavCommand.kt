@@ -2,6 +2,12 @@ package de.jonasbroeckmann.nav.command
 
 import com.github.ajalt.clikt.completion.CompletionCandidates
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.core.terminal
+import com.github.ajalt.clikt.core.theme
+import com.github.ajalt.clikt.output.Localization
+import com.github.ajalt.clikt.output.MordantHelpFormatter
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
@@ -13,31 +19,45 @@ import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.mordant.rendering.AnsiLevel
+import com.github.ajalt.mordant.rendering.TextColors
+import com.github.ajalt.mordant.rendering.TextStyles
+import com.github.ajalt.mordant.rendering.Theme
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import de.jonasbroeckmann.nav.Constants.BinaryName
+import de.jonasbroeckmann.nav.Constants.IssuesUrl
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
+import de.jonasbroeckmann.nav.config.Themes
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
-    val directory by argument(
-        "DIRECTORY",
-        help = "The directory to start in",
-        completionCandidates = CompletionCandidates.Path
-    )
-        .convert { Path(it).absolute().cleaned() }
-        .optional()
-        .validate {
-            val metadata = it.metadataOrNull() ?: fail("\"$it\": No such file or directory")
-            require(metadata.isDirectory) { "\"$it\": Not a directory" }
+    init {
+        context {
+            terminal = Terminal(theme = DefaultTerminalTheme)
+            helpFormatter = { context -> NavHelpFormatter(context) }
+            localization = NavLocalization
         }
+    }
+
+    override fun help(context: Context): String {
+        val stylish = listOf(
+            Themes.Retro.file("st"),
+            Themes.Retro.directory("yl"),
+            Themes.Retro.link("i"),
+            Themes.Retro.path("sh"),
+        ).joinToString("")
+        return "The interactive and $stylish replacement for ls & cd!"
+    }
 
     val configurationOptions by ConfigurationOptions()
 
@@ -47,39 +67,60 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     ) {
         val configPath by option(
             "--config",
-            metavar = "PATH",
-            help = "Explicitly specify the config file to use " +
-                "(default: looks for config file at $${Config.ENV_VAR_NAME} or \"${Config.DefaultPath}\")"
-        )
+            metavar = "path"
+        ).help {
+            helpLines(
+                "Explicitly specify the config file to use.",
+                theme.muted("Default: Search for config file in $${Config.ENV_VAR_NAME} or \"${Config.DefaultPath}\"")
+            )
+        }
+
+        val editConfig by option(
+            "--edit-config",
+            help = "Opens the current config file in the editor."
+        ).flag()
+
+        val editor by option(
+            "--editor",
+            metavar = "command",
+            help = "Explicitly specify the editor to use (overrides all configuration)."
+        ).convert { it.trim() }
 
         val shell by option(
             "--shell",
             "--correct-init", // Deprecated
-            metavar = "SHELL",
-            help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly"
-        ).choice(Shell.available)
-
-        val editor by option(
-            "--editor",
-            metavar = "COMMAND",
-            help = "Explicitly specify the editor to use (overrides all configuration)"
-        ).convert { it.trim() }
-
-        val editConfig by option(
-            "--edit-config",
-            help = "Opens the current config file in the editor"
-        ).flag()
+            metavar = "shell",
+            help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly."
+        ).choice(Shell.available).help {
+            helpLines(
+                "Uses this shell for command execution. Also signals that the initialization script is being used correctly.",
+                theme.muted(shellHelpValues)
+            )
+        }
 
         val renderMode by option(
             "--render",
-            metavar = "MODE",
-            help = "Configures how the UI is rendered"
+            metavar = "mode"
         )
             .choice(
                 RenderModeOption.entries.associateBy { it.label },
                 ignoreCase = true
             )
             .default(Auto, defaultForHelp = RenderModeOption.Auto.label)
+            .help {
+                helpLines(
+                    "Configures how the $BinaryName is rendered:",
+                    *RenderModeOption.entries.map { mode ->
+                        when (mode) {
+                            Auto -> "• ${mode.label}: Automatically detect the best mode based on terminal capabilities (default)"
+                            Simple -> "• ${mode.label}: Use a simple color theme"
+                            Accessible -> "• ${mode.label}: Use accessibility decorations"
+                            SimpleAccessible -> "• ${mode.label}: Use a simple color theme and accessibility decorations"
+                            NoColor -> "• ${mode.label}: Disable colors (forces accessibility decorations)"
+                        }.let { theme.muted(it) }
+                    }.toTypedArray()
+                )
+            }
 
         enum class RenderModeOption(
             val label: String,
@@ -95,9 +136,22 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
         val forceAnsiLevel by option(
             "--force-ansi",
-            metavar = "LEVEL",
-            help = "Forces a specific ANSI level (overrides auto-detection)"
-        ).choice(AnsiLevel.entries.associateBy { it.name })
+            metavar = "level"
+        )
+            .choice(AnsiLevel.entries.associateBy { it.name })
+            .help {
+                helpLines(
+                    "Forces a specific ANSI level (overrides auto-detection):",
+                    AnsiLevel.entries.reversed().joinToString(" • ") { level ->
+                        when (level) {
+                            AnsiLevel.TRUECOLOR -> "${level.name}: 24-bit colors"
+                            AnsiLevel.ANSI256 -> "${level.name}: 8-bit colors"
+                            AnsiLevel.ANSI16 -> "${level.name}: 4-bit colors"
+                            AnsiLevel.NONE -> "${level.name}: No colors"
+                        }
+                    }.let { theme.muted(it) }
+                )
+            }
     }
 
     private val initOption by mutuallyExclusiveOptions<InitOption>(
@@ -108,19 +162,31 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         ).flag().convert { if (it) InitOption.Info else null },
         option(
             "--init",
-            metavar = "SHELL",
-            help = "Prints the initialization script for the specified shell"
-        ).choice(Shell.available).convert { InitOption.Init(it) },
+            metavar = "shell"
+        ).choice(Shell.available).convert { InitOption.Init(it) }.help {
+            helpLines(
+                "Prints the initialization script for the specified shell.",
+                theme.muted(shellHelpValues)
+            )
+        },
         option(
             "--profile-location",
-            metavar = "SHELL",
-            help = "Prints the typical location of the profile file for the specified shell"
-        ).choice(Shell.available).convert { InitOption.ProfileLocation(it) },
+            metavar = "shell"
+        ).choice(Shell.available).convert { InitOption.ProfileLocation(it) }.help {
+            helpLines(
+                "Prints the typical location of the profile file for the specified shell.",
+                theme.muted(shellHelpValues)
+            )
+        },
         option(
             "--profile-command",
-            metavar = "SHELL",
-            help = "Prints the command that should be added to the profile file for the specified shell"
-        ).choice(Shell.available).convert { InitOption.ProfileCommand(it) },
+            metavar = "shell"
+        ).choice(Shell.available).convert { InitOption.ProfileCommand(it) }.help {
+            helpLines(
+                "Prints the command that should be added to the profile file for the specified shell.",
+                theme.muted(shellHelpValues)
+            )
+        },
         name = "Initialization",
         help = "Options related to $BinaryName initialization"
     ).single()
@@ -137,25 +203,43 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     override val debugMode by option(
         "--debug",
-        help = "Enables debug mode"
+        help = "Enables debug mode."
     ).flag()
 
     private val version by option(
         "--version",
-        help = "Print version and exit"
+        help = "Print version and exit."
     ).flag()
+
+    val directory by argument(
+        directoryArgumentName,
+        help = "Start $BinaryName in this directory.",
+        completionCandidates = CompletionCandidates.Path
+    )
+        .convert { Path(it).absolute().cleaned() }
+        .optional()
+        .validate {
+            val metadata = it.metadataOrNull() ?: fail("\"$it\": No such file or directory")
+            require(metadata.isDirectory) { "\"$it\": Not a directory" }
+        }
+
+    override fun helpEpilog(context: Context) = context.theme.muted(
+        "Version: ${BuildConfig.VERSION} • Report issues at: $IssuesUrl"
+    )
 
     override val command get() = this
 
     override val terminal by lazy {
-        val detected by lazy { Terminal().terminalInfo }
+        val commandTerminal = currentContext.terminal
+        val detected = commandTerminal.terminalInfo
         Terminal(
             ansiLevel = configurationOptions.forceAnsiLevel
                 ?: AnsiLevel.NONE.takeIf { configurationOptions.renderMode.forceNoColor }
                 ?: when (detected.ansiLevel) {
                     NONE -> AnsiLevel.ANSI16 // at least ANSI16 if not forced
                     else -> null
-                }
+                },
+            theme = commandTerminal.theme
         )
     }
 
@@ -163,7 +247,11 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     override val shell get() = configurationOptions.shell
 
-    override fun run() {
+    override fun run() = catchAllFatal {
+        runInternal()
+    }
+
+    private fun runInternal() {
         if (version) {
             terminal.println("$BinaryName ${BuildConfig.VERSION}")
             return
@@ -216,6 +304,44 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     }
 
     companion object {
-        val BinaryName get() = BuildConfig.BINARY_NAME
+        private val directoryArgumentName get() = "directory"
+
+        private fun helpLines(vararg lines: String) = lines.joinToString("\u0085")
+
+        private val shellHelpValues get() = "Supported shells: ${Shell.available.keys.joinToString(", ")}"
+
+        private val DefaultTerminalTheme get() = Theme(from = Default) {
+            styles["main"] = Themes.Retro.path
+            styles["style1"] = Themes.Retro.directory
+            styles["style2"] = Themes.Retro.file
+            styles["style3"] = Themes.Retro.link
+            styles["success"] = TextColors.rgb("#66c322")
+            styles["danger"] = TextColors.rgb("#ff2a00")
+            styles["warning"] = TextColors.rgb("#ffcc00")
+            styles["info"] = TextColors.rgb("#7ecefc")
+            styles["muted"] = TextStyles.dim.style
+        }
+    }
+
+    private class NavHelpFormatter(context: Context) : MordantHelpFormatter(context) {
+        override fun styleUsageTitle(title: String) = theme.style("style1")(title)
+
+        override fun styleSectionTitle(title: String) = theme.style("style1")(title)
+
+        override fun normalizeParameter(name: String) = when (name) {
+            localization.optionsMetavar() -> theme.style("style2")(super.normalizeParameter(name))
+            directoryArgumentName -> theme.style("main")(super.normalizeParameter(name))
+            else -> super.normalizeParameter(name)
+        }
+
+        override fun styleOptionName(name: String) = theme.style("style2")(name)
+
+        override fun styleArgumentName(name: String) = name
+
+        override fun styleMetavar(metavar: String) = theme.style("style3")(metavar)
+    }
+
+    private object NavLocalization : Localization {
+        override fun helpOptionMessage() = "Show this message and exit."
     }
 }
