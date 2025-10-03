@@ -3,6 +3,8 @@ package de.jonasbroeckmann.nav.command
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import de.jonasbroeckmann.nav.Constants.IssuesUrl
+import de.jonasbroeckmann.nav.utils.exitProcess
 import kotlinx.io.files.Path
 
 interface PartialContext {
@@ -13,9 +15,9 @@ interface PartialContext {
     val shell: Shell?
 }
 
-fun PartialContext.dangerThrowable(e: Throwable, message: Any?) {
+fun PartialContext.dangerThrowable(e: Throwable, message: Any?, includeStackTrace: Boolean = debugMode) {
     terminal.danger(message)
-    dangerOnDebug { e.stackTraceToString() }
+    if (includeStackTrace) terminal.danger(e.stackTraceToString())
 }
 
 fun PartialContext.printlnOnDebug(lazyMessage: () -> Any?) {
@@ -32,4 +34,16 @@ fun PartialContext.warningOnDebug(lazyMessage: () -> Any?) {
 
 fun PartialContext.dangerOnDebug(lazyMessage: () -> Any?) {
     if (debugMode) terminal.danger(lazyMessage())
+}
+
+fun <R> PartialContext.catchAllFatal(
+    cleanupOnError: (Throwable) -> Unit = { },
+    block: () -> R
+): R = try {
+    block()
+} catch (e: Throwable) {
+    cleanupOnError(e)
+    dangerThrowable(e, "An unexpected error occurred: ${e.message}", includeStackTrace = true)
+    terminal.info("Please report this issue at: $IssuesUrl")
+    exitProcess(1)
 }

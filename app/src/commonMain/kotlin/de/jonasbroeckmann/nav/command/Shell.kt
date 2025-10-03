@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.command
 
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.terminal.Terminal
+import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.which
 
@@ -33,7 +34,7 @@ enum class Shell(
             """.trimIndent()
         },
         profileLocation = "~/.bashrc",
-        profileCommand = $$"""eval "$($${NavCommand.BinaryName} --init bash)"""",
+        profileCommand = $$"""eval "$($$BinaryName --init bash)"""",
         execCommandArgs = { listOf("-c", it) }
     ),
     ZSH(
@@ -55,7 +56,7 @@ enum class Shell(
             """.trimIndent()
         },
         profileLocation = "~/.zshrc",
-        profileCommand = $$"""eval "$($${NavCommand.BinaryName} --init zsh)"""",
+        profileCommand = $$"""eval "$($$BinaryName --init zsh)"""",
         execCommandArgs = { listOf("-c", it) }
     ),
     POWERSHELL(
@@ -77,7 +78,7 @@ enum class Shell(
             """.trimIndent()
         },
         profileLocation = $$"$PROFILE",
-        profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init powershell | Out-String)",
+        profileCommand = "Invoke-Expression (& $$BinaryName --init powershell | Out-String)",
         execCommandArgs = { listOf("-NoProfile", "-c", it) }
     ),
     PWSH(
@@ -99,12 +100,12 @@ enum class Shell(
             """.trimIndent()
         },
         profileLocation = $$"$PROFILE",
-        profileCommand = "Invoke-Expression (& ${NavCommand.BinaryName} --init pwsh | Out-String)",
+        profileCommand = "Invoke-Expression (& $$BinaryName --init pwsh | Out-String)",
         execCommandArgs = { listOf("-NoProfile", "-c", it) }
     );
 
     fun printInitScript() {
-        val binary = which(NavCommand.BinaryName) ?: error("Could not find ${NavCommand.BinaryName} binary")
+        val binary = which(BinaryName) ?: error("Could not find $BinaryName binary")
         println(initScript(pathSanitizer(binary.toString()), pathSanitizer(CDFile.PathInUserHome.toString())))
     }
 
