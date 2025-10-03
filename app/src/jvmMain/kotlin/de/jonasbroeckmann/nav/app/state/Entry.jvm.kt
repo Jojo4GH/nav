@@ -8,6 +8,7 @@ import kotlin.getValue
 import kotlin.io.path.getAttribute
 import kotlin.io.path.getPosixFilePermissions
 import kotlin.io.path.isDirectory
+import kotlin.io.path.isHidden
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSymbolicLink
 import kotlin.time.ExperimentalTime
@@ -31,6 +32,8 @@ private class EntryImpl(override val path: Path) : Entry {
             else -> Unknown
         }
     }
+
+    override val isHidden by javaPath { isHidden() }
 
     private val posixFilePermission by javaPath { getPosixFilePermissions(NOFOLLOW_LINKS) }
     override val userPermissions by lazy {

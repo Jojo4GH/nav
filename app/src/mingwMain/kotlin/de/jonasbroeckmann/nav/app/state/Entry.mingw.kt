@@ -37,6 +37,8 @@ private data class EntryImpl(override val path: Path) : NativeEntry(path) {
         else -> Unknown
     }
 
+    override val isHidden = fileAttributes?.isHidden
+
     private fun Stat.Mode.Permissions.convert() = Entry.Permissions(
         canRead = canRead,
         canWrite = canWrite && fileAttributes?.isReadOnly != true,
