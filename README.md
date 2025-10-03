@@ -217,6 +217,7 @@ clearOnExit = true
 limitToTerminalHeight = true
 maxVisibleEntries = 20 # Set to 0 for unlimited entries
 maxVisiblePathElements = 6
+showHiddenEntries = true
 # Used to distinguish escape sequences on Linux terminals
 inputTimeoutMillis = 4 # Set to 0 for no timeout
 suppressInitCheck = false

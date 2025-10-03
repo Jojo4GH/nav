@@ -20,6 +20,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
+import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
@@ -44,6 +45,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
         context {
             terminal = Terminal(theme = DefaultTerminalTheme)
+            helpOptionNames = setOf("-?", "--help")
             helpFormatter = { context -> NavHelpFormatter(context) }
             localization = NavLocalization
         }
@@ -65,6 +67,10 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         name = "Configuration",
         help = "Options to configure the behavior of $BinaryName"
     ) {
+        val showHiddenEntries by option("-a", "--all").nullableFlag("-h", "--not-all").help {
+            "Choose whether hidden entries are shown or not. ${theme.muted("(Overrides other configuration)")}"
+        }
+
         val configPath by option(
             "--config",
             metavar = "path"
@@ -82,9 +88,10 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
         val editor by option(
             "--editor",
-            metavar = "command",
-            help = "Explicitly specify the editor to use (overrides all configuration)."
-        ).convert { it.trim() }
+            metavar = "command"
+        ).convert { it.trim() }.help {
+            "Explicitly specify the editor to use. ${theme.muted("(Overrides other configuration)")}"
+        }
 
         val forceAnsiLevel by option(
             "--force-ansi",
