@@ -1,6 +1,5 @@
 package de.jonasbroeckmann.nav.app.state
 
-import NativeEntry
 import de.jonasbroeckmann.nav.utils.FileAttributes
 import de.jonasbroeckmann.nav.utils.FileAttributesResult
 import de.jonasbroeckmann.nav.utils.FinalPathResult

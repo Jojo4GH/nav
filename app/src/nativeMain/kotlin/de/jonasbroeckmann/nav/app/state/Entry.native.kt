@@ -1,4 +1,7 @@
-import de.jonasbroeckmann.nav.app.state.Entry
+@file:Suppress("detekt:Filename", "detekt:MatchingDeclarationName")
+
+package de.jonasbroeckmann.nav.app.state
+
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.Entry.Type.SymbolicLink
