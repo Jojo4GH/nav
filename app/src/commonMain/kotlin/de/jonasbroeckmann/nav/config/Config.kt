@@ -5,8 +5,11 @@ package de.jonasbroeckmann.nav.config
 import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
+import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
+import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
@@ -16,7 +19,7 @@ import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
-import kotlinx.io.files.source
+import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -273,7 +276,9 @@ data class Config private constructor(
     companion object {
         val DefaultPaths by lazy {
             listOf(
-                UserHome / ".config" / "nav.toml"
+                UserHome / ".config" / "nav.toml",
+                UserHome / ".config" / "nav.yaml",
+                UserHome / ".config" / "nav.yml",
             )
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"
@@ -304,21 +309,41 @@ data class Config private constructor(
                         context.printlnOnDebug { "Could not find config, using default" }
                         return Config()
                     }
-                return TomlFileReader(
-                    inputConfig = TomlInputConfig(
-                        ignoreUnknownNames = true
-                    ),
-                    outputConfig = TomlOutputConfig()
-                ).decodeFromFile(
-                    deserializer = serializer(),
-                    tomlFilePath = path.toString()
-                )
+                val (_, extension) = path.nameAndExtension
+                when (extension?.lowercase()) {
+                    "toml" -> return loadFromToml(path)
+                    "yaml", "yml" -> return loadFromYaml(path)
+                    else -> {
+                        context.terminal.danger("Could not determine type of config file for: $path")
+                        context.terminal.warning("Using default config")
+                        return Config()
+                    }
+                }
             } catch (e: Exception) {
                 context.dangerThrowable(e, "Could not load config: ${e.message}")
                 context.terminal.warning("Using default config")
                 return Config()
             }
         }
+
+        private fun loadFromToml(path: Path) = TomlFileReader(
+            inputConfig = TomlInputConfig(
+                ignoreUnknownNames = true
+            ),
+            outputConfig = TomlOutputConfig()
+        ).decodeFromFile(
+            deserializer = serializer(),
+            tomlFilePath = path.toString()
+        )
+
+        private fun loadFromYaml(path: Path) = Yaml(
+            configuration = YamlConfiguration(
+                strictMode = false
+            )
+        ).decodeFromSource(
+            deserializer = serializer(),
+            source = path.rawSource().asOkioSource()
+        )
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
     }

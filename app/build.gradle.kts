@@ -64,11 +64,16 @@ kotlin {
         commonMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
-            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.0")
+
+            val kotlinxIOVersion = "0.8.0"
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:$kotlinxIOVersion")
+            implementation("org.jetbrains.kotlinx:kotlinx-io-okio:$kotlinxIOVersion")
 
             val ktomlVersion = "0.7.1"
             implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
             implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
+
+            implementation("com.charleskorn.kaml:kaml:0.97.0")
 
             implementation("com.github.ajalt.clikt:clikt:5.0.3")
 

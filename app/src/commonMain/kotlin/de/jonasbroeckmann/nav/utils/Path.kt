@@ -30,9 +30,13 @@ fun Path.createDirectories(mustCreate: Boolean = false) = SystemFileSystem.creat
 
 fun Path.delete(mustExist: Boolean = true) = SystemFileSystem.delete(this, mustExist = mustExist)
 
-fun Path.sink(append: Boolean = false) = SystemFileSystem.sink(this, append = append)
+fun Path.rawSink(append: Boolean = false) = SystemFileSystem.sink(this, append = append)
 
-fun Path.source() = SystemFileSystem.source(this)
+fun Path.rawSource() = SystemFileSystem.source(this)
+
+val Path.nameAndExtension: Pair<String, String?> get() = Regex("""(.+)\.([^.]+)""").matchEntire(name)?.destructured
+    ?.let { (name, extension) -> name to extension }
+    ?: (name to null)
 
 operator fun Path.div(child: String) = Path(this, child).cleaned()
 
