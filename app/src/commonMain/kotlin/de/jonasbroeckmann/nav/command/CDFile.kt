@@ -13,7 +13,7 @@ object CDFile {
         if (Path.exists()) {
             Path.delete()
         }
-        Path.sink().buffered().use {
+        Path.rawSink().buffered().use {
             it.writeString(path.toString())
         }
     }

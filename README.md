@@ -180,7 +180,8 @@ home-manager.users.user.programs = {
 ## 🔧 Configuration
 
 To create or edit the config file you can use the `--edit-config` command line option.
-The default location for the file is `~/.config/nav.toml`.
+Config files can be written in either [TOML](https://toml.io) or [YAML](https://yaml.org) format (but not both).
+The default locations for the file are `~/.config/nav.toml`, `~/.config/nav.yaml` or `~/.config/nav.yml`.
 You can change this by setting the `NAV_CONFIG` environment variable:
 
 <details>
@@ -205,22 +206,28 @@ You can also use the `--config` command line option to explicitly specify a conf
 
 The default configuration looks as follows:
 
+### General
+
+<details>
+<summary>TOML</summary>
+
 ```toml
 # If not specified, uses the first that exists of the following:
 # $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
 # You can also use the --editor command line option to override this
-editor = ""
+editor = "" # Default: null
 
-hideHints = false
+suppressInitCheck = false
 clearOnExit = true
 
 limitToTerminalHeight = true
 maxVisibleEntries = 20 # Set to 0 for unlimited entries
 maxVisiblePathElements = 6
 showHiddenEntries = true
+hideHints = false
+
 # Used to distinguish escape sequences on Linux terminals
 inputTimeoutMillis = 4 # Set to 0 for no timeout
-suppressInitCheck = false
 
 # Which columns to show for each entry and how to order them
 shownColumns = [
@@ -231,8 +238,50 @@ shownColumns = [
     "EntrySize",        # Size of the file
     "LastModified",     # Time of last modification
 ]
+```
 
-[keys] # Configure how nav is controlled
+</details>
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+# If not specified, uses the first that exists of the following:
+# $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
+# You can also use the --editor command line option to override this
+editor: null
+
+suppressInitCheck: false
+clearOnExit: true
+
+limitToTerminalHeight: true
+maxVisibleEntries: 40
+maxVisiblePathElements: 6
+showHiddenEntries: true
+hideHints: false
+
+# Used to distinguish escape sequences on Linux terminals
+inputTimeoutMillis: 4 # Set to 0 for no timeout
+
+# Which columns to show for each entry and how to order them
+shownColumns:
+- Permissions       # Permissions of the entry in unix style
+# - HardLinkCount   # Number of hard links to the entry (not shown by default)
+# - UserName        # Name of the user owning the entry (not shown by default)
+# - GroupName       # Name of the group owning the entry (not shown by default)
+- EntrySize         # Size of the file
+- LastModified      # Time of last modification
+```
+
+</details>
+
+### Controls
+
+<details>
+<summary>TOML</summary>
+
+```toml
+[keys]
 
 submit = "Enter"
 cancel = "Escape"
@@ -252,7 +301,7 @@ menu.down = "PageDown"
 filter.autocomplete = "Tab"
 filter.clear = "Escape"
 
-[autocomplete] # Configure the auto complete behavior
+[autocomplete]
 
 # Controls the behavior of the auto complete feature
 # - "CommonPrefixCycle": Auto completes the largest common prefix and cycles through all entries
@@ -263,8 +312,60 @@ style = "CommonPrefixCycle"
 # - "OnSingleAfterCompletion": Auto completes the entry and on second action navigates
 # - "OnSingle": Auto completes the entry and navigates immediately (not recommended)
 autoNavigation = "OnSingleAfterCompletion"
+```
 
-[colors] # Configure how nav looks
+</details>
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+keys:
+  submit: Enter
+  cancel: Escape
+  
+  cursor:
+    up: ArrowUp
+    down: ArrowDown
+    home: Home
+    end: End
+  
+  nav:
+    up: ArrowLeft
+    into: ArrowRight
+    open: ArrowRight
+  
+  menu:
+    up: PageUp
+    down: PageDown
+  
+  filter:
+    autocomplete: Tab
+    clear: Escape
+
+autocomplete:
+  # Controls the behavior of the auto complete feature
+  # - CommonPrefixCycle: Auto completes the largest common prefix and cycles through all entries
+  # - CommonPrefixStop: Auto completes the largest common prefix and stops
+  style: CommonPrefixCycle
+  # Controls auto navigation on completion
+  # - None: Do not auto navigate
+  # - OnSingleAfterCompletion: Auto completes the entry and on second action navigates
+  # - OnSingle: Auto completes the entry and navigates immediately (not recommended)
+  autoNavigation: OnSingleAfterCompletion
+```
+
+</details>
+
+For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
+
+### Appearance
+
+<details>
+<summary>TOML</summary>
+
+```toml
+[colors]
 
 # Possible values for themes are:
 # - "Retro" (default theme)
@@ -278,7 +379,7 @@ autoNavigation = "OnSingleAfterCompletion"
 # - "Darcula"
 # - "AtomOneDark"
 theme = "Retro"
-simpleTheme = "Monochrome" # Used for terminals with less color capabilities (see: accessibility.simpleColors)
+simpleTheme = "Monochrome"  # Used for terminals with less color capabilities (see: accessibility.simpleColors)
 
 # The following colors can also be explicitly set (default: theme/simpleTheme colors):
 path = "#FFFFFF"
@@ -309,22 +410,84 @@ link = "#FFFFFF"
 nameHeader = "#FFFFFF"
 nameDecoration = "#FFFFFF"
 
-[modificationTime] # Configure how the modification time is rendered
+[modificationTime]    # Configure how the modification time is rendered
 
 minimumBrightness = 0.4
 halfBrightnessAtHours = 12.0
 
-[accessibility] # Configure accessibility options
+[accessibility]
 
-simpleColors = false # Whether to use the simple color theme (default: auto)
-decorations = false # Whether to show decorations (default: auto)
+simpleColors = false  # Whether to use the simple color theme (default: auto)
+decorations = false   # Whether to show decorations (default: auto)
 ```
 
-For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
+</details>
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+colors:
+  # Possible values for themes are:
+  # - Retro (default theme)
+  # - Monochrome (default simpleTheme)
+  # - SimpleColor
+  # - Random
+  # - Sunset
+  # - Xmas
+  # - Hub
+  # - Ice
+  # - Darcula
+  # - AtomOneDark
+  theme: Retro
+  simpleTheme: Monochrome   # Used for terminals with less color capabilities (see: accessibility.simpleColors)
+
+  # The following colors can also be explicitly set (default: theme/simpleTheme colors):
+  path: null
+  filter: null
+  filterMarker: null
+  keyHints: null
+  keyHintLabels: null
+  genericElements: null
+  
+  permissionRead: null
+  permissionWrite: null
+  permissionExecute: null
+  permissionHeader: null
+  hardlinkCount: null
+  hardlinkCountHeader: null
+  user: null
+  userHeader: null
+  group: null
+  groupHeader: null
+  entrySize: null
+  entrySizeHeader: null
+  modificationTime: null
+  modificationTimeHeader: null
+  
+  directory: null
+  file: null
+  link: null
+  nameHeader: null
+  nameDecorations: null
+
+modificationTime:     # Configure how the modification time is rendered
+  minimumBrightness: 0.4
+  halfBrightnessAtHours: 12.0
+
+accessibility:
+  decorations: null   # Whether to use the simple color theme (default: auto)
+  simpleColors: null  # Whether to show decorations (default: auto)
+```
+
+</details>
 
 ### Entry Macros
 
 You can define custom macros that work with entries (e.g. directories, files) in the configuration file as follows:
+
+<details>
+<summary>TOML</summary>
 
 ```toml
 [[entryMacros]]
@@ -347,6 +510,34 @@ afterFailedCommand = "..."      # Defaults to value of afterCommand
 quickMacroKey = "..."
 ```
 
+</details>
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+entryMacros:
+- # The description displayed (required) (see placeholders)
+  description: ...
+  # The conditions for the macro to be available (defaults to false)
+  onFile: false
+  onDirectory: false
+  onSymbolicLink: false
+  # The command to run (required) (see placeholders)
+  command: ...
+  # What to do after the command was executed. Possible values are:
+  # - DoNothing: Do nothing
+  # - ExitAtCurrentDirectory: Exit at the current directory
+  # - ExitAtInitialDirectory: Exit at the initial directory
+  afterCommand: ...            # Defaults to DoNothing
+  afterSuccessfulCommand: ...  # Defaults to value of afterCommand
+  afterFailedCommand: ...      # Defaults to value of afterCommand
+  # The key to trigger the macro or null for no quick macro (defaults to null)
+  quickMacroKey: ...
+```
+
+</details>
+
 There are several placeholders available for `description` and `command`:
 - `{initialDir}`: The initial directory where nav was started
 - `{dir}`: The current directory inside nav
@@ -357,7 +548,10 @@ There are several placeholders available for `description` and `command`:
 Macros are available in the menu (default `PageDown`).
 They can also quickly be triggered by tapping `ctrl` together with or followed by the `quickMacroKey`.
 
-Example:
+Examples:
+
+<details>
+<summary>TOML</summary>
 
 ```toml
 # An alternative editor macro
@@ -393,10 +587,49 @@ onDirectory = true
 onSymbolicLink = true
 ```
 
+</details>
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+entryMacros:
+
+- # An alternative editor macro
+  description: open {entryName} in code
+  command: code '{entryPath}'
+  afterSuccessfulCommand: ExitAtCurrentDirectory
+  onFile: true
+  onDirectory: true
+  quickMacroKey: ArrowRight
+  
+- # Same as above, but waits for the editor to close before returning again to nav
+  description: open {entryName} in code and wait
+  command: code --wait '{entryPath}'
+  onFile: true
+  onDirectory: true
+  quickMacroKey: shift+ArrowRight
+  
+- # A macro for deleting directories recursively
+  description: delete {entryName} recursively
+  command: rm -rf '{entryPath}'
+  onDirectory: true
+  quickMacroKey: Delete
+  
+- # A macro for printing the full path of the entry
+  description: print full path
+  command: echo '{entryPath}'
+  onFile: true
+  onDirectory: true
+  onSymbolicLink: true
+```
+
+</details>
+
 ## Known Issues
 
-- On windows some symbolic link destinations can not be resolved correctly.
-- On windows special characters in paths may lead invalid file information being returned or errors ([#22](https://github.com/Jojo4GH/nav/issues/22), [#24](https://github.com/Jojo4GH/nav/pull/24)).  
+- On Windows some symbolic link destinations can not be resolved correctly.
+- On Windows special characters in paths may lead invalid file information being returned or errors ([#22](https://github.com/Jojo4GH/nav/issues/22), [#24](https://github.com/Jojo4GH/nav/pull/24)).  
   This can be fixed by enabling `Settings` -> `Language & region` -> `Administrative language settings` -> `Change system locale...` -> `Use Unicode UTF-8 for worldwide language support`
 
 ## ❤️ Powered by
@@ -404,5 +637,5 @@ onSymbolicLink = true
 - UI: [Mordant](https://github.com/ajalt/mordant)
 - CLI: [Clikt](https://github.com/ajalt/clikt)
 - Commands: [Kommand](https://github.com/kgit2/kommand)
-- Config file: [ktoml](https://github.com/orchestr7/ktoml)
+- Config file: [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization), [ktoml](https://github.com/orchestr7/ktoml), [kaml](https://github.com/charleskorn/kaml)
 - Kotlin/Native
