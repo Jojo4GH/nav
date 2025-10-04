@@ -20,6 +20,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
+import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
@@ -44,6 +45,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
         context {
             terminal = Terminal(theme = DefaultTerminalTheme)
+            helpOptionNames = setOf("-?", "--help")
             helpFormatter = { context -> NavHelpFormatter(context) }
             localization = NavLocalization
         }
@@ -65,6 +67,10 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         name = "Configuration",
         help = "Options to configure the behavior of $BinaryName"
     ) {
+        val showHiddenEntries by option("-a", "--all").nullableFlag("-h", "--not-all").help {
+            "Choose whether hidden entries are shown or not. ${theme.muted("(Overrides other configuration)")}"
+        }
+
         val configPath by option(
             "--config",
             metavar = "path"
@@ -82,21 +88,29 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
         val editor by option(
             "--editor",
-            metavar = "command",
-            help = "Explicitly specify the editor to use (overrides all configuration)."
-        ).convert { it.trim() }
-
-        val shell by option(
-            "--shell",
-            "--correct-init", // Deprecated
-            metavar = "shell",
-            help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly."
-        ).choice(Shell.available).help {
-            helpLines(
-                "Uses this shell for command execution. Also signals that the initialization script is being used correctly.",
-                theme.muted(shellHelpValues)
-            )
+            metavar = "command"
+        ).convert { it.trim() }.help {
+            "Explicitly specify the editor to use. ${theme.muted("(Overrides other configuration)")}"
         }
+
+        val forceAnsiLevel by option(
+            "--force-ansi",
+            metavar = "level"
+        )
+            .choice(AnsiLevel.entries.associateBy { it.name })
+            .help {
+                helpLines(
+                    "Forces a specific ANSI level (overrides auto-detection):",
+                    AnsiLevel.entries.reversed().joinToString(" • ") { level ->
+                        when (level) {
+                            AnsiLevel.TRUECOLOR -> "${level.name}: 24-bit colors"
+                            AnsiLevel.ANSI256 -> "${level.name}: 8-bit colors"
+                            AnsiLevel.ANSI16 -> "${level.name}: 4-bit colors"
+                            AnsiLevel.NONE -> "${level.name}: No colors"
+                        }
+                    }.let { theme.muted(it) }
+                )
+            }
 
         val renderMode by option(
             "--render",
@@ -134,32 +148,20 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             NoColor("no-color", Accessibility(simpleColors = true, decorations = true), forceNoColor = true)
         }
 
-        val forceAnsiLevel by option(
-            "--force-ansi",
-            metavar = "level"
-        )
-            .choice(AnsiLevel.entries.associateBy { it.name })
-            .help {
-                helpLines(
-                    "Forces a specific ANSI level (overrides auto-detection):",
-                    AnsiLevel.entries.reversed().joinToString(" • ") { level ->
-                        when (level) {
-                            AnsiLevel.TRUECOLOR -> "${level.name}: 24-bit colors"
-                            AnsiLevel.ANSI256 -> "${level.name}: 8-bit colors"
-                            AnsiLevel.ANSI16 -> "${level.name}: 4-bit colors"
-                            AnsiLevel.NONE -> "${level.name}: No colors"
-                        }
-                    }.let { theme.muted(it) }
-                )
-            }
+        val shell by option(
+            "--shell",
+            "--correct-init", // Deprecated
+            metavar = "shell",
+            help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly."
+        ).choice(Shell.available).help {
+            helpLines(
+                "Uses this shell for command execution. Also signals that the initialization script is being used correctly.",
+                theme.muted(shellHelpValues)
+            )
+        }
     }
 
     private val initOption by mutuallyExclusiveOptions<InitOption>(
-        option(
-            "--init-help",
-            "--init-info", // Deprecated
-            help = "Prints information about how to initialize $BinaryName correctly"
-        ).flag().convert { if (it) InitOption.Info else null },
         option(
             "--init",
             metavar = "shell"
@@ -170,20 +172,25 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             )
         },
         option(
-            "--profile-location",
-            metavar = "shell"
-        ).choice(Shell.available).convert { InitOption.ProfileLocation(it) }.help {
-            helpLines(
-                "Prints the typical location of the profile file for the specified shell.",
-                theme.muted(shellHelpValues)
-            )
-        },
+            "--init-help",
+            "--init-info", // Deprecated
+            help = "Prints information about how to initialize $BinaryName correctly"
+        ).flag().convert { if (it) InitOption.Info else null },
         option(
             "--profile-command",
             metavar = "shell"
         ).choice(Shell.available).convert { InitOption.ProfileCommand(it) }.help {
             helpLines(
                 "Prints the command that should be added to the profile file for the specified shell.",
+                theme.muted(shellHelpValues)
+            )
+        },
+        option(
+            "--profile-location",
+            metavar = "shell"
+        ).choice(Shell.available).convert { InitOption.ProfileLocation(it) }.help {
+            helpLines(
+                "Prints the typical location of the profile file for the specified shell.",
                 theme.muted(shellHelpValues)
             )
         },

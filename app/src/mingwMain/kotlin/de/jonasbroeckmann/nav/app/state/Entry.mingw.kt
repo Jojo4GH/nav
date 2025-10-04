@@ -14,7 +14,7 @@ import kotlin.time.ExperimentalTime
 actual fun Path.entry(): Entry = EntryImpl(this)
 
 @OptIn(ExperimentalTime::class)
-private data class EntryImpl(override val path: Path) : EntryBase(path) {
+private data class EntryImpl(override val path: Path) : NativeEntry(path) {
     private var fileAttributesError: String? = null
     private val fileAttributesResult: FileAttributesResult by lazy {
         path.fileAttributes().also { fileAttributesError = it.error?.message }
@@ -36,6 +36,8 @@ private data class EntryImpl(override val path: Path) : EntryBase(path) {
         else -> Unknown
     }
 
+    override val isHidden = fileAttributes?.isHidden
+
     private fun Stat.Mode.Permissions.convert() = Entry.Permissions(
         canRead = canRead,
         canWrite = canWrite && fileAttributes?.isReadOnly != true,
@@ -45,6 +47,9 @@ private data class EntryImpl(override val path: Path) : EntryBase(path) {
     override val userPermissions by lazy { stat?.mode?.user?.convert() }
     override val groupPermissions by lazy { stat?.mode?.group?.convert() }
     override val othersPermissions by lazy { stat?.mode?.others?.convert() }
+
+    override val userName = null
+    override val groupName = null
 
     override val linkTarget: Entry.Link? by lazy {
         when (val result = finalPathResult) {

@@ -11,6 +11,7 @@ data class State private constructor(
     val items: List<Entry> = directory.entries(),
     val cursor: Int,
     val filter: String = "",
+    val showHiddenEntries: Boolean,
 
     private val menuCursor: Int = -1,
     private val allMenuActions: () -> List<MenuAction>,
@@ -22,13 +23,25 @@ data class State private constructor(
     val lastReceivedEvent: KeyboardEvent? = null
 ) {
     val filteredItems: List<Entry> by lazy {
-        if (filter.isEmpty()) return@lazy items
-        val lowercaseFilter = filter.lowercase()
-        items
-            .filter { lowercaseFilter in it.path.name.lowercase() }
-            // TODO replace with scoring algorithm
-            .sortedByDescending { it.path.name.startsWith(filter, ignoreCase = true) }
-            .sortedByDescending { it.path.name.startsWith(filter) }
+        when {
+            filter.isNotEmpty() -> {
+                val lowercaseFilter = filter.lowercase()
+                items
+                    .filter { lowercaseFilter in it.path.name.lowercase() }
+                    // TODO replace with scoring algorithm
+                    .let { entries ->
+                        if (!showHiddenEntries) {
+                            entries.sortedByDescending { it.isHidden != true }
+                        } else {
+                            entries
+                        }
+                    }
+                    .sortedByDescending { it.path.name.startsWith(filter, ignoreCase = true) }
+                    .sortedByDescending { it.path.name.startsWith(filter) }
+            }
+            !showHiddenEntries -> items.filter { it.isHidden != true } // only remove hidden entries if filter is empty
+            else -> items
+        }
     }
     val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
 
@@ -143,10 +156,12 @@ data class State private constructor(
 
         fun initial(
             startingDirectory: Path,
+            showHiddenEntries: Boolean,
             allMenuActions: () -> List<MenuAction>
         ) = State(
             directory = startingDirectory,
             cursor = 0,
+            showHiddenEntries = showHiddenEntries,
             allMenuActions = allMenuActions
         )
     }

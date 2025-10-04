@@ -75,6 +75,7 @@ class App(
     private val actions = Actions(this)
     private var state = State.initial(
         startingDirectory = startingDirectory,
+        showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
         allMenuActions = { actions.menuActions }
     )
     private val ui = UI(this, actions)

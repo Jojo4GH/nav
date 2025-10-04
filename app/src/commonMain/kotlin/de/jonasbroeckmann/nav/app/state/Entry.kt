@@ -17,6 +17,8 @@ interface Entry {
 
     val type: Type
 
+    val isHidden: Boolean?
+
     val userPermissions: Permissions?
     val groupPermissions: Permissions?
     val othersPermissions: Permissions?
