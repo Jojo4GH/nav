@@ -13,8 +13,10 @@ import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.EntryColumn
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.dangerThrowable
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
+import kotlinx.io.files.source
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -269,12 +271,25 @@ data class Config private constructor(
     }
 
     companion object {
-        val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
+        val DefaultPaths by lazy {
+            listOf(
+                UserHome / ".config" / "nav.toml"
+            )
+        }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
         context(context: PartialContext)
         fun findExplicitPath(): Path? = context.command.configurationOptions.configPath?.let { Path(it) }
             ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+
+        fun findDefaultPath(mustExist: Boolean = true): Path? {
+            val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile }
+            return if (mustExist) {
+                firstExiting
+            } else {
+                firstExiting ?: DefaultPaths.firstOrNull { !it.exists() || it.isRegularFile }
+            }
+        }
 
         context(context: PartialContext)
         fun load(): Config {
@@ -283,11 +298,12 @@ data class Config private constructor(
                     require(it.exists()) { "The specified config does not exist: $it" }
                     require(it.isRegularFile) { "The specified config is not a file: $it" }
                 }
-                val path = when {
-                    explicitPath != null -> explicitPath
-                    DefaultPath.exists() && DefaultPath.isRegularFile -> DefaultPath
-                    else -> return Config()
-                }
+                val path = explicitPath
+                    ?: findDefaultPath(mustExist = true)
+                    ?: run {
+                        context.printlnOnDebug { "Could not find config, using default" }
+                        return Config()
+                    }
                 return TomlFileReader(
                     inputConfig = TomlInputConfig(
                         ignoreUnknownNames = true

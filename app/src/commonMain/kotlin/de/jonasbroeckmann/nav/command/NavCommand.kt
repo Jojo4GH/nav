@@ -75,9 +75,10 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             "--config",
             metavar = "path"
         ).help {
+            val configPaths = listOf("$${Config.ENV_VAR_NAME}") + Config.DefaultPaths.map { "\"$it\"" }
             helpLines(
                 "Explicitly specify the config file to use.",
-                theme.muted("Default: Search for config file in $${Config.ENV_VAR_NAME} or \"${Config.DefaultPath}\"")
+                theme.muted("Default: Search for config file in ${configPaths.joinToString(" or ")}")
             )
         }
 
@@ -301,7 +302,12 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         val app = App(config)
 
         if (configurationOptions.editConfig) {
-            val configPath = Config.findExplicitPath() ?: Config.DefaultPath
+            val configPath = Config.findExplicitPath()
+                ?: Config.findDefaultPath(mustExist = false)
+                ?: run {
+                    terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
+                    exitProcess(1)
+                }
             terminal.info("""Opening config file at "$configPath" ...""")
             val exitCode = app.openInEditor(configPath)
             exitProcess(exitCode ?: 1)
