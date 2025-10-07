@@ -1,9 +1,11 @@
 package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.MenuAction
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.isDirectory
 import kotlinx.io.files.Path
 
 data class State private constructor(
@@ -21,7 +23,9 @@ data class State private constructor(
     val inQuickMacroMode: Boolean = false,
 
     val lastReceivedEvent: KeyboardEvent? = null
-) {
+) : StateProvider {
+    override val state get() = this
+
     val filteredItems: List<Entry> by lazy {
         when {
             filter.isNotEmpty() -> {
@@ -52,7 +56,9 @@ data class State private constructor(
 
     val isTypingCommand get() = command != null
 
-    fun withMenuCursor(cursor: Int?) = copy(menuCursor = cursor?.coerceAtLeast(0) ?: -1)
+    fun withMenuCursorCoerced(cursor: Int) = copy(
+        menuCursor = cursor.coerceAtMost(availableMenuActions.lastIndex).coerceAtLeast(-1)
+    )
 
     fun withCommand(command: String?) = copy(command = command)
 
@@ -110,36 +116,45 @@ data class State private constructor(
         }
     }
 
-    fun navigatedUp(): State {
-        val newDir = directory.parent ?: return this
-        val entries = newDir.entries()
-        return copy(
-            directory = newDir,
-            items = entries,
-            cursor = entries.indexOfFirst { it.path.name == directory.name }.coerceAtLeast(0),
-            filter = ""
-        )
-    }
+    fun navigateTo(path: Path?): State {
+        if (path == null) return this
+        if (directory == path) return this
+        if (!path.isDirectory) return this
 
-    fun navigatedInto(entry: Entry?): State {
-        return when {
-            entry == null -> this
-            entry.type == Directory || entry.linkTarget?.targetEntry?.type == Directory -> copy(
-                directory = entry.path,
-                items = entry.path.entries(),
+        tailrec fun Path.nearestChildToOrNull(parent: Path): Path? {
+            if (this.parent == parent) return this
+            return this.parent?.nearestChildToOrNull(parent)
+        }
+
+        val nearestChild = directory.nearestChildToOrNull(parent = path)
+        return if (nearestChild != null) {
+            // navigating to a parent directory, try to stay on the same entry
+            val entries = path.entries()
+            copy(
+                directory = path,
+                items = entries,
+                cursor = entries.indexOfFirst { it.path.name == nearestChild.name }.coerceAtLeast(0),
+                filter = ""
+            )
+        } else {
+            // navigating to an unrelated directory, go to the top
+            copy(
+                directory = path,
+                items = path.entries(),
                 cursor = 0,
                 filter = ""
             )
-            else -> this
         }
     }
+
+    fun navigatedUp() = navigateTo(directory.parent)
 
     fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
         return copy(items = directory.entries()).withCursorOn(preferredEntry)
     }
 
     fun inQuickMacroMode(enabled: Boolean = true) = when (enabled) {
-        true -> copy(inQuickMacroMode = true).withMenuCursor(null)
+        true -> copy(inQuickMacroMode = true).withMenuCursorCoerced(-1)
         false -> copy(inQuickMacroMode = false)
     }
 

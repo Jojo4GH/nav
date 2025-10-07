@@ -2,7 +2,7 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.state.State
 
 data class KeyAction(
@@ -11,7 +11,7 @@ data class KeyAction(
     override val description: State.() -> String? = { null },
     private val style: State.() -> TextStyle? = { null },
     private val condition: State.() -> Boolean,
-    private val action: State.(KeyboardEvent) -> App.Event?
+    private val action: State.(KeyboardEvent) -> AppAction<*>?
 ) : Action<KeyboardEvent> {
     constructor(
         vararg keys: KeyboardEvent,
@@ -19,7 +19,7 @@ data class KeyAction(
         description: State.() -> String? = { null },
         style: State.() -> TextStyle? = { null },
         condition: State.() -> Boolean,
-        action: State.(KeyboardEvent) -> App.Event?
+        action: State.(KeyboardEvent) -> AppAction<*>?
     ) : this(
         triggers = keys.map { Trigger(it, false) },
         displayKey = displayKey,
@@ -39,7 +39,7 @@ data class KeyAction(
 
     override fun isAvailable(state: State) = state.condition()
 
-    override fun perform(state: State, input: KeyboardEvent) = state.action(input)
+    override fun run(state: State, input: KeyboardEvent) = state.action(input)
 
     data class Trigger private constructor(
         val key: KeyboardEvent,

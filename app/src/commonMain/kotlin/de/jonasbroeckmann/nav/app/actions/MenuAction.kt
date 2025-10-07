@@ -2,7 +2,7 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.state.State
 
 data class MenuAction(
@@ -10,7 +10,7 @@ data class MenuAction(
     private val style: State.() -> TextStyle? = { null },
     val selectedStyle: TextStyle? = TextStyles.inverse.style,
     private val condition: State.() -> Boolean,
-    private val action: State.() -> App.Event?
+    private val action: State.() -> AppAction<*>?
 ) : Action<Nothing?> {
     context(state: State)
     override fun style() = state.style()
@@ -19,5 +19,5 @@ data class MenuAction(
 
     override fun isAvailable(state: State) = state.condition()
 
-    override fun perform(state: State, input: Nothing?) = state.action()
+    override fun run(state: State, input: Nothing?) = state.action()
 }
