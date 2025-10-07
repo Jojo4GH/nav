@@ -2,7 +2,7 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.state.State
 
 sealed interface Action<Event : InputEvent?> {
@@ -15,5 +15,10 @@ sealed interface Action<Event : InputEvent?> {
 
     fun isAvailable(state: State): Boolean
 
-    fun perform(state: State, input: Event): App.Event?
+
+    fun run(state: State, input: Event): AppAction<*>?
+
+    data class Context(
+        val state: State
+    )
 }

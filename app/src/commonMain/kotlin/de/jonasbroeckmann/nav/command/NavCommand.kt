@@ -34,6 +34,7 @@ import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
 import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
@@ -293,6 +294,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         val config = Config.load()
 
         printlnOnDebug { "Using config: $config" }
+        printlnOnDebug { "Serialized:\n${Config.serializeToYaml(config)}" }
 
         if (configurationOptions.shell == null && !config.suppressInitCheck) {
             terminal.danger("The installation is not complete and some feature will not work.")
@@ -309,7 +311,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
                     exitProcess(1)
                 }
             terminal.info("""Opening config file at "$configPath" ...""")
-            val exitCode = app.openInEditor(configPath)
+            val exitCode = AppAction.OpenFile(configPath).runIn(app)
             exitProcess(exitCode ?: 1)
         }
 

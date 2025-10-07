@@ -29,4 +29,6 @@ fun Iterable<String>.commonPrefix(): String {
     return prefix
 }
 
+infix fun Boolean.implies(other: Boolean) = !this || other
+
 expect fun exitProcess(status: Int): Nothing
