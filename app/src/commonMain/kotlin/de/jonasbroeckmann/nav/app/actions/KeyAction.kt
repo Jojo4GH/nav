@@ -10,23 +10,27 @@ import de.jonasbroeckmann.nav.app.state.State
 data class KeyAction(
     val triggers: List<Trigger>,
     private val displayKey: State.() -> KeyboardEvent? = { null },
-    private val description: State.() -> String? = { null },
+    private val description: State.() -> String = { "" },
     private val style: State.() -> TextStyle? = { null },
+    private val hidden: State.() -> Boolean = { false },
     private val condition: State.() -> Boolean,
     private val action: State.(KeyboardEvent) -> AppAction<*>?
 ) : Action<KeyboardEvent> {
     constructor(
         vararg keys: KeyboardEvent,
+        inQuickMacroMode: Boolean = false,
         displayKey: State.() -> KeyboardEvent? = { keys.firstOrNull() },
-        description: State.() -> String? = { null },
+        description: State.() -> String = { "" },
         style: State.() -> TextStyle? = { null },
+        hidden: State.() -> Boolean = { false },
         condition: State.() -> Boolean,
         action: State.(KeyboardEvent) -> AppAction<*>?
     ) : this(
-        triggers = keys.map { Trigger(it, false) },
+        triggers = keys.map { Trigger(it, inQuickMacroMode) },
         displayKey = { state.displayKey() },
         description = { state.description() },
         style = { state.style() },
+        hidden = { state.hidden() },
         condition = { state.condition() },
         action = { state.action(it) }
     )
@@ -39,6 +43,9 @@ data class KeyAction(
 
     context(stateProvider: StateProvider)
     override fun style() = state.style()
+
+    context(stateProvider: StateProvider)
+    override fun isHidden() = state.hidden()
 
     context(stateProvider: StateProvider)
     override fun matches(input: KeyboardEvent): Boolean {

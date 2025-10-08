@@ -13,7 +13,7 @@ interface FullContext : PartialContext, ConfigProvider {
     val accessibilitySimpleColors: Boolean
     val accessibilityDecorations: Boolean
 
-    val namedMacros: Map<String, Macro>
+    val identifiedMacros: Map<String, Macro>
 }
 
 context(context: FullContext)

@@ -312,7 +312,7 @@ class UI(
             is KeyAction -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
             is MenuAction -> null
         }
-        val desc = action.description()
+        val desc = action.description().takeUnless { it.isBlank() }
         val descStr = when (action) {
             is KeyAction -> desc?.let { styles.keyHintLabels(it) }
             is MenuAction -> desc
@@ -340,7 +340,7 @@ class UI(
 
         context(stateProvider: StateProvider)
         fun render(action: KeyAction) {
-            if (!action.isAvailable()) return
+            if (action.isHidden() || !action.isAvailable()) return
             add(renderAction(action))
         }
 
@@ -362,12 +362,14 @@ class UI(
                 null -> "macro"
             }
             prefix = state.currentEntry.style(name) + styles.genericElements(" │ ")
-            val availableMacros = actions.quickMacroActions.filter { it.isAvailable() }
+            render(actions.cancelQuickMacroMode)
+            val availableMacros = actions.quickMacroModeActions.filter { it.isAvailable() }
             availableMacros.forEach {
                 render(it)
             }
-            if (availableMacros.size <= 1) { // cancel is always available
-                add(styles.keyHintLabels("No entry macros available"))
+            when {
+                actions.quickMacroModeActions.isEmpty() -> add(styles.keyHintLabels("No macros defined"))
+                availableMacros.isEmpty() -> add(styles.keyHintLabels("No macros available"))
             }
         } else {
             render(actions.navigateUp)

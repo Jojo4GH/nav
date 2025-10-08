@@ -8,9 +8,10 @@ import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.State
 
 data class MenuAction(
-    private val description: State.() -> String?,
+    private val description: State.() -> String,
     private val style: State.() -> TextStyle? = { null },
     val selectedStyle: TextStyle? = TextStyles.inverse.style,
+    private val hidden: State.() -> Boolean = { false },
     private val condition: State.() -> Boolean,
     private val action: State.() -> AppAction<*>?
 ) : Action<Nothing?> {
@@ -19,6 +20,9 @@ data class MenuAction(
 
     context(stateProvider: StateProvider)
     override fun style() = state.style()
+
+    context(stateProvider: StateProvider)
+    override fun isHidden() = state.hidden()
 
     context(stateProvider: StateProvider)
     override fun matches(input: Nothing?) = isAvailable()

@@ -5,7 +5,6 @@ package de.jonasbroeckmann.nav.config
 import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
-import com.charleskorn.kaml.MalformedYamlException
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.charleskorn.kaml.YamlException
@@ -289,7 +288,7 @@ data class Config private constructor(
 
         context(context: PartialContext)
         fun findExplicitPath(): Path? = context.command.configurationOptions.configPath?.let { Path(it) }
-            ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+            ?: getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
         fun findDefaultPath(mustExist: Boolean = true): Path? {
             val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile }

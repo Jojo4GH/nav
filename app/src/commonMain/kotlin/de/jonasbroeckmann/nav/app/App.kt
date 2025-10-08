@@ -9,7 +9,6 @@ import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.warning
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
-import com.kgit2.kommand.process.Stdio
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.app.AppAction.Exit
 import de.jonasbroeckmann.nav.app.AppAction.NoOp
@@ -26,7 +25,7 @@ import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.exitProcess
-import de.jonasbroeckmann.nav.utils.getenv
+import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.io.IOException
 import kotlinx.io.files.Path
@@ -76,9 +75,9 @@ class App(
             }
     }
 
-    override val namedMacros by lazy {
+    override val identifiedMacros by lazy {
         config.macros
-            .mapNotNull { macro -> macro.name?.let { it to macro } }
+            .mapNotNull { macro -> macro.id?.let { it to macro } }
             .toMap()
     }
 
@@ -152,7 +151,7 @@ class App(
             state = state.inQuickMacroMode(true)
         }
         if (state.inQuickMacroMode) {
-            for (action in actions.quickMacroActions) {
+            for (action in actions.quickMacroModeActions) {
                 if (!action.matches(this)) continue
                 return action.tryRun(this) ?: NoOp
             }
@@ -222,7 +221,11 @@ class App(
         }
     }
 
-    fun perform(action: AppAction.RunCommand) = runCommandFromUIWithShell(action.command, action.configuration)
+    fun perform(action: AppAction.RunCommand) = runCommandFromUIWithShell(
+        command = action.command,
+        collectOutput = action.collectOutput,
+        collectError = action.collectError
+    )
 
     fun perform(action: AppAction.RunEntryMacro) {
         state = state.inQuickMacroMode(false)
@@ -250,12 +253,17 @@ class App(
     }
 
     fun perform(action: Exit): Nothing {
-        action.atDirectory?.let { CDFile.broadcastChangeDirectory(it) }
+        action.atDirectory?.let {
+            printlnOnDebug { "Broadcasting \"$it\" to parent shell ..." }
+            CDFile.broadcastChangeDirectory(it)
+        }
         throw ExitEvent()
     }
 
     private fun runCommandFromUIWithShell(
         command: String,
+        collectOutput: Boolean = false,
+        collectError: Boolean = false,
         configuration: Command.() -> Command = { this }
     ): AppAction.RunCommand.Result? {
         val (exe, args) = when (val shell = shell) {
@@ -269,6 +277,8 @@ class App(
         return runCommandFromUI(
             exe = exe,
             args = args,
+            collectOutput = collectOutput,
+            collectError = collectError,
             configuration = configuration
         )
     }
@@ -276,6 +286,8 @@ class App(
     private fun runCommandFromUI(
         exe: String,
         args: List<String>,
+        collectOutput: Boolean = false,
+        collectError: Boolean = false,
         configuration: Command.() -> Command = { this }
     ): AppAction.RunCommand.Result? {
         ui.clear() // hide UI before running command
@@ -285,11 +297,15 @@ class App(
             val child = Command(exe)
                 .args(args)
                 .cwd(state.directory.toString())
+                .run { if (collectOutput) stdout(Pipe) else this }
+                .run { if (collectError) stderr(Pipe) else this }
                 .configuration()
                 .spawn()
-            val stdout = child.bufferedStdout()?.readAll()
-            val stderr = child.bufferedStderr()?.readAll()
+            printlnOnDebug { "  Child pid: ${child.id()}" }
+            val stdout = if (collectOutput) child.bufferedStdout()?.readAll() else null
+            val stderr = if (collectError) child.bufferedStderr()?.readAll() else null
             val exitCode = child.wait()
+            printlnOnDebug { "  Got exit code: $exitCode" }
             AppAction.RunCommand.Result(
                 exitCode = exitCode,
                 stdout = stdout,
@@ -316,7 +332,7 @@ class App(
                 exe = which(fullPath)?.toString() ?: fullPath,
                 args = listOf("$file")
             ) {
-                stdin(Stdio.Inherit)
+                stdin(Inherit)
             }?.exitCode
         }
         // otherwise we assume it's a complex command that needs to be interpreted by a shell
@@ -328,7 +344,7 @@ class App(
         return runCommandFromUIWithShell(
             command = "$editorCommand $fileString"
         ) {
-            stdin(Stdio.Inherit)
+            stdin(Inherit)
         }?.exitCode
     }
 
@@ -353,7 +369,7 @@ class App(
             context.printlnOnDebug { "Searching for default editor:" }
 
             fun checkEnvVar(name: String): String? {
-                val value = getenv(name)?.trim() ?: run {
+                val value = getEnvironmentVariable(name)?.trim() ?: run {
                     context.printlnOnDebug { $$"  $$$name not set" }
                     return null
                 }
@@ -411,7 +427,8 @@ sealed interface AppAction<out R> {
 
     data class RunCommand(
         val command: String,
-        val configuration: Command.() -> Command = { this }
+        val collectOutput: Boolean = false,
+        val collectError: Boolean = false
     ) : AppAction<RunCommand.Result?> {
         override fun runIn(app: App) = app.perform(this)
 
