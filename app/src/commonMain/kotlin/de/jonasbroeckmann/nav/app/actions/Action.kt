@@ -9,10 +9,13 @@ import de.jonasbroeckmann.nav.app.state.State
 
 sealed interface Action<Event : InputEvent?> {
     context(stateProvider: StateProvider)
-    fun description(): String?
+    fun description(): String
 
     context(stateProvider: StateProvider)
     fun style(): TextStyle?
+
+    context(stateProvider: StateProvider)
+    fun isHidden(): Boolean
 
     context(stateProvider: StateProvider)
     fun matches(input: Event): Boolean

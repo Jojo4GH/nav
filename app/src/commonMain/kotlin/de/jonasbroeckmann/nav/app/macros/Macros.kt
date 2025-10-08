@@ -8,7 +8,6 @@ package de.jonasbroeckmann.nav.app.macros
 import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
-import com.charleskorn.kaml.yamlMap
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
@@ -19,6 +18,8 @@ import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.context
+import de.jonasbroeckmann.nav.app.macros.MacroVariable.DelegatedImmutable
+import de.jonasbroeckmann.nav.app.macros.MacroVariable.DelegatedMutable
 import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
@@ -26,8 +27,11 @@ import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.KeyboardEventAsStringSerializer
 import de.jonasbroeckmann.nav.utils.absolute
-import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.div
+import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.metadataOrNull
+import de.jonasbroeckmann.nav.utils.setEnvironmentVariable
+import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -39,46 +43,93 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.jvm.JvmInline
 
+/**
+ * A macro that can be run in the application.
+ *
+ * If their [condition] is met, macros are shown in the following places:
+ * - In quick macro mode, if a [quickModeKey] is set and is not [hidden]
+ * - In key hints, if a [nonQuickModeKey] is set and is not [hidden]
+ * - In the menu, if not [hidden]
+ *
+ * @property id An optional identifier for the macro. If set, it can be referenced by other macros.
+ * @property description A human-readable short description of what the macro does. Can contain placeholders for variables.
+ * @property hidden If true, the macro will not be shown.
+ * @property quickModeKey The key that triggers the macro when in quick macro mode.
+ * @property nonQuickModeKey The key that triggers the macro when not in quick macro mode.
+ * @property condition An optional condition that must be met for the macro to be available.
+ * @property actions The actions to run when the macro is executed.
+ */
 @Serializable
 data class Macro(
-    val name: String? = null,
-    val description: StringWithPlaceholders? = null,
+    val id: String? = null,
+    val description: StringWithPlaceholders = Empty,
     val hidden: Boolean = false,
     val quickModeKey: KeyboardEvent? = null,
     val nonQuickModeKey: KeyboardEvent? = null,
-    @SerialName("if")
     val condition: MacroCondition? = null,
     @SerialName("run")
     val actions: MacroActions = MacroActions()
 ) : MacroRunnable {
     init {
-        require(hidden || description != null) {
+        require(hidden || description.raw.isNotBlank()) {
             "Non-hidden macros must have a ${::description.name}"
         }
-//        require((quickModeKey != null) implies (description != null)) {
-//            "Macros with a ${::quickModeKey.name} must have a ${::description.name}"
-//        }
-//        require((nonQuickModeKey != null) implies (description != null)) {
-//            "Macros with a ${::nonQuickModeKey.name} must have a ${::description.name}"
-//        }
     }
 
     context(scope: MacroVariableScope)
     fun available() = condition == null || condition.evaluate()
 
+    private val usedVariablesInDescriptionOrCondition by lazy {
+        description.placeholders.toSet() + condition?.usedVariables.orEmpty()
+    }
+
     val dependsOnEntry by lazy {
-        val usedVariablesInCondition = condition?.usedVariables.orEmpty()
         listOf(
             DefaultMacroVariable.EntryPath,
             DefaultMacroVariable.EntryName,
             DefaultMacroVariable.EntryType
         ).any {
-            it.label in usedVariablesInCondition
+            it.label in usedVariablesInDescriptionOrCondition
         }
+    }
+
+    val dependsOnFilter by lazy {
+        DefaultMacroVariable.Filter.label in usedVariablesInDescriptionOrCondition
     }
 
     context(context: MacroRuntimeContext)
     override fun run() = actions.run()
+}
+
+object DefaultMacros {
+    val RunCommand = Macro(
+        id = "navRunCommand",
+        hidden = true,
+        actions = MacroActions(
+            MacroAction.RunCommand(command = DefaultMacroVariable.Command.placeholder),
+            MacroAction.If(
+                condition = MacroCondition.Not(
+                    MacroCondition.Equal(
+                        listOf(
+                            DefaultMacroVariable.ExitCode.placeholder,
+                            StringWithPlaceholders("0")
+                        )
+                    )
+                ),
+                then = MacroActions(
+                    MacroAction.Print(
+                        print = StringWithPlaceholders("Received exit code ${DefaultMacroVariable.ExitCode.placeholder}"),
+                        style = MacroAction.Print.Style.Error
+                    )
+                )
+            ),
+            MacroAction.Set(
+                set = mapOf(
+                    DefaultMacroVariable.Command.label to StringWithPlaceholders("")
+                )
+            )
+        )
+    )
 }
 
 @Serializable(with = MacroCondition.Companion::class)
@@ -115,7 +166,10 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("equal")
-    data class Equal(val equal: List<StringWithPlaceholders>) : MacroCondition {
+    data class Equal(
+        val equal: List<StringWithPlaceholders>,
+        val ignoreCase: Boolean = false
+    ) : MacroCondition {
         init {
             require(equal.size >= 2) { "${::equal.name} must have at least two elements to compare" }
         }
@@ -125,9 +179,16 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         context(scope: MacroVariableScope)
         override fun evaluate(): Boolean {
             val toCompare = equal.map { it.evaluate() }
-            return toCompare.all { it == toCompare[0] }
+            return toCompare.all { it.equals(toCompare[0], ignoreCase = ignoreCase) }
         }
     }
+
+    @Serializable
+    @SerialName("notEqual")
+    data class NotEqual(
+        val notEqual: List<StringWithPlaceholders>,
+        val ignoreCase: Boolean = false
+    ) : MacroCondition by Not(Equal(notEqual, ignoreCase))
 
     @Serializable
     @SerialName("match")
@@ -152,6 +213,10 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     }
 
     @Serializable
+    @SerialName("notEmpty")
+    data class NotEmpty(val notEmpty: StringWithPlaceholders) : MacroCondition by Not(Empty(notEmpty))
+
+    @Serializable
     @SerialName("blank")
     data class Blank(val blank: StringWithPlaceholders) : MacroCondition {
         override val usedVariables by lazy { blank.placeholders.toSet() }
@@ -159,6 +224,10 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         context(scope: MacroVariableScope)
         override fun evaluate() = blank.evaluate().isBlank()
     }
+
+    @Serializable
+    @SerialName("notBlank")
+    data class NotBlank(val notBlank: StringWithPlaceholders) : MacroCondition by Not(Blank(notBlank))
 
     companion object : YamlContentPolymorphicSerializer<MacroCondition>(MacroCondition::class) {
         override fun selectDeserializer(node: YamlNode) = when (node) {
@@ -168,9 +237,12 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
                     All.serializer(),
                     Not.serializer(),
                     Equal.serializer(),
+                    NotEqual.serializer(),
                     Match.serializer(),
                     Empty.serializer(),
+                    NotEmpty.serializer(),
                     Blank.serializer(),
+                    NotBlank.serializer(),
                 )
                 serializers.firstOrNull { it.descriptor.serialName in node } ?: throw IllegalArgumentException(
                     "Could not determine type of condition at ${node.path.toHumanReadableString()} " +
@@ -214,8 +286,8 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("macro")
     data class RunMacro(
         val macro: StringWithPlaceholders,
-        val ignoreCondition: Boolean = false,
-        val mode: Mode = Mode.NoInline
+        val mode: Mode = Mode.NoInline,
+        val ignoreCondition: Boolean = false
     ) : MacroAction {
         @Serializable
         enum class Mode {
@@ -233,27 +305,28 @@ sealed interface MacroAction : MacroRunnable {
              * Context is separate from the parent macro.
              * Returns inside the macro will only return from the macro itself.
              */
-            @SerialName("separate") Separate,
+            @SerialName("independent") Independent,
         }
 
         context(context: MacroRuntimeContext)
         override fun run() {
-            val macroName = macro.evaluate()
-            val macro = context.namedMacros[macroName]
-                ?: throw IllegalArgumentException("No macro with ${Macro::name.name} '$macroName' found")
+            val macroId = macro.evaluate()
+            val macro = context.identifiedMacros[macroId]
+                ?: throw IllegalArgumentException("No macro with ${Macro::id.name} '$macroId' found")
 
             context(context: MacroRuntimeContext)
             fun runMacro() {
                 if (!ignoreCondition && !macro.available()) {
-                    context.printlnOnDebug { "Skipping macro '$macroName' because its condition was not met." }
+                    context.printlnOnDebug { "Skipping macro '$macroId' because its condition was not met." }
+                } else {
+                    macro.run()
                 }
-                macro.run()
             }
 
             when (mode) {
                 Mode.Inline -> runMacro()
                 Mode.NoInline -> context.call { runMacro() }
-                Mode.Separate -> context.call(newContext = true) { runMacro() }
+                Mode.Independent -> context.call(newContext = true) { runMacro() }
             }
         }
     }
@@ -264,23 +337,54 @@ sealed interface MacroAction : MacroRunnable {
         val command: StringWithPlaceholders,
         val exitCodeTo: String = DefaultMacroVariable.ExitCode.label,
         val outputTo: String? = null,
-        val errorTo: String? = null
+        val errorTo: String? = null,
+        val trimTrailingNewline: Boolean = true
     ) : MacroAction {
         context(context: MacroRuntimeContext)
         override fun run() {
             val result = context.run(
-                AppAction.RunCommand(command.evaluate()) {
-                    this
-                        .stdout(if (outputTo != null) Pipe else Inherit)
-                        .stderr(if (errorTo != null) Pipe else Inherit)
-                }
+                AppAction.RunCommand(
+                    command = command.evaluate(),
+                    collectOutput = outputTo != null,
+                    collectError = errorTo != null
+                )
             )
-            context[exitCodeTo] = result?.exitCode?.toString()
+            context[exitCodeTo] = result?.exitCode?.toString().orEmpty()
             if (outputTo != null) {
-                context[outputTo] = result?.stdout
+                context[outputTo] = result?.stdout.orEmpty().let {
+                    if (trimTrailingNewline) {
+                        when {
+                            it.endsWith("\r\n") -> it.dropLast(2)
+                            it.endsWith('\r') -> it.dropLast(1)
+                            it.endsWith('\n') -> it.dropLast(1)
+                            else -> it
+                        }
+                    } else {
+                        it
+                    }
+                }
             }
             if (errorTo != null) {
-                context[errorTo] = result?.stderr
+                context[errorTo] = result?.stderr.orEmpty()
+            }
+        }
+    }
+
+    @Serializable
+    @SerialName("match")
+    data class Match(
+        val match: Regex,
+        @SerialName("in")
+        val value: StringWithPlaceholders,
+        val groupsTo: List<String> = emptyList()
+    ) : MacroAction {
+        context(context: MacroRuntimeContext)
+        override fun run() {
+            val toMatch = value.evaluate()
+            val result = match.matchEntire(toMatch)
+            result?.groupValues?.forEachIndexed { index, string ->
+                val destination = groupsTo.getOrNull(index - 1) ?: return@forEachIndexed
+                context[destination] = string
             }
         }
     }
@@ -294,13 +398,13 @@ sealed interface MacroAction : MacroRunnable {
         context(context: MacroRuntimeContext)
         override fun run() {
             val exitCode = context.run(AppAction.OpenFile(Path(open.evaluate())))
-            context[exitCodeTo] = exitCode?.toString()
+            context[exitCodeTo] = exitCode?.toString().orEmpty()
         }
     }
 
     @Serializable
     @SerialName("set")
-    data class SetVariables(
+    data class Set(
         val set: Map<String, StringWithPlaceholders>
     ) : MacroAction {
         init {
@@ -321,36 +425,6 @@ sealed interface MacroAction : MacroRunnable {
             set.forEach { (variable, value) ->
                 context[variable] = value.evaluate()
             }
-        }
-    }
-
-    @Serializable
-    @SerialName("update")
-    data class UpdateState(
-        val update: StateUpdate
-    ) : MacroAction {
-        @Serializable
-        data class StateUpdate(
-            val directory: StringWithPlaceholders? = null,
-            val cursorPosition: StringWithPlaceholders? = null,
-            val menuCursorPosition: StringWithPlaceholders? = null,
-            val filter: StringWithPlaceholders? = null,
-            val command: StringWithPlaceholders? = null,
-        )
-
-        context(context: MacroRuntimeContext)
-        override fun run() {
-            fun <T> T.updater(block: State.(T) -> State): State.() -> State = { block(this@updater)}
-            val updaters = listOfNotNull(
-                update.directory?.evaluate()?.parsePathToDirectoryOrNull()?.updater { navigateTo(it) },
-                update.cursorPosition?.evaluate()?.toIntOrNull()?.updater { withCursorCoerced(it) },
-                update.menuCursorPosition?.evaluate()?.toIntOrNull()?.updater { withMenuCursorCoerced(it) },
-                update.filter?.evaluate()?.updater { withFilter(it) },
-                update.command?.evaluate()?.updater { withCommand(it.takeUnless { it.isEmpty() }) },
-            )
-            context.run(AppAction.UpdateState {
-                updaters.fold(this) { state, updater -> state.updater() }
-            })
         }
     }
 
@@ -437,9 +511,9 @@ sealed interface MacroAction : MacroRunnable {
                     Prompt.serializer(),
                     RunMacro.serializer(),
                     RunCommand.serializer(),
+                    Match.serializer(),
                     OpenFile.serializer(),
-                    SetVariables.serializer(),
-                    UpdateState.serializer(),
+                    Set.serializer(),
                     If.serializer(),
                     Print.serializer(),
                     Return.serializer(),
@@ -455,9 +529,20 @@ sealed interface MacroAction : MacroRunnable {
     }
 }
 
-context(context: PartialContext)
+context(context: PartialContext, stateProvider: StateProvider)
 private fun String.parsePathToDirectoryOrNull(): Path? {
-    val path = Path(this).absolute().cleaned()
+    val path = try {
+        Path(this).let { path ->
+            if (path.isAbsolute) {
+                path
+            } else {
+                state.directory / path
+            }
+        }.absolute()
+    } catch (_: FileNotFoundException) {
+        context.printlnOnDebug { "\"$this\": No such file or directory" }
+        return null
+    }
     val metadata = path.metadataOrNull()
     if (metadata == null) {
         context.printlnOnDebug { "\"$this\": No such file or directory" }
@@ -472,75 +557,261 @@ private fun String.parsePathToDirectoryOrNull(): Path? {
 
 enum class DefaultMacroVariable(
     val label: String,
-    val fixedValue: (context(FullContext, StateProvider) () -> String?)? = null
+    val variable: () -> MacroVariable = { MacroVariable.Custom(label) }
 ) {
     // From context
-    WorkingDirectory("workingDirectory", { de.jonasbroeckmann.nav.utils.WorkingDirectory.toString() }),
-    StartingDirectory("startingDirectory", { context.startingDirectory.toString() }),
-    DebugMode("debugMode", { context.debugMode.toString() }),
-    Shell("shell", { context.shell?.shell }),
+    WorkingDirectory(
+        "workingDirectory",
+        {
+            DelegatedImmutable(
+                name = "workingDirectory",
+                onGet = { de.jonasbroeckmann.nav.utils.WorkingDirectory.toString() }
+            )
+        }
+    ),
+    StartingDirectory(
+        "startingDirectory",
+        {
+            DelegatedImmutable(
+                name = "startingDirectory",
+                onGet = { context.startingDirectory.toString() }
+            )
+        }
+    ),
+    DebugMode(
+        "debugMode",
+        {
+            DelegatedImmutable(
+                name = "debugMode",
+                onGet = { context.debugMode.toString() }
+            )
+        }
+    ),
+    Shell(
+        "shell",
+        {
+            DelegatedImmutable(
+                name = "shell",
+                onGet = { context.shell?.shell }
+            )
+        }
+    ),
 
     // From state
-    Directory("directory", { state.directory.toString() }),
-    EntryPath("entryPath", { state.currentEntry?.path?.toString() }),
-    EntryName("entryName", { state.currentEntry?.path?.name }),
-    EntryType("entryType", {
-        when (state.currentEntry?.type) {
-            Entry.Type.Directory -> "directory"
-            Entry.Type.RegularFile -> "file"
-            Entry.Type.SymbolicLink -> "link"
-            Entry.Type.Unknown -> "unknown"
-            null -> null
+    Directory(
+        "directory",
+        {
+            DelegatedMutable(
+                name = "directory",
+                onGet = { state.directory.toString() },
+                onSet = { newValue -> newValue.parsePathToDirectoryOrNull()?.let { updateState { navigateTo(it) } } }
+            )
         }
-    }),
-    Filter("filter", { state.filter }),
-    FilteredEntriesCount("filteredEntriesCount", { state.filteredItems.size.toString() }),
-    Command("command", { state.command }),
-    EntryCursorPosition("entryCursorPosition", { state.cursor.toString() }),
-    MenuCursorPosition("menuCursorPosition", { state.coercedMenuCursor.toString() }),
+    ),
+    EntryPath(
+        "entryPath",
+        {
+            DelegatedImmutable(
+                name = "entryPath",
+                onGet = { state.currentEntry?.path?.toString() }
+            )
+        }
+    ),
+    EntryName(
+        "entryName",
+        {
+            DelegatedImmutable(
+                name = "entryName",
+                onGet = { state.currentEntry?.path?.name }
+            )
+        }
+    ),
+    EntryType(
+        "entryType",
+        {
+            DelegatedImmutable(
+                name = "entryType",
+                onGet = {
+                    when (state.currentEntry?.type) {
+                        Entry.Type.Directory -> "directory"
+                        Entry.Type.RegularFile -> "file"
+                        Entry.Type.SymbolicLink -> "link"
+                        Entry.Type.Unknown -> "unknown"
+                        null -> null
+                    }
+                }
+            )
+        }
+    ),
+    Filter(
+        "filter",
+        {
+            DelegatedMutable(
+                name = "filter",
+                onGet = { state.filter },
+                onSet = { newValue -> updateState { withFilter(newValue) } }
+            )
+        }
+    ),
+    FilteredEntriesCount(
+        "filteredEntriesCount",
+        {
+            DelegatedImmutable(
+                name = "filteredEntriesCount",
+                onGet = { state.filteredItems.size.toString() }
+            )
+        }
+    ),
+    Command(
+        "command",
+        {
+            DelegatedMutable(
+                name = "command",
+                onGet = { state.command },
+                onSet = { newValue -> updateState { withCommand(newValue.takeUnless { it.isEmpty() }) } }
+            )
+        }
+    ),
+    EntryCursorPosition(
+        "entryCursorPosition",
+        {
+            DelegatedMutable(
+                name = "entryCursorPosition",
+                onGet = { state.cursor.toString() },
+                onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withCursorCoerced(it) } } }
+            )
+        }
+    ),
+    MenuCursorPosition(
+        "menuCursorPosition",
+        {
+            DelegatedMutable(
+                name = "menuCursorPosition",
+                onGet = { state.coercedMenuCursor.toString() },
+                onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withMenuCursorCoerced(it) } } }
+            )
+        }
+    ),
 
     // Local
     ExitCode("exitCode");
 
-    val placeholder by lazy { StringWithPlaceholders.placeholder(name) }
+    val placeholder by lazy { StringWithPlaceholders.placeholder(label) }
 
     companion object {
-        val ByLabel = entries.associateBy { it.label }
+        val ByName = entries.associateBy { it.label }
+
+        context(context: MacroRuntimeContext)
+        private fun updateState(block: State.() -> State) = context.run(AppAction.UpdateState(block))
+    }
+}
+
+sealed interface MacroVariable {
+
+    val name: String
+
+    context(_: FullContext, _: StateProvider)
+    val value: String
+
+    val placeholder get() = StringWithPlaceholders.placeholder(name)
+
+    sealed interface Mutable : MacroVariable {
+        context(_: MacroRuntimeContext)
+        fun set(value: String)
+    }
+
+    data class FromEnvironment(
+        override val name: String
+    ) : MacroVariable, Mutable {
+        private val envName = name.removePrefix(ENV_PREFIX)
+
+        context(_: FullContext, _: StateProvider)
+        override val value get() = getEnvironmentVariable(envName).orEmpty()
+
+        context(_: MacroRuntimeContext)
+        override fun set(value: String) {
+            setEnvironmentVariable(envName, value)
+        }
+    }
+
+    data class DelegatedImmutable(
+        override val name: String,
+        private val onGet: context(FullContext, StateProvider) () -> String?,
+    ) : MacroVariable {
+        context(_: FullContext, _: StateProvider)
+        override val value get() = onGet().orEmpty()
+    }
+
+    data class DelegatedMutable(
+        override val name: String,
+        private val onGet: context(FullContext, StateProvider) () -> String?,
+        private val onSet: context(MacroRuntimeContext) (String) -> Unit
+    ) : MacroVariable, Mutable {
+        context(_: FullContext, _: StateProvider)
+        override val value get() = onGet().orEmpty()
+
+        context(_: MacroRuntimeContext)
+        override fun set(value: String) = onSet(value)
+    }
+
+    data class Custom(
+        override val name: String,
+        private var _value: String = ""
+    ) : MacroVariable, Mutable {
+
+        context(_: FullContext, _: StateProvider)
+        override val value get() = _value
+
+        context(_: MacroRuntimeContext)
+        override fun set(value: String) {
+            _value = value
+        }
+    }
+
+    companion object {
+        private const val ENV_PREFIX = "env:"
+
+        fun fromName(name: String): MacroVariable = if (name.startsWith(ENV_PREFIX)) {
+            FromEnvironment(name)
+        } else {
+            DefaultMacroVariable.ByName[name]?.variable?.invoke() ?: Custom(name)
+        }
     }
 }
 
 interface MacroVariableScope {
-    operator fun get(variable: String): String
+    operator fun get(name: String): String
 
     companion object {
         context(context: FullContext, stateProvider: StateProvider)
-        fun <R> empty(block: MacroVariableScope.() -> R): R = object : MacroVariableScopeBase(context, stateProvider) {
-            override val variables = emptyMap<String, String>()
-        }.block()
+        fun <R> empty(block: MacroVariableScope.() -> R): R = MacroVariableScopeBase(context, stateProvider).block()
     }
 }
 
-abstract class MacroVariableScopeBase(
+open class MacroVariableScopeBase(
     context: FullContext,
     stateProvider: StateProvider
 ) : MacroVariableScope, FullContext by context, StateProvider by stateProvider {
 
-    protected abstract val variables: Map<String, String>
+    private val variables = mutableMapOf<String, MacroVariable>()
 
-    override operator fun get(variable: String): String {
-        val fixedValue = DefaultMacroVariable.ByLabel[variable]?.fixedValue
-            ?: return variables[variable].orEmpty()
-        return fixedValue(this, this).orEmpty()
-    }
+    protected fun variable(name: String) = variables.getOrPut(name) { MacroVariable.fromName(name) }
+
+    override operator fun get(name: String): String = variable(name).value
 }
 
 class MacroRuntimeContext private constructor(
     private val app: App
 ) : MacroVariableScopeBase(app, app) {
-    override val variables = mutableMapOf<String, String>()
 
-    operator fun set(variable: String, value: String?) {
-        variables[variable] = value.orEmpty()
+    operator fun set(name: String, value: String) {
+        variable(name).let {
+            if (it is MacroVariable.Mutable) {
+                it.set(value)
+            } else {
+                terminal.danger("Cannot modify '$name' as it is not mutable.")
+            }
+        }
     }
 
     fun <R> run(appAction: AppAction<R>) = appAction.runIn(app)
@@ -580,7 +851,7 @@ private operator fun YamlMap.contains(key: String) = getKey(key) != null
 
 @Serializable
 @JvmInline
-value class StringWithPlaceholders(private val raw: String) : MacroEvaluable<String> {
+value class StringWithPlaceholders(val raw: String) : MacroEvaluable<String> {
     val placeholders get() = PlaceholderRegex.findAll(raw).map { it.groupValues[1] }
 
     context(scope: MacroVariableScope)
@@ -594,6 +865,8 @@ value class StringWithPlaceholders(private val raw: String) : MacroEvaluable<Str
         private val PlaceholderRegex = Regex("""\{\{(.+?)\}\}""")
 
         fun placeholder(name: String) = StringWithPlaceholders("{{${name}}}")
+
+        val Empty = StringWithPlaceholders("")
     }
 }
 

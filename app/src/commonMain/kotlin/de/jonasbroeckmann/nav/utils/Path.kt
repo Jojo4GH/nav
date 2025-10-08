@@ -7,7 +7,7 @@ import kotlinx.io.files.SystemPathSeparator
 val WorkingDirectory: Path by lazy { Path(".").absolute() }
 
 val UserHome: Path by lazy {
-    (getenv("HOME") ?: getenv("USERPROFILE"))
+    (getEnvironmentVariable("HOME") ?: getEnvironmentVariable("USERPROFILE"))
         ?.let { Path(it).absolute() }
         ?: throw IllegalStateException("Could not determine user home directory")
 }

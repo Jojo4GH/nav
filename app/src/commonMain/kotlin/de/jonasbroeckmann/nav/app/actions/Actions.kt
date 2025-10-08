@@ -5,12 +5,9 @@ import com.github.ajalt.mordant.rendering.TextStyles
 import de.jonasbroeckmann.nav.app.AppAction.*
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.DefaultMacroVariable
+import de.jonasbroeckmann.nav.app.macros.DefaultMacros
 import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.macros.MacroAction
-import de.jonasbroeckmann.nav.app.macros.MacroActions
-import de.jonasbroeckmann.nav.app.macros.MacroCondition
 import de.jonasbroeckmann.nav.app.macros.MacroVariableScope
-import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.UI
@@ -37,6 +34,59 @@ class Actions(context: FullContext) : FullContext by context {
         ).also {
             registered += it
         }
+    }
+
+    val cancelQuickMacroMode = KeyAction(
+        config.keys.cancel,
+        inQuickMacroMode = true,
+        displayKey = { config.keys.cancel },
+        description = { "cancel" },
+        condition = { inQuickMacroMode },
+        action = { UpdateState { inQuickMacroMode(false) } }
+    ).registered()
+
+    val quickMacroModeActions = config.macros.mapNotNull { macro ->
+        if (macro.quickModeKey == null) return@mapNotNull null
+        KeyAction(
+            macro.quickModeKey,
+            inQuickMacroMode = true,
+            displayKey = { macro.quickModeKey },
+            description = { macro.computeDescription() },
+            style = { macro.computeStyle() },
+            hidden = { macro.hidden },
+            condition = { inQuickMacroMode && macro.computeCondition() },
+            action = { RunMacro(macro) }
+        ).registered()
+    } + config.entryMacros.mapNotNull { macro ->
+        if (macro.quickMacroKey == null) return@mapNotNull null
+        KeyAction(
+            macro.quickMacroKey,
+            inQuickMacroMode = true,
+            displayKey = { macro.quickMacroKey },
+            description = { currentEntry?.let { macro.computeDescription(it) }.orEmpty() },
+            style = { currentEntry.style },
+            hidden = { currentEntry == null },
+            condition = { inQuickMacroMode && macro.condition() },
+            action = { RunEntryMacro(macro) }
+        ).registered()
+    }
+
+    val menuSubmit = KeyAction(
+        config.keys.submit,
+        condition = { isMenuOpen },
+        action = { currentMenuAction?.run(null) }
+    ).registered()
+
+    val macroActions = config.macros.mapNotNull { macro ->
+        if (macro.nonQuickModeKey == null) return@mapNotNull null
+        KeyAction(
+            macro.nonQuickModeKey,
+            description = { macro.computeDescription() },
+            style = { macro.computeStyle() },
+            hidden = { macro.hidden },
+            condition = { macro.computeCondition() },
+            action = { RunMacro(macro) }
+        ).registered()
     }
 
     val cursorUp = KeyAction(
@@ -176,12 +226,6 @@ class Actions(context: FullContext) : FullContext by context {
         action = { UpdateState { withMenuCursorCoerced(coercedMenuCursor - 1) } }
     ).registered()
 
-    val menuSubmit = KeyAction(
-        config.keys.submit,
-        condition = { isMenuOpen },
-        action = { currentMenuAction?.run(null) }
-    ).registered()
-
     val exitCD = KeyAction(
         config.keys.submit,
         description = { "exit here" },
@@ -196,97 +240,25 @@ class Actions(context: FullContext) : FullContext by context {
         action = { Exit(null) }
     ).registered()
 
-    val quickMacroActions = listOf(
-        KeyAction(
-            triggers = listOf(KeyAction.Trigger(key = config.keys.cancel, inQuickMacroMode = true)),
-            displayKey = { config.keys.cancel },
-            description = {
-                "cancel"
-            },
-            condition = {
-                inQuickMacroMode
-            },
-            action = {
-                UpdateState { inQuickMacroMode(false) }
-            }
-        ).registered()
-    ) + config.entryMacros.mapNotNull { macro ->
-        if (macro.quickMacroKey == null) return@mapNotNull null
-        KeyAction(
-            triggers = listOf(KeyAction.Trigger(key = macro.quickMacroKey, inQuickMacroMode = true)),
-            displayKey = { macro.quickMacroKey },
-            description = { currentEntry?.let { macro.computeDescription(it) } },
-            style = { currentEntry.style },
-            condition = { inQuickMacroMode && macro.condition() },
-            action = { RunEntryMacro(macro) }
-        ).registered()
-    } + config.macros.mapNotNull { macro ->
-        if (macro.quickModeKey == null) return@mapNotNull null
-        KeyAction(
-            triggers = listOf(KeyAction.Trigger(key = macro.quickModeKey, inQuickMacroMode = true)),
-            displayKey = { macro.quickModeKey },
-            description = { macro.computeDescription() },
-            style = { macro.computeStyle() },
-            condition = { macro.computeCondition() },
-            action = { RunMacro(macro) }
-        ).registered()
-    }
-
-    val macroActions = config.macros.mapNotNull { macro ->
-        if (macro.nonQuickModeKey == null) return@mapNotNull null
-        KeyAction(
-            macro.nonQuickModeKey,
-            description = { macro.computeDescription() },
-            style = { macro.computeStyle() },
-            condition = { macro.computeCondition() },
-            action = { RunMacro(macro) }
-        ).registered()
-    }
-
-    context(state: State)
-    private fun Macro.computeDescription() = MacroVariableScope.empty { description?.evaluate() }
-
-    context(state: State)
-    private fun Macro.computeStyle() = if (dependsOnEntry) state.currentEntry.style else null
-
-    context(state: State)
-    private fun Macro.computeCondition() = MacroVariableScope.empty { available() }
-
-    private val macroMenuActions = listOf(
-        config.entryMacros.map { macro ->
+    val menuActions = listOf(
+        *config.macros.map { macro ->
             MenuAction(
-                description = {
-                    currentEntry?.let { "★ " + macro.computeDescription(it) }
-                },
+                description = { macro.computeDescription() },
+                style = { macro.computeStyle() },
+                hidden = { macro.hidden },
+                condition = { macro.computeCondition() },
+                action = { RunMacro(macro) }
+            )
+        }.toTypedArray(),
+        *config.entryMacros.map { macro ->
+            MenuAction(
+                description = { currentEntry?.let { macro.computeDescription(it) }.orEmpty() },
                 style = { currentEntry.style },
+                hidden = { currentEntry == null },
                 condition = { macro.condition() },
                 action = { RunEntryMacro(macro) }
             )
-        },
-        config.macros.map { macro ->
-            MenuAction(
-                description = { MacroVariableScope.empty { macro.description?.evaluate() } },
-                style = { if (macro.dependsOnEntry) currentEntry.style else null },
-                condition = { MacroVariableScope.empty { macro.available() } },
-                action = { RunMacro(macro) }
-            )
-        }
-    ).flatten().toTypedArray()
-
-    context(state: State)
-    private fun Config.EntryMacro.condition(): Boolean {
-        val currentEntry = state.currentEntry
-        return when (currentEntry?.type) {
-            null -> false
-            SymbolicLink -> onSymbolicLink
-            Directory -> onDirectory
-            RegularFile -> onFile
-            Unknown -> false
-        }
-    }
-
-    val menuActions = listOf(
-        *macroMenuActions,
+        }.toTypedArray(),
         MenuAction(
             description = { "New file: \"${filter}\"" },
             style = { styles.file },
@@ -315,7 +287,7 @@ class Actions(context: FullContext) : FullContext by context {
             description = {
                 val cmdStr = if (command.isNullOrEmpty()) {
                     if (config.hideHints) ""
-                    else TextStyles.dim("type command or press ${UI.keyName(config.keys.submit)} to cancel")
+                    else TextStyles.dim("type command or press ${UI.keyName(config.keys.cancel)} to cancel")
                 } else {
                     TextColors.rgb("FFFFFF")("${command}_")
                 }
@@ -329,34 +301,7 @@ class Actions(context: FullContext) : FullContext by context {
                     UpdateState { withCommand(null) }
                 } else {
                     val exitCodeVariable = DefaultMacroVariable.ExitCode.placeholder
-                    val macro = namedMacros["runCommand"] ?: Macro(
-                        name = "runCommand",
-                        hidden = true,
-                        actions = MacroActions(
-                            MacroAction.RunCommand(command = StringWithPlaceholders(command)),
-                            MacroAction.If(
-                                condition = MacroCondition.Not(
-                                    MacroCondition.Equal(
-                                        listOf(
-                                            exitCodeVariable,
-                                            StringWithPlaceholders("0")
-                                        )
-                                    )
-                                ),
-                                then = MacroActions(
-                                    MacroAction.Print(
-                                        print = StringWithPlaceholders("Received exit code $exitCodeVariable"),
-                                        style = MacroAction.Print.Style.Error
-                                    )
-                                )
-                            ),
-                            MacroAction.UpdateState(
-                                update = MacroAction.UpdateState.StateUpdate(
-                                    command = StringWithPlaceholders("")
-                                )
-                            )
-                        )
-                    )
+                    val macro = identifiedMacros[DefaultMacros.RunCommand.id] ?: DefaultMacros.RunCommand
                     RunMacro(macro)
                 }
             }
@@ -386,4 +331,29 @@ class Actions(context: FullContext) : FullContext by context {
             }
         ),
     )
+
+    context(state: State)
+    private fun Config.EntryMacro.condition(): Boolean {
+        val currentEntry = state.currentEntry
+        return when (currentEntry?.type) {
+            null -> false
+            SymbolicLink -> onSymbolicLink
+            Directory -> onDirectory
+            RegularFile -> onFile
+            Unknown -> false
+        }
+    }
+
+    context(state: State)
+    private fun Macro.computeDescription() = MacroVariableScope.empty { description.evaluate() }
+
+    context(state: State)
+    private fun Macro.computeStyle() = when {
+        dependsOnEntry -> state.currentEntry.style
+        dependsOnFilter && state.filter.isNotEmpty() -> styles.filter
+        else -> null
+    }
+
+    context(state: State)
+    private fun Macro.computeCondition() = MacroVariableScope.empty { available() }
 }

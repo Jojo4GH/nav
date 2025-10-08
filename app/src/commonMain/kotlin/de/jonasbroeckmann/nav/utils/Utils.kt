@@ -2,11 +2,13 @@ package de.jonasbroeckmann.nav.utils
 
 import kotlinx.io.files.Path
 
-expect fun getenv(key: String): String?
+expect fun getEnvironmentVariable(key: String): String?
+
+expect fun setEnvironmentVariable(key: String, value: String?): Boolean
 
 fun which(command: String): Path? {
-    val path = getenv("PATH") ?: return null
-    val extensions = getenv("PATHEXT")?.lowercase()?.split(";") ?: emptyList()
+    val path = getEnvironmentVariable("PATH") ?: return null
+    val extensions = getEnvironmentVariable("PATHEXT")?.lowercase()?.split(";") ?: emptyList()
     return path
         .splitToSequence(PathsSeparator)
         .flatMap {

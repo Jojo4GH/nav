@@ -1,5 +1,16 @@
 package de.jonasbroeckmann.nav.utils
 
-actual fun getenv(key: String): String? = System.getenv(key)
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
-actual fun exitProcess(status: Int): Nothing = kotlin.system.exitProcess(status)
+actual fun getEnvironmentVariable(key: String): String? = System.getenv(key)
+
+@OptIn(ExperimentalContracts::class)
+actual fun setEnvironmentVariable(key: String, value: String?): Boolean {
+    contract { returns() implies false }
+    throw UnsupportedOperationException("Setting environment variables is currently not supported on the JVM")
+}
+
+actual fun exitProcess(status: Int): Nothing {
+    kotlin.system.exitProcess(status)
+}
