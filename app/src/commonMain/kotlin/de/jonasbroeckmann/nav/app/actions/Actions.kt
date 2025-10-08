@@ -4,7 +4,7 @@ import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import de.jonasbroeckmann.nav.app.AppAction.*
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.macros.DefaultMacroVariable
+import de.jonasbroeckmann.nav.app.macros.DefaultMacroVariables
 import de.jonasbroeckmann.nav.app.macros.DefaultMacros
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroVariableScope
@@ -300,7 +300,7 @@ class Actions(context: FullContext) : FullContext by context {
                 if (command.isNullOrBlank()) {
                     UpdateState { withCommand(null) }
                 } else {
-                    val exitCodeVariable = DefaultMacroVariable.ExitCode.placeholder
+                    val exitCodeVariable = DefaultMacroVariables.ExitCode.placeholder
                     val macro = identifiedMacros[DefaultMacros.RunCommand.id] ?: DefaultMacros.RunCommand
                     RunMacro(macro)
                 }
