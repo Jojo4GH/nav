@@ -251,7 +251,7 @@ sealed interface MacroAction : MacroRunnable {
         context(context: MacroRuntimeContext)
         override fun run() {
             if (exit) {
-                context.run(AppAction.Exit(at?.evaluate()?.parsePathToDirectoryOrNull()))
+                context.run(AppAction.Exit(at?.evaluate()?.parseAbsolutePathToDirectoryOrNull()))
             }
         }
     }
