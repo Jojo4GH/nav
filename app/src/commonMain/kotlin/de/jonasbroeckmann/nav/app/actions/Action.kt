@@ -4,8 +4,6 @@ import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.StateProvider
-import de.jonasbroeckmann.nav.app.state
-import de.jonasbroeckmann.nav.app.state.State
 
 sealed interface Action<Event : InputEvent?> {
     context(stateProvider: StateProvider)

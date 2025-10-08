@@ -55,7 +55,7 @@ enum class DefaultMacroVariables(
             MacroVariable.DelegatedMutable(
                 name = "directory",
                 onGet = { state.directory.toString() },
-                onSet = { newValue -> newValue.parsePathToDirectoryOrNull()?.let { updateState { navigateTo(it) } } }
+                onSet = { newValue -> newValue.parseAbsolutePathToDirectoryOrNull()?.let { updateState { navigateTo(it) } } }
             )
         }
     ),
