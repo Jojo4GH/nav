@@ -49,7 +49,7 @@ data class State private constructor(
     }
     val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
 
-    val availableMenuActions get() = allMenuActions().filter { it.isAvailable(this) }
+    val availableMenuActions get() = allMenuActions().filter { it.isAvailable() }
     val coercedMenuCursor get() = menuCursor.coerceAtMost(availableMenuActions.lastIndex).coerceAtLeast(-1)
     val isMenuOpen get() = menuCursor >= 0
     val currentMenuAction get() = availableMenuActions.getOrNull(coercedMenuCursor)

@@ -8,6 +8,7 @@ package de.jonasbroeckmann.nav.app.macros
 import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
+import com.charleskorn.kaml.yamlMap
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
@@ -80,7 +81,7 @@ data class Macro(
     override fun run() = actions.run()
 }
 
-@Serializable
+@Serializable(with = MacroCondition.Companion::class)
 sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     val usedVariables: Set<String>
@@ -161,24 +162,29 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     companion object : YamlContentPolymorphicSerializer<MacroCondition>(MacroCondition::class) {
         override fun selectDeserializer(node: YamlNode) = when (node) {
-            is YamlMap -> when {
-                Any.serializer().descriptor.serialName in node -> Any.serializer()
-                All.serializer().descriptor.serialName in node -> All.serializer()
-                Not.serializer().descriptor.serialName in node -> Not.serializer()
-                Equal.serializer().descriptor.serialName in node -> Equal.serializer()
-                Match.serializer().descriptor.serialName in node -> Match.serializer()
-                Empty.serializer().descriptor.serialName in node -> Empty.serializer()
-                Blank.serializer().descriptor.serialName in node -> Blank.serializer()
-                else -> throw IllegalArgumentException("Could not determine type of condition: $node")
+            is YamlMap -> {
+                val serializers = listOf(
+                    Any.serializer(),
+                    All.serializer(),
+                    Not.serializer(),
+                    Equal.serializer(),
+                    Match.serializer(),
+                    Empty.serializer(),
+                    Blank.serializer(),
+                )
+                serializers.firstOrNull { it.descriptor.serialName in node } ?: throw IllegalArgumentException(
+                    "Could not determine type of condition at ${node.path.toHumanReadableString()} " +
+                        "(must be one of: ${serializers.map { it.descriptor.serialName }})"
+                )
             }
-            else -> throw IllegalArgumentException("Unexpected node: $node")
+            else -> throw IllegalArgumentException("Unexpected node at ${node.path.toHumanReadableString()}")
         }
     }
 }
 
 @Serializable
 @JvmInline
-value class MacroActions(private val actions: Iterable<MacroAction> = emptyList()) : MacroRunnable {
+value class MacroActions(private val actions: List<MacroAction> = emptyList()) : MacroRunnable {
     constructor(vararg actions: MacroAction) : this(listOf(*actions))
 
     context(context: MacroRuntimeContext)
@@ -426,19 +432,25 @@ sealed interface MacroAction : MacroRunnable {
 
     companion object : YamlContentPolymorphicSerializer<MacroAction>(MacroAction::class) {
         override fun selectDeserializer(node: YamlNode) = when (node) {
-            is YamlMap -> when {
-                Prompt.serializer().descriptor.serialName in node -> Prompt.serializer()
-                RunMacro.serializer().descriptor.serialName in node -> RunMacro.serializer()
-                RunCommand.serializer().descriptor.serialName in node -> RunCommand.serializer()
-                OpenFile.serializer().descriptor.serialName in node -> OpenFile.serializer()
-                SetVariables.serializer().descriptor.serialName in node -> SetVariables.serializer()
-                UpdateState.serializer().descriptor.serialName in node -> UpdateState.serializer()
-                If.serializer().descriptor.serialName in node -> If.serializer()
-                Return.serializer().descriptor.serialName in node -> Return.serializer()
-                Exit.serializer().descriptor.serialName in node -> Exit.serializer()
-                else -> throw IllegalArgumentException("Could not determine type of action: $node")
+            is YamlMap -> {
+                val serializers = listOf(
+                    Prompt.serializer(),
+                    RunMacro.serializer(),
+                    RunCommand.serializer(),
+                    OpenFile.serializer(),
+                    SetVariables.serializer(),
+                    UpdateState.serializer(),
+                    If.serializer(),
+                    Print.serializer(),
+                    Return.serializer(),
+                    Exit.serializer(),
+                )
+                serializers.firstOrNull { it.descriptor.serialName in node } ?: throw IllegalArgumentException(
+                    "Could not determine type of action at ${node.path.toHumanReadableString()} " +
+                        "(must be one of: ${serializers.map { it.descriptor.serialName }})"
+                )
             }
-            else -> throw IllegalArgumentException("Unexpected node: $node")
+            else -> throw IllegalArgumentException("Unexpected node at ${node.path.toHumanReadableString()}")
         }
     }
 }
@@ -518,7 +530,7 @@ abstract class MacroVariableScopeBase(
     override operator fun get(variable: String): String {
         val fixedValue = DefaultMacroVariable.ByLabel[variable]?.fixedValue
             ?: return variables[variable].orEmpty()
-        return fixedValue().orEmpty()
+        return fixedValue(this, this).orEmpty()
     }
 }
 

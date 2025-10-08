@@ -7,10 +7,12 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.Actions
 import de.jonasbroeckmann.nav.app.actions.KeyAction
 import de.jonasbroeckmann.nav.app.actions.MenuAction
+import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
@@ -24,15 +26,16 @@ class UI(
     context: FullContext,
     private val actions: Actions
 ) : FullContext by context {
-    private val animation = terminal.animation<UIState> { render(it) }
+    private val animation = terminal.animation<StateProvider> { render(it) }
 
-    fun update(state: UIState) = animation.update(state)
+    context(stateProvider: StateProvider)
+    fun update() = animation.update(state)
 
     fun clear() = animation.clear()
 
     fun stop() = animation.stop()
 
-    private fun render(data: UIState): Widget = context(data) {
+    private fun render(stateProvider: StateProvider): Widget = context(stateProvider) {
         verticalLayout {
             printlnOnDebug { "Updating UI ..." }
 
@@ -41,18 +44,18 @@ class UI(
             var additionalRows = 0
 
             val top = renderTitle(
-                directory = data.directory,
-                filter = data.filter,
-                showCursor = !data.isTypingCommand && !data.inQuickMacroMode
+                directory = state.directory,
+                filter = state.filter,
+                showCursor = !state.isTypingCommand && !state.inQuickMacroMode
             )
             additionalRows += 1
 
             val bottom = renderBottom { additionalRows += it }
 
             val table = renderTable(
-                entries = data.filteredItems,
-                cursor = data.cursor,
-                filter = data.filter,
+                entries = state.filteredItems,
+                cursor = state.cursor,
+                filter = state.filter,
                 additionalRows = additionalRows
             )
 
@@ -258,7 +261,7 @@ class UI(
         }
     }
 
-    context(state: UIState)
+    context(stateProvider: StateProvider)
     private fun renderBottom(
         collectAdditionalRows: (Int) -> Unit
     ): Widget = verticalLayout {
@@ -279,7 +282,7 @@ class UI(
         }
     }
 
-    context(state: UIState)
+    context(stateProvider: StateProvider)
     private fun renderMenu(
         collectAdditionalRows: (Int) -> Unit
     ) = grid {
@@ -303,13 +306,13 @@ class UI(
         collectAdditionalRows(state.availableMenuActions.size)
     }
 
-    context(state: UIState)
+    context(stateProvider: StateProvider)
     private fun renderAction(action: Action<*>): String {
         val keyStr = when (action) {
-            is KeyAction -> action.displayKey(state)?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
+            is KeyAction -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
             is MenuAction -> null
         }
-        val desc = action.description(state)
+        val desc = action.description()
         val descStr = when (action) {
             is KeyAction -> desc?.let { styles.keyHintLabels(it) }
             is MenuAction -> desc
@@ -335,9 +338,9 @@ class UI(
     private inner class RenderHintsScope : MutableList<String> by mutableListOf() {
         var prefix: String = ""
 
-        context(state: UIState)
+        context(stateProvider: StateProvider)
         fun render(action: KeyAction) {
-            if (!action.isAvailable(state)) return
+            if (!action.isAvailable()) return
             add(renderAction(action))
         }
 
@@ -348,7 +351,7 @@ class UI(
         }
     }
 
-    context(state: UIState)
+    context(stateProvider: StateProvider)
     private fun renderNavHints() = buildHints {
         if (state.inQuickMacroMode) {
             val name = when (state.currentEntry?.type) {
@@ -359,7 +362,7 @@ class UI(
                 null -> "macro"
             }
             prefix = state.currentEntry.style(name) + styles.genericElements(" │ ")
-            val availableMacros = actions.quickMacroActions.filter { it.isAvailable(state) }
+            val availableMacros = actions.quickMacroActions.filter { it.isAvailable() }
             availableMacros.forEach {
                 render(it)
             }
@@ -387,19 +390,23 @@ class UI(
 
             render(actions.openMenu)
             render(actions.exitMenu)
+
+            actions.macroActions.forEach { action ->
+                render(action)
+            }
         }
 
         if (debugMode) {
             if (state.inQuickMacroMode) {
                 add(debugStyle("M"))
             }
-            if (state.lastReceivedEvent != null) {
-                add(debugStyle("Key: ${keyName(state.lastReceivedEvent)}"))
+            state.lastReceivedEvent?.let { lastReceivedEvent ->
+                add(debugStyle("Key: ${keyName(lastReceivedEvent)}"))
             }
         }
     }
 
-    context(state: UIState)
+    context(stateProvider: StateProvider)
     private fun renderMenuHints() = buildHints {
         if (state.coercedMenuCursor == 0) {
             render(actions.closeMenu)

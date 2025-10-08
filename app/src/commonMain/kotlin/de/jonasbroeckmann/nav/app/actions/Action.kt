@@ -3,22 +3,23 @@ package de.jonasbroeckmann.nav.app.actions
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.AppAction
+import de.jonasbroeckmann.nav.app.StateProvider
+import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.State
 
 sealed interface Action<Event : InputEvent?> {
-    val description: State.() -> String?
+    context(stateProvider: StateProvider)
+    fun description(): String?
 
-    context(state: State)
+    context(stateProvider: StateProvider)
     fun style(): TextStyle?
 
-    fun matches(state: State, input: Event): Boolean
+    context(stateProvider: StateProvider)
+    fun matches(input: Event): Boolean
 
-    fun isAvailable(state: State): Boolean
+    context(stateProvider: StateProvider)
+    fun isAvailable(): Boolean
 
-
-    fun run(state: State, input: Event): AppAction<*>?
-
-    data class Context(
-        val state: State
-    )
+    context(stateProvider: StateProvider)
+    fun run(input: Event): AppAction<*>?
 }
