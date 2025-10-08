@@ -3,43 +3,54 @@ package de.jonasbroeckmann.nav.app.actions
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.AppAction
+import de.jonasbroeckmann.nav.app.StateProvider
+import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.State
 
 data class KeyAction(
     val triggers: List<Trigger>,
-    val displayKey: (State) -> KeyboardEvent? = { null },
-    override val description: State.() -> String? = { null },
+    private val displayKey: State.() -> KeyboardEvent? = { null },
+    private val description: State.() -> String? = { null },
     private val style: State.() -> TextStyle? = { null },
     private val condition: State.() -> Boolean,
     private val action: State.(KeyboardEvent) -> AppAction<*>?
 ) : Action<KeyboardEvent> {
     constructor(
         vararg keys: KeyboardEvent,
-        displayKey: (State) -> KeyboardEvent? = { keys.firstOrNull() },
+        displayKey: State.() -> KeyboardEvent? = { keys.firstOrNull() },
         description: State.() -> String? = { null },
         style: State.() -> TextStyle? = { null },
         condition: State.() -> Boolean,
         action: State.(KeyboardEvent) -> AppAction<*>?
     ) : this(
         triggers = keys.map { Trigger(it, false) },
-        displayKey = displayKey,
-        description = description,
-        style = style,
-        condition = condition,
-        action = action
+        displayKey = { state.displayKey() },
+        description = { state.description() },
+        style = { state.style() },
+        condition = { state.condition() },
+        action = { state.action(it) }
     )
 
-    context(state: State)
+    context(stateProvider: StateProvider)
+    fun displayKey() = state.displayKey()
+
+    context(stateProvider: StateProvider)
+    override fun description() = state.description()
+
+    context(stateProvider: StateProvider)
     override fun style() = state.style()
 
-    override fun matches(state: State, input: KeyboardEvent): Boolean {
+    context(stateProvider: StateProvider)
+    override fun matches(input: KeyboardEvent): Boolean {
         val trigger = Trigger(input, state.inQuickMacroMode)
-        return trigger in triggers && isAvailable(state)
+        return trigger in triggers && isAvailable()
     }
 
-    override fun isAvailable(state: State) = state.condition()
+    context(stateProvider: StateProvider)
+    override fun isAvailable() = state.condition()
 
-    override fun run(state: State, input: KeyboardEvent) = state.action(input)
+    context(stateProvider: StateProvider)
+    override fun run(input: KeyboardEvent) = state.action(input)
 
     data class Trigger private constructor(
         val key: KeyboardEvent,

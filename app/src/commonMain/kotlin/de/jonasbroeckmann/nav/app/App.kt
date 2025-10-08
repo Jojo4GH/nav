@@ -106,7 +106,7 @@ class App(
 
         try {
             while (true) {
-                ui.update(state)
+                ui.update()
                 val inputEvent = readInput()
                 printlnOnDebug { "Received input event: $inputEvent" }
                 if (inputEvent is KeyboardEvent) state = state.withLastReceivedEvent(inputEvent)
@@ -153,7 +153,7 @@ class App(
         }
         if (state.inQuickMacroMode) {
             for (action in actions.quickMacroActions) {
-                if (!action.matches(state, this)) continue
+                if (!action.matches(this)) continue
                 return action.tryRun(this) ?: NoOp
             }
             if (key in setOf("Control", "Shift", "Alt")) {
@@ -164,7 +164,7 @@ class App(
             state = state.inQuickMacroMode(false)
         }
         for (action in actions.ordered) {
-            if (action.matches(state, this)) {
+            if (action.matches(this)) {
                 return action.tryRun(this) ?: NoOp
             }
         }
@@ -183,7 +183,7 @@ class App(
 
     private fun <E : InputEvent?> Action<E>.tryRun(input: E): AppAction<*>? {
         try {
-            return run(state, input)
+            return run(input)
         } catch (e: IOException) {
             val msg = e.message
             when {

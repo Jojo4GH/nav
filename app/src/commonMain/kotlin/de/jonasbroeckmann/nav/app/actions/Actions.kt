@@ -29,9 +29,9 @@ class Actions(context: FullContext) : FullContext by context {
         val i = registered.size
         return copy(
             condition = {
-                isAvailable(this) &&
+                isAvailable() &&
                     registered.asSequence().take(i).none { prioritized ->
-                        triggers.any { it in prioritized.triggers } && prioritized.isAvailable(this)
+                        triggers.any { it in prioritized.triggers } && prioritized.isAvailable()
                     }
             }
         ).also {
@@ -179,7 +179,7 @@ class Actions(context: FullContext) : FullContext by context {
     val menuSubmit = KeyAction(
         config.keys.submit,
         condition = { isMenuOpen },
-        action = { currentMenuAction?.run(this, null) }
+        action = { currentMenuAction?.run(null) }
     ).registered()
 
     val exitCD = KeyAction(
@@ -225,18 +225,38 @@ class Actions(context: FullContext) : FullContext by context {
         KeyAction(
             triggers = listOf(KeyAction.Trigger(key = macro.quickModeKey, inQuickMacroMode = true)),
             displayKey = { macro.quickModeKey },
-            description = { MacroVariableScope.empty { macro.description?.evaluate() } },
-            style = { if (macro.dependsOnEntry) currentEntry.style else null },
-            condition = { inQuickMacroMode && MacroVariableScope.empty { macro.available() } },
+            description = { macro.computeDescription() },
+            style = { macro.computeStyle() },
+            condition = { macro.computeCondition() },
             action = { RunMacro(macro) }
-        )
+        ).registered()
     }
+
+    val macroActions = config.macros.mapNotNull { macro ->
+        if (macro.nonQuickModeKey == null) return@mapNotNull null
+        KeyAction(
+            macro.nonQuickModeKey,
+            description = { macro.computeDescription() },
+            style = { macro.computeStyle() },
+            condition = { macro.computeCondition() },
+            action = { RunMacro(macro) }
+        ).registered()
+    }
+
+    context(state: State)
+    private fun Macro.computeDescription() = MacroVariableScope.empty { description?.evaluate() }
+
+    context(state: State)
+    private fun Macro.computeStyle() = if (dependsOnEntry) state.currentEntry.style else null
+
+    context(state: State)
+    private fun Macro.computeCondition() = MacroVariableScope.empty { available() }
 
     private val macroMenuActions = listOf(
         config.entryMacros.map { macro ->
             MenuAction(
                 description = {
-                    currentEntry?.let { "* " + macro.computeDescription(it) }
+                    currentEntry?.let { "★ " + macro.computeDescription(it) }
                 },
                 style = { currentEntry.style },
                 condition = { macro.condition() },
