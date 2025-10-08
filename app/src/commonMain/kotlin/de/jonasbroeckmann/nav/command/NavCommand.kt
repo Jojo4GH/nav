@@ -40,7 +40,9 @@ import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.io.buffered
 import kotlinx.io.files.Path
+import kotlinx.io.writeString
 
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
@@ -304,18 +306,29 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         val app = App(config)
 
         if (configurationOptions.editConfig) {
-            val configPath = Config.findExplicitPath()
-                ?: Config.findDefaultPath(mustExist = false)
-                ?: run {
-                    terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
-                    exitProcess(1)
-                }
-            terminal.info("""Opening config file at "$configPath" ...""")
-            val exitCode = AppAction.OpenFile(configPath).runIn(app)
-            exitProcess(exitCode ?: 1)
+            doEditConfig(app)
         }
 
         app.main()
+    }
+
+    private fun doEditConfig(app: App): Nothing {
+        val configPath = Config.findExplicitPath()
+            ?: Config.findDefaultPath(mustExist = false)
+            ?: run {
+                terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
+                exitProcess(1)
+            }
+        if (!configPath.exists()) {
+            terminal.info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
+            configPath.parent?.createDirectories(mustCreate = false)
+            configPath.rawSink().buffered().use {
+                it.writeString("# $BinaryName configuration file\n\n")
+            }
+        }
+        terminal.info("""Opening config file at "$configPath" ...""")
+        val exitCode = AppAction.OpenFile(configPath).runIn(app)
+        exitProcess(exitCode ?: 1)
     }
 
     companion object {
