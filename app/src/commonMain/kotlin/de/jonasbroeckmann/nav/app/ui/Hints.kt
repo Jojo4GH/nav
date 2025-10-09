@@ -4,14 +4,16 @@ import de.jonasbroeckmann.nav.app.actions.KeyAction
 import de.jonasbroeckmann.nav.config.StylesProvider
 
 context(stylesProvider: StylesProvider)
-inline fun <Context> buildHints(block: HintsBuilder<Context>.() -> Unit): String {
-    return HintsBuilder<Context>(stylesProvider).apply(block).render()
+inline fun <Context> buildHints(
+    defaultStrongSpacing: String = stylesProvider.styles.genericElements(" • "),
+    block: HintsBuilder<Context>.() -> Unit
+): String {
+    return HintsBuilder<Context>(defaultStrongSpacing).apply(block).render()
 }
 
 class HintsBuilder<Context>(
-    stylesProvider: StylesProvider,
-    private val defaultStrongSpacing : String = stylesProvider.styles.genericElements(" • ")
-) : StylesProvider by stylesProvider {
+    private val defaultStrongSpacing: String
+) {
     private enum class ElementType(val isSpacing: Boolean) {
         WithWeakSpacing(false), WithStrongSpacing(false), WeakSpacing(true), StrongSpacing(true)
     }
@@ -66,14 +68,14 @@ class HintsBuilder<Context>(
         add(if (weakSpacing) ElementType.WithWeakSpacing else ElementType.WithStrongSpacing, render)
     }
 
-    context(context: Context)
-    fun addAction(action: KeyAction<Context, *>, weakSpacing: Boolean = false) {
-        if (!action.isShown()) return
-        add(weakSpacing) { renderAction(action) }
+    context(stylesProvider: StylesProvider)
+    fun addAction(action: KeyAction<Context, *>, context: Context, weakSpacing: Boolean = false) {
+        if (context(context) { !action.isShown() }) return
+        add(weakSpacing) { renderAction(action, context) }
     }
 
-    context(context: Context)
-    fun addActions(actions: Iterable<KeyAction<Context, *>>, weakSpacing: Boolean = false) {
-        actions.forEach { addAction(it, weakSpacing) }
+    context(stylesProvider: StylesProvider)
+    fun addActions(actions: Iterable<KeyAction<Context, *>>, context: Context, weakSpacing: Boolean = false) {
+        actions.forEach { addAction(it, context, weakSpacing) }
     }
 }

@@ -13,32 +13,32 @@ import kotlinx.serialization.UseSerializers
 @Serializable(with = MacroCondition.Companion::class)
 sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
-    val usedVariables: Set<String>
+    val usedSymbols: Set<MacroSymbol>
 
     @Serializable
     @SerialName("any")
     data class Any(val any: List<MacroCondition>) : MacroCondition {
-        override val usedVariables: Set<String> by lazy { any.flatMapTo(mutableSetOf()) { it.usedVariables } }
+        override val usedSymbols: Set<MacroSymbol> by lazy { any.flatMapTo(mutableSetOf()) { it.usedSymbols } }
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate() = any.any { it.evaluate() }
     }
 
     @Serializable
     @SerialName("all")
     data class All(val all: List<MacroCondition>) : MacroCondition {
-        override val usedVariables: Set<String> by lazy { all.flatMapTo(mutableSetOf()) { it.usedVariables } }
+        override val usedSymbols: Set<MacroSymbol> by lazy { all.flatMapTo(mutableSetOf()) { it.usedSymbols } }
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate() = all.all { it.evaluate() }
     }
 
     @Serializable
     @SerialName("not")
     data class Not(val not: MacroCondition) : MacroCondition {
-        override val usedVariables get() = not.usedVariables
+        override val usedSymbols get() = not.usedSymbols
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate() = !not.evaluate()
     }
 
@@ -52,9 +52,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
             require(equal.size >= 2) { "${::equal.name} must have at least two elements to compare" }
         }
 
-        override val usedVariables: Set<String> by lazy { equal.flatMapTo(mutableSetOf()) { it.placeholders } }
+        override val usedSymbols: Set<MacroSymbol> by lazy { equal.flatMapTo(mutableSetOf()) { it.symbols } }
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate(): Boolean {
             val toCompare = equal.map { it.evaluate() }
             return toCompare.all { it.equals(toCompare[0], ignoreCase = ignoreCase) }
@@ -75,18 +75,18 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         @SerialName("in")
         val value: StringWithPlaceholders
     ) : MacroCondition {
-        override val usedVariables by lazy { value.placeholders.toSet() }
+        override val usedSymbols by lazy { value.symbols.toSet() }
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate() = match.matches(value.evaluate())
     }
 
     @Serializable
     @SerialName("empty")
     data class Empty(val empty: StringWithPlaceholders) : MacroCondition {
-        override val usedVariables by lazy { empty.placeholders.toSet() }
+        override val usedSymbols by lazy { empty.symbols.toSet() }
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate() = empty.evaluate().isEmpty()
     }
 
@@ -97,9 +97,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("blank")
     data class Blank(val blank: StringWithPlaceholders) : MacroCondition {
-        override val usedVariables by lazy { blank.placeholders.toSet() }
+        override val usedSymbols by lazy { blank.symbols.toSet() }
 
-        context(scope: MacroVariableScope)
+        context(scope: MacroSymbolScope)
         override fun evaluate() = blank.evaluate().isBlank()
     }
 

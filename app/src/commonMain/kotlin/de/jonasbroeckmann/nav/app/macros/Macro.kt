@@ -41,25 +41,25 @@ data class Macro(
         }
     }
 
-    context(scope: MacroVariableScope)
+    context(scope: MacroSymbolScope)
     fun available() = condition == null || condition.evaluate()
 
-    private val usedVariablesInDescriptionOrCondition by lazy {
-        description.placeholders.toSet() + condition?.usedVariables.orEmpty()
+    private val usedSymbolsInDescriptionOrCondition by lazy {
+        description.symbols.toSet() + condition?.usedSymbols.orEmpty()
     }
 
     val dependsOnEntry by lazy {
         listOf(
-            DefaultMacroVariables.EntryPath,
-            DefaultMacroVariables.EntryName,
-            DefaultMacroVariables.EntryType
+            DefaultMacroProperties.EntryPath,
+            DefaultMacroProperties.EntryName,
+            DefaultMacroProperties.EntryType
         ).any {
-            it.label in usedVariablesInDescriptionOrCondition
+            it.property.symbol in usedSymbolsInDescriptionOrCondition
         }
     }
 
     val dependsOnFilter by lazy {
-        DefaultMacroVariables.Filter.label in usedVariablesInDescriptionOrCondition
+        DefaultMacroProperties.Filter.property.symbol in usedSymbolsInDescriptionOrCondition
     }
 
     context(context: MacroRuntimeContext)

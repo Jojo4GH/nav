@@ -3,23 +3,29 @@ package de.jonasbroeckmann.nav.app.ui
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
-import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
 import de.jonasbroeckmann.nav.app.updateTextField
+import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.styles
+import kotlin.time.Duration
 
 
 private data class TextPromptState(
     val text: String
 )
 
-fun FullContext.showTextPrompt(
+context(context: PartialContext, stylesProvider: StylesProvider)
+fun DialogRenderingScope.textPrompt(
     title: String,
     initialText: String = "",
     placeholder: String? = null,
+    showHints: Boolean,
     submitKey: KeyboardEvent,
     clearKey: KeyboardEvent? = null,
     cancelKey: KeyboardEvent? = null,
-    validate: (String) -> Boolean = { true }
+    validate: (String) -> Boolean = { true },
+    inputTimeout: Duration
 ): String? {
     val actions = buildKeyActions<DialogScope<TextPromptState, String?>, Unit> {
         if (clearKey != null) {
@@ -45,7 +51,7 @@ fun FullContext.showTextPrompt(
             action = { closeWith(state.text) },
         )
     }
-    return showDialog<TextPromptState, String?>(
+    return dialog(
         initialState = TextPromptState(
             text = initialText
         ),
@@ -54,27 +60,28 @@ fun FullContext.showTextPrompt(
             input.updateTextField(state.text) { newText ->
                 state = state.copy(text = newText)
             }
-        }
-    ) {
+        },
+        inputTimeout = inputTimeout,
+    ) { state ->
         verticalLayout {
             align = LEFT
             cell(title)
             cell(
                 buildString {
                     append("❯ ")
-                    if (text.isEmpty()) {
+                    if (state.text.isEmpty()) {
                         append(TextStyles.dim(placeholder ?: "type input"))
                     } else {
-                        append(text)
+                        append(state.text)
                         append("_")
                     }
                 }
             )
-            if (!config.hideHints) {
+            if (showHints) {
                 cell(
                     buildHints<DialogScope<TextPromptState, String?>> {
-                        addActions(actions)
-                        if (!validate(text)) {
+                        addActions(actions, this@dialog)
+                        if (!validate(state.text)) {
                             add { styles.genericElements("input not valid") }
                         }
                     }

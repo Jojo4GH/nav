@@ -15,8 +15,11 @@ import de.jonasbroeckmann.nav.app.state.Entry.Type.Unknown
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 
-context(context: Context, stylesProvider: StylesProvider)
-fun <Context> renderAction(action: Action<Context, *, *>): String {
+context(stylesProvider: StylesProvider)
+fun <Context> renderAction(
+    action: Action<Context, *, *>,
+    context: Context
+): String = context(context) {
     val keyStr = when (action) {
         is KeyAction<Context, *> -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(it.prettyName) }
         is MenuAction -> null
@@ -54,11 +57,11 @@ val KeyboardEvent.prettyName: String get() {
     return k
 }
 
-context(context: FullContext)
+context(_: StylesProvider)
 val Entry?.style get() = when (this?.type) {
     null -> TextColors.magenta
-    SymbolicLink -> context.styles.link
-    Directory -> context.styles.directory
-    RegularFile -> context.styles.file
-    Unknown -> context.styles.nameDecorations
+    SymbolicLink -> styles.link
+    Directory -> styles.directory
+    RegularFile -> styles.file
+    Unknown -> styles.nameDecorations
 }
