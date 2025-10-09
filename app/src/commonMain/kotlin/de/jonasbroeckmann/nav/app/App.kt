@@ -133,7 +133,7 @@ class App(
         if (state.inQuickMacroMode) {
             for (action in actions.quickMacroModeActions) {
                 if (context(state) { action matches this.copy(ctrl = false) }) {
-                    return action.tryRun(this) ?: NoOp
+                    return action.tryRun(this)
                 }
             }
             if (key in setOf("Control", "Shift", "Alt")) {
@@ -145,7 +145,7 @@ class App(
         }
         for (action in actions.normalModeActions) {
             if (context(state) { action matches this }) {
-                return action.tryRun(this) ?: NoOp
+                return action.tryRun(this)
             }
         }
         val command = state.command
@@ -163,7 +163,7 @@ class App(
         return NoOp
     } ?: NoOp
 
-    private fun <E : InputEvent?> Action<State, E>.tryRun(input: E): AppAction<*>? {
+    private fun <E : InputEvent?> Action<State, E, AppAction<*>>.tryRun(input: E): AppAction<*> {
         try {
             return context(state) { run(input) }
         } catch (e: IOException) {
@@ -182,7 +182,7 @@ class App(
                     terminal.info("If this should be considered a bug, please report it.")
                 }
             }
-            return null
+            return NoOp
         }
     }
 

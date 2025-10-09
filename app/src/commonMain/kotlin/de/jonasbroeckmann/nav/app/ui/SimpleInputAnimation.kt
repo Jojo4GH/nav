@@ -4,41 +4,69 @@ import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.actions.KeyAction
 import de.jonasbroeckmann.nav.app.filterKeyboardEvents
 import de.jonasbroeckmann.nav.app.readInput
 
-interface StateScope<T> {
+interface DialogScope<T, in R> {
     var state: T
+
+    fun closeWith(value: R): Nothing
 }
 
-inline fun <T> FullContext.showSimpleInputAnimation(
+@PublishedApi
+internal class DialogExitEvent : Throwable()
+
+inline fun <T, R> FullContext.showDialog(
     initialState: T,
-    onInput: StateScope<T>.(KeyboardEvent) -> Unit,
+    actions: List<KeyAction<DialogScope<T, R>, Unit>> = emptyList(),
+    onUnhandledInput: DialogScope<T, R>.(KeyboardEvent) -> Unit,
     clearOnExit: Boolean = true,
-    crossinline render: T.() -> Widget
-) {
-    val animation = terminal.animation<T> { it.render() }
+    crossinline render: context(DialogScope<T, R>) T.() -> Widget
+): R {
 
     var state = initialState
     var isStateDirty = true
 
-    val stateScope = object : StateScope<T> {
+    var toReturn: R? = null
+
+    val scope = object : DialogScope<T, R> {
         override var state: T
             get() = state
             set(value) {
                 isStateDirty = value != state
                 state = value
             }
+
+        override fun closeWith(value: R): Nothing {
+            toReturn = value
+            throw DialogExitEvent()
+        }
     }
 
+    val animation = terminal.animation<T> { context(scope) { it.render() } }
+
     try {
-        while (true) {
-            if (isStateDirty) animation.update(state)
-            isStateDirty = false
-            readInput().filterKeyboardEvents {
-                stateScope.onInput(this)
+        context(scope) {
+            while (true) {
+                while (isStateDirty) {
+                    isStateDirty = false
+                    animation.update(state)
+                }
+                readInput().filterKeyboardEvents {
+                    actions.forEach { action ->
+                        if (action matches this) {
+                            action.run(this)
+                            return@filterKeyboardEvents
+                        }
+                    }
+                    scope.onUnhandledInput(this)
+                }
             }
         }
+    } catch (_: DialogExitEvent) {
+        @Suppress("UNCHECKED_CAST")
+        return toReturn as R
     } finally {
         if (clearOnExit) {
             animation.clear()
