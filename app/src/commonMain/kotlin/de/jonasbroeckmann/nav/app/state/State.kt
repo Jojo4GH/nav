@@ -49,15 +49,15 @@ data class State private constructor(
     }
     val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
 
-    val availableMenuActions get() = allMenuActions().filter { !it.isHidden() && it.isAvailable() }
-    val coercedMenuCursor get() = menuCursor.coerceAtMost(availableMenuActions.lastIndex).coerceAtLeast(-1)
+    val shownMenuActions get() = allMenuActions().filter { it.isShown() }
+    val coercedMenuCursor get() = menuCursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
     val isMenuOpen get() = menuCursor >= 0
-    val currentMenuAction get() = availableMenuActions.getOrNull(coercedMenuCursor)
+    val currentMenuAction get() = shownMenuActions.getOrNull(coercedMenuCursor)
 
     val isTypingCommand get() = command != null
 
     fun withMenuCursorCoerced(cursor: Int) = copy(
-        menuCursor = cursor.coerceAtMost(availableMenuActions.lastIndex).coerceAtLeast(-1)
+        menuCursor = cursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
     )
 
     fun withCommand(command: String?) = copy(command = command)

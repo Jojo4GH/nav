@@ -14,22 +14,22 @@ data class MenuAction(
     private val hidden: State.() -> Boolean = { false },
     private val condition: State.() -> Boolean,
     private val action: State.() -> AppAction<*>?
-) : Action<Nothing?> {
-    context(stateProvider: StateProvider)
+) : Action<State, Nothing?> {
+    context(state: State)
     override fun description() = state.description()
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     override fun style() = state.style()
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     override fun isHidden() = state.hidden()
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     override fun matches(input: Nothing?) = isAvailable()
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     override fun isAvailable() = state.condition()
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     override fun run(input: Nothing?) = state.action()
 }

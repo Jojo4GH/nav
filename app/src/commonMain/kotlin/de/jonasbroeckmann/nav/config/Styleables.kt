@@ -30,6 +30,17 @@ data class Styleables<T>(
     val link: T,
     val nameHeader: T,
     val nameDecorations: T,
-)
+) : StyleablesProvider<T> {
+    override val styles get() = this
+}
+
+interface StyleablesProvider<T> {
+    val styles: Styleables<T>
+}
+
+context(styleablesProvider: StyleablesProvider<T>)
+val <T> styles get() = styleablesProvider.styles
 
 typealias Styles = Styleables<TextStyle>
+
+typealias StylesProvider = StyleablesProvider<TextStyle>

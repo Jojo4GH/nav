@@ -44,6 +44,16 @@ sealed interface AppAction<out R> {
         override fun runIn(app: App) = app.perform(this)
     }
 
+    data class PromptText(
+        val title: String,
+        val default: String? = null,
+        val placeholder: String? = null,
+        val cancelable: Boolean = false,
+        val validate: (String) -> Boolean = { true }
+    ) : AppAction<String> {
+        override fun runIn(app: App) = app.perform(this)
+    }
+
     data class Exit(val atDirectory: Path?) : AppAction<Nothing> {
         override fun runIn(app: App) = app.perform(this)
     }
