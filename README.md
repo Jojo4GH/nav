@@ -255,7 +255,7 @@ suppressInitCheck: false
 clearOnExit: true
 
 limitToTerminalHeight: true
-maxVisibleEntries: 40
+maxVisibleEntries: 40 # Set to 0 for unlimited entries
 maxVisiblePathElements: 6
 showHiddenEntries: true
 hideHints: false
