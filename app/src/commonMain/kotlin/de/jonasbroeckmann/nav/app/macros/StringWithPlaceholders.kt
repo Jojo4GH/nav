@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros
 
+import de.jonasbroeckmann.nav.app.macros.MacroSymbolScope.Companion.get
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -7,8 +8,9 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class StringWithPlaceholders(val raw: String) : MacroEvaluable<String> {
     val placeholders get() = PlaceholderRegex.findAll(raw).map { it.groupValues[1] }
+    val symbols get() = placeholders.map { MacroSymbol.fromString(it) }
 
-    context(scope: MacroVariableScope)
+    context(scope: MacroSymbolScope)
     override fun evaluate() = raw.replace(PlaceholderRegex) { matchResult ->
         scope[matchResult.groupValues[1]]
     }

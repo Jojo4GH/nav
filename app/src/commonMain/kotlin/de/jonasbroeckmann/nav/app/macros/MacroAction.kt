@@ -10,7 +10,7 @@ import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.AppAction
-import de.jonasbroeckmann.nav.app.ui.showTextPrompt
+import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.files.Path
@@ -41,15 +41,15 @@ sealed interface MacroAction : MacroRunnable {
 
             } else {
                 TODO()
-                context.showTextPrompt(
-                    title = prompt.evaluate(),
-                    initialText = default?.evaluate() ?: "",
-                    placeholder = null,
-                    submitKey = context.config.keys.submit,
-                    clearKey = context.config.keys.cancel,
-                    cancelKey = context.config.keys.cancel,
-                    validate = { input -> format?.matches(input) ?: true }
-                )
+//                context.showTextPrompt(
+//                    title = prompt.evaluate(),
+//                    initialText = default?.evaluate() ?: "",
+//                    placeholder = null,
+//                    submitKey = context.config.keys.submit,
+//                    clearKey = context.config.keys.cancel,
+//                    cancelKey = context.config.keys.cancel,
+//                    validate = { input -> format?.matches(input) ?: true }
+//                )
             }
         }
     }
@@ -58,27 +58,11 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("macro")
     data class RunMacro(
         val macro: StringWithPlaceholders,
-        val mode: Mode = Mode.NoInline,
-        val ignoreCondition: Boolean = false
+        val ignoreCondition: Boolean = false,
+        val parameters: Map<String, StringWithPlaceholders>? = null,
+        val capture: Map<String, StringWithPlaceholders>? = null,
+        val continueOnReturn: Boolean = true
     ) : MacroAction {
-        @Serializable
-        enum class Mode {
-            /**
-             * Context is shared with the parent macro.
-             * Returns inside the macro will return from the parent macro as well.
-             */
-            @SerialName("inline") Inline,
-            /**
-             * Context is shared with the parent macro.
-             * Returns inside the macro will only return from the macro itself.
-             */
-            @SerialName("noinline") NoInline,
-            /**
-             * Context is separate from the parent macro.
-             * Returns inside the macro will only return from the macro itself.
-             */
-            @SerialName("independent") Independent,
-        }
 
         context(context: MacroRuntimeContext)
         override fun run() {
@@ -86,19 +70,20 @@ sealed interface MacroAction : MacroRunnable {
             val macro = context.identifiedMacros[macroId]
                 ?: throw IllegalArgumentException("No macro with ${Macro::id.name} '$macroId' found")
 
-            context(context: MacroRuntimeContext)
-            fun runMacro() {
-                if (!ignoreCondition && !macro.available()) {
-                    context.printlnOnDebug { "Skipping macro '$macroId' because its condition was not met." }
-                } else {
-                    macro.run()
+            context.call(
+                parameters = parameters?.mapKeys { (name, _) -> MacroSymbol.fromString(name) },
+                capture = capture?.mapKeys { (name, _) -> MacroSymbol.fromString(name) },
+                returnBarrier = continueOnReturn
+            ) {
+                MacroRunnable {
+                    if (ignoreCondition || macro.available()) {
+                        macro.run()
+                    } else {
+                        contextOf<MacroRuntimeContext>().printlnOnDebug {
+                            "Skipping macro '$macroId' because its condition was not met."
+                        }
+                    }
                 }
-            }
-
-            when (mode) {
-                Mode.Inline -> runMacro()
-                Mode.NoInline -> context.call { runMacro() }
-                Mode.Independent -> context.call(newContext = true) { runMacro() }
             }
         }
     }
@@ -107,7 +92,7 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("command")
     data class RunCommand(
         val command: StringWithPlaceholders,
-        val exitCodeTo: String = DefaultMacroVariables.ExitCode.label,
+        val exitCodeTo: String = DefaultMacroSymbols.ExitCode.name,
         val outputTo: String? = null,
         val errorTo: String? = null,
         val trimTrailingNewline: Boolean = true
@@ -165,7 +150,7 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("open")
     data class OpenFile(
         val open: StringWithPlaceholders,
-        val exitCodeTo: String = DefaultMacroVariables.ExitCode.label
+        val exitCodeTo: String = DefaultMacroSymbols.ExitCode.name
     ) : MacroAction {
         context(context: MacroRuntimeContext)
         override fun run() {

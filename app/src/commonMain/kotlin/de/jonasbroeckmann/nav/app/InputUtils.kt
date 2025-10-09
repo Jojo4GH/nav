@@ -4,18 +4,20 @@ import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
+import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.time.Duration
 
-fun FullContext.readInput(inputTimeout: Duration = this.inputTimeout): InputEvent {
-    terminal.enterRawMode().use { rawMode ->
+context(context: PartialContext)
+fun readInput(inputTimeout: Duration): InputEvent {
+    context.terminal.enterRawMode().use { rawMode ->
         while (true) {
             try {
                 return rawMode.readEvent(inputTimeout).also {
-                    printlnOnDebug { "Received input event: $it" }
+                    context.printlnOnDebug { "Received input event: $it" }
                 }
             } catch (_: RuntimeException) {
                 continue // on timeout try again

@@ -7,7 +7,7 @@ import de.jonasbroeckmann.nav.app.AppAction.*
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.DefaultMacros
 import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.macros.MacroVariableScope
+import de.jonasbroeckmann.nav.app.macros.MacroSymbolScope
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.prettyName
@@ -334,7 +334,7 @@ class MainActions(context: FullContext) : KeyActions<State, MainActions.Category
     }
 
     context(state: State)
-    private fun Macro.computeDescription() = MacroVariableScope.empty { description.evaluate() }
+    private fun Macro.computeDescription() = MacroSymbolScope.empty { description.evaluate() }
 
     context(state: State)
     private fun Macro.computeStyle() = when {
@@ -344,5 +344,5 @@ class MainActions(context: FullContext) : KeyActions<State, MainActions.Category
     }
 
     context(state: State)
-    private fun Macro.computeCondition() = MacroVariableScope.empty { available() }
+    private fun Macro.computeCondition() = MacroSymbolScope.empty { available() }
 }

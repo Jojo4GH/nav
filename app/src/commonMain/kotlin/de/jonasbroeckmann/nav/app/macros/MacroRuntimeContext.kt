@@ -1,42 +1,76 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import com.github.ajalt.mordant.terminal.danger
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.AppAction
+import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
+import kotlin.collections.emptyMap
+import kotlin.collections.forEach
 
 class MacroRuntimeContext private constructor(
     private val app: App
-) : MacroVariableScopeBase(app, app) {
+) : MacroSymbolScopeBase(app, app) {
 
-    operator fun set(name: String, value: String) {
-        variable(name).let {
-            if (it is MacroVariable.Mutable) {
-                it.set(value)
-            } else {
-                terminal.danger("Cannot modify '$name' as it is not mutable.")
-            }
+    operator fun set(symbol: MacroSymbol, value: String): Unit = when (symbol) {
+        is MacroSymbol.EnvironmentVariable -> symbol.set(value)
+        is MacroSymbol.Generic -> {
+            DefaultMacroProperties.BySymbol[symbol]?.let { return it.trySet(value) }
+            variables[symbol] = value
         }
     }
 
     fun <R> run(appAction: AppAction<R>) = appAction.runIn(app)
 
-    fun call(newContext: Boolean = false, runnable: MacroRunnable) {
-        val callContext = if (newContext) MacroRuntimeContext(app) else this
-        try {
-            context(callContext) { runnable.run() }
-        } catch (_: MacroReturnEvent) {
-            /* no-op */
+    fun call(
+        parameters: Map<MacroSymbol, MacroEvaluable<String>>? = emptyMap(),
+        capture: Map<MacroSymbol, MacroEvaluable<String>>? = emptyMap(),
+        returnBarrier: Boolean = true,
+        runnable: MacroRunnable
+    ) {
+        val callContext = MacroRuntimeContext(app)
+
+        val input = parameters
+            ?.mapValues { (_, evaluable) -> context(this) { evaluable.evaluate() } }
+            ?: this.variables
+        input.forEach { (symbol, value) ->
+            callContext[symbol] = value
         }
+
+        val returnEvent = interceptReturn {
+            context(callContext) { runnable.run() }
+        }
+
+        val output = capture
+            ?.mapValues { (_, evaluable) -> context(callContext) { evaluable.evaluate() } }
+            ?: callContext.variables
+        output.forEach { (symbol, value) ->
+            this[symbol] = value
+        }
+
+        if (!returnBarrier && returnEvent != null) {
+            throw returnEvent
+        }
+    }
+
+    private inline fun interceptReturn(block: () -> Unit) = try {
+        block()
+        null
+    } catch (ret: MacroReturnEvent) {
+        ret
     }
 
     fun doReturn(): Nothing = throw MacroReturnEvent()
 
+    private class MacroReturnEvent : Throwable()
+
     companion object {
         context(app: App)
         fun run(runnable: MacroRunnable) {
-            MacroRuntimeContext(app).call(runnable = runnable)
+            MacroRuntimeContext(app).call(
+                parameters = emptyMap(),
+                runnable = runnable
+            )
         }
 
-        private class MacroReturnEvent : Throwable()
+        operator fun MacroRuntimeContext.set(symbolName: String, value: String) = set(MacroSymbol.fromString(symbolName), value)
     }
 }

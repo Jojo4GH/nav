@@ -1,7 +1,7 @@
 package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.InputEvent
-import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.warning
@@ -12,10 +12,13 @@ import de.jonasbroeckmann.nav.app.AppAction.Exit
 import de.jonasbroeckmann.nav.app.AppAction.NoOp
 import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.MainActions
-import de.jonasbroeckmann.nav.app.actions.MainKeyAction
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.ui.UI
+import de.jonasbroeckmann.nav.app.ui.DialogController
+import de.jonasbroeckmann.nav.app.ui.DialogRenderingScope
+import de.jonasbroeckmann.nav.app.ui.RebuildableAnimation
+import de.jonasbroeckmann.nav.app.ui.buildUI
+import de.jonasbroeckmann.nav.app.ui.invalidating
 import de.jonasbroeckmann.nav.command.CDFile
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.catchAllFatal
@@ -33,7 +36,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class App(
     context: PartialContext,
     override val config: Config
-) : FullContext, PartialContext by context, StateProvider {
+) : FullContext, PartialContext by context, StateProvider, DialogController {
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
         context.command.configurationOptions.editor
@@ -79,14 +82,37 @@ class App(
             .toMap()
     }
 
-    private val actions = MainActions(this)
-    override var state = State.initial(
-        startingDirectory = startingDirectory,
-        showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
-        allMenuActions = { actions.menuActions }
+//    private val ui = UI(
+//        context = this,
+//        actions = actions,
+//        state = State.initial(
+//            startingDirectory = startingDirectory,
+//            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+//            allMenuActions = { actions.menuActions }
+//        )
+//    )
+    private val ui = RebuildableAnimation(terminal) {
+        buildUI(
+            actions = actions,
+            state = state,
+            dialog = dialog
+        )
+    }
+
+    private val actions: MainActions by ui.invalidating(initial = MainActions(this))
+
+    override var state: State by ui.invalidating(
+        initial = State.initial(
+            startingDirectory = startingDirectory,
+            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+            allMenuActions = { actions.menuActions }
+        )
     )
         private set
-    private val ui = UI(this, actions)
+
+    private var dialog: Widget? by ui.invalidating(initial = null)
+
+
 
     override val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
 
@@ -105,8 +131,8 @@ class App(
 
         try {
             while (true) {
-                ui.update(state)
-                readInput().process().runIn(this)
+                ui.update()
+                readInput(inputTimeout).process().runIn(this)
             }
         } catch (_: ExitEvent) {
             printlnOnDebug { "Exiting ..." }
@@ -229,19 +255,26 @@ class App(
         MacroRuntimeContext.run(action.macro)
     }
 
-    fun perform(action: AppAction.PromptText): String {
-//        ui.clear() // hide UI before prompting
-
-        TODO()
-    }
-
-
     fun perform(action: Exit): Nothing {
         action.atDirectory?.let {
             printlnOnDebug { "Broadcasting \"$it\" to parent shell ..." }
             CDFile.broadcastChangeDirectory(it)
         }
         throw ExitEvent()
+    }
+
+    override fun show(block: DialogRenderingScope.() -> Unit) {
+        val previous = dialog
+        try {
+            object : DialogRenderingScope {
+                override fun render(widget: Widget) {
+                    dialog = widget
+                    ui.update()
+                }
+            }.block()
+        } finally {
+            dialog = previous
+        }
     }
 
     private fun runCommandFromUIWithShell(
