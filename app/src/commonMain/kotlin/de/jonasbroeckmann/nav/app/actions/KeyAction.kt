@@ -7,15 +7,15 @@ import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.State
 
-data class KeyAction<Context>(
+data class KeyAction<Context, Output>(
     val keys: List<KeyboardEvent>,
     private val displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
     private val description: Context.() -> String = { "" },
     private val style: Context.() -> TextStyle? = { null },
     private val hidden: Context.() -> Boolean = { false },
     private val condition: Context.() -> Boolean,
-    private val action: Context.(KeyboardEvent) -> AppAction<*>?
-) : Action<Context, KeyboardEvent> {
+    private val action: Context.(KeyboardEvent) -> Output
+) : Action<Context, KeyboardEvent, Output> {
     constructor(
         vararg keys: KeyboardEvent,
         displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
@@ -23,7 +23,7 @@ data class KeyAction<Context>(
         style: Context.() -> TextStyle? = { null },
         hidden: Context.() -> Boolean = { false },
         condition: Context.() -> Boolean,
-        action: Context.(KeyboardEvent) -> AppAction<*>?
+        action: Context.(KeyboardEvent) -> Output
     ) : this(
         keys = listOf(*keys),
         displayKey = displayKey,

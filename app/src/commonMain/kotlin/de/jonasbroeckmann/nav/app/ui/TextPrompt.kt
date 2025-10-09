@@ -1,41 +1,85 @@
 package de.jonasbroeckmann.nav.app.ui
 
-import com.github.ajalt.mordant.table.table
+import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextStyles
+import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.actions.buildKeyActions
 import de.jonasbroeckmann.nav.app.updateTextField
 
 
 private data class TextPromptState(
-    val input: String
+    val text: String
 )
-
 
 fun FullContext.showTextPrompt(
     title: String,
-    default: String? = null,
+    initialText: String = "",
     placeholder: String? = null,
-    cancelable: Boolean = false,
+    submitKey: KeyboardEvent,
+    clearKey: KeyboardEvent? = null,
+    cancelKey: KeyboardEvent? = null,
     validate: (String) -> Boolean = { true }
 ): String? {
-    showSimpleInputAnimation(
+    val actions = buildKeyActions<DialogScope<TextPromptState, String?>, Unit> {
+        if (clearKey != null) {
+            register(
+                clearKey,
+                description = { "clear" },
+                condition = { state.text.isNotEmpty() },
+                action = { state = state.copy(text = "") },
+            )
+        }
+        if (cancelKey != null) {
+            register(
+                cancelKey,
+                description = { "cancel" },
+                condition = { true },
+                action = { closeWith(null) },
+            )
+        }
+        register(
+            submitKey,
+            description = { "submit" },
+            condition = { validate(state.text) },
+            action = { closeWith(state.text) },
+        )
+    }
+    return showDialog<TextPromptState, String?>(
         initialState = TextPromptState(
-            input = default ?: ""
+            text = initialText
         ),
-        onInput = { event ->
-            if (cancelable && event == config.keys.cancel) {
-                return@showTextPrompt null
-            }
-            if (event == config.keys.submit && validate(state.input)) {
-                return@showTextPrompt state.input
-            }
-            event.updateTextField(state.input) { newInput ->
-                state = state.copy(input = newInput)
+        actions = actions,
+        onUnhandledInput = { input ->
+            input.updateTextField(state.text) { newText ->
+                state = state.copy(text = newText)
             }
         }
     ) {
-        table {
-            header {  }
+        verticalLayout {
+            align = LEFT
+            cell(title)
+            cell(
+                buildString {
+                    append("❯ ")
+                    if (text.isEmpty()) {
+                        append(TextStyles.dim(placeholder ?: "type input"))
+                    } else {
+                        append(text)
+                        append("_")
+                    }
+                }
+            )
+            if (!config.hideHints) {
+                cell(
+                    buildHints<DialogScope<TextPromptState, String?>> {
+                        addActions(actions)
+                        if (!validate(text)) {
+                            add { styles.genericElements("input not valid") }
+                        }
+                    }
+                )
+            }
         }
     }
-    TODO()
 }

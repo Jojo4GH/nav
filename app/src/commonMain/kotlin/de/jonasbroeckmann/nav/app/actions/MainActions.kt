@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
+import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.AppAction.*
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.DefaultMacros
@@ -9,36 +10,17 @@ import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroVariableScope
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.ui.UI
-import de.jonasbroeckmann.nav.app.ui.UI.Companion.style
+import de.jonasbroeckmann.nav.app.ui.prettyName
+import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.files.SystemFileSystem
 
-abstract class Actions<Context, Category> {
-    protected val registered = mutableMapOf<Category?, MutableList<KeyAction<Context>>>()
+typealias MainKeyAction = KeyAction<State, AppAction<*>>
 
-    protected fun KeyAction<Context>.registered(category: Category? = null): KeyAction<Context> {
-        val registeredForCategory = registered.getOrPut(category) { mutableListOf() }
-        val i = registeredForCategory.size
-        return copy(
-            condition = {
-                isAvailable() &&
-                    registeredForCategory.asSequence().take(i).none { prioritized ->
-                        keys.any { it in prioritized.keys } && prioritized.isAvailable()
-                    }
-            }
-        ).also {
-            registeredForCategory += it
-        }
-    }
-}
-
-typealias MainKeyAction = KeyAction<State>
-
-class MainActions(context: FullContext) : Actions<State, MainActions.Category>(), FullContext by context {
+class MainActions(context: FullContext) : KeyActions<State, MainActions.Category, AppAction<*>>(), FullContext by context {
     enum class Category {
         QuickMacroMode
     }
@@ -78,7 +60,7 @@ class MainActions(context: FullContext) : Actions<State, MainActions.Category>()
     val menuSubmit = MainKeyAction(
         config.keys.submit,
         condition = { isMenuOpen },
-        action = { currentMenuAction?.run(null) }
+        action = { currentMenuAction?.run(null) ?: NoOp }
     ).registered()
 
     val macroActions = config.macros.mapNotNull { macro ->
@@ -147,7 +129,7 @@ class MainActions(context: FullContext) : Actions<State, MainActions.Category>()
             val commonPrefix = items
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
-                .ifEmpty { return@MainKeyAction null }
+                .ifEmpty { return@MainKeyAction NoOp }
                 .commonPrefix()
 
             val filteredState = withFilter(commonPrefix)
@@ -291,7 +273,7 @@ class MainActions(context: FullContext) : Actions<State, MainActions.Category>()
             description = {
                 val cmdStr = if (command.isNullOrEmpty()) {
                     if (config.hideHints) ""
-                    else TextStyles.dim("type command or press ${UI.keyName(config.keys.cancel)} to cancel")
+                    else TextStyles.dim("type command or press ${config.keys.cancel.prettyName} to cancel")
                 } else {
                     TextColors.rgb("FFFFFF")("${command}_")
                 }

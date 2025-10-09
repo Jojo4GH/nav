@@ -8,16 +8,10 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.MainActions
-import de.jonasbroeckmann.nav.app.actions.KeyAction
-import de.jonasbroeckmann.nav.app.actions.MenuAction
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.state.Entry
-import de.jonasbroeckmann.nav.app.ui.UI.Companion.keyName
 import de.jonasbroeckmann.nav.command.printlnOnDebug
-import de.jonasbroeckmann.nav.config.StylesProvider
-import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
@@ -335,37 +329,37 @@ class UI(
             }
             add { state.currentEntry.style(name) }
             addSpacing { styles.genericElements(" │ ") }
-            add(actions.cancelQuickMacroMode)
+            addAction(actions.cancelQuickMacroMode)
             val availableMacros = actions.quickMacroModeMacroActions.filter { it.isAvailable() }
             availableMacros.forEach {
-                add(it)
+                addAction(it)
             }
             when {
                 actions.quickMacroModeMacroActions.isEmpty() -> add { styles.keyHintLabels("No macros defined") }
                 availableMacros.isEmpty() -> add { styles.keyHintLabels("No macros available") }
             }
         } else {
-            add(actions.navigateUp)
+            addAction(actions.navigateUp)
 
-            add(actions.cursorUp, weakSpacing = true)
-            add(actions.cursorDown, weakSpacing = true)
+            addAction(actions.cursorUp, weakSpacing = true)
+            addAction(actions.cursorDown, weakSpacing = true)
 
-            add(actions.navigateInto)
-            add(actions.navigateOpen)
+            addAction(actions.navigateInto)
+            addAction(actions.navigateOpen)
 
-            add(actions.autocompleteFilter)
-            add(actions.clearFilter)
+            addAction(actions.autocompleteFilter)
+            addAction(actions.clearFilter)
 
-            add(actions.discardCommand)
+            addAction(actions.discardCommand)
 
-            add(actions.exitCD)
-            add(actions.exit)
+            addAction(actions.exitCD)
+            addAction(actions.exit)
 
-            add(actions.openMenu)
-            add(actions.exitMenu)
+            addAction(actions.openMenu)
+            addAction(actions.exitMenu)
 
             actions.macroActions.forEach { action ->
-                add(action)
+                addAction(action)
             }
         }
 
@@ -375,16 +369,16 @@ class UI(
                 add { debugStyle("M") }
             }
             state.lastReceivedEvent?.let { lastReceivedEvent ->
-                add { debugStyle("Key: ${keyName(lastReceivedEvent)}") }
+                add { debugStyle("Key: ${lastReceivedEvent.prettyName}") }
             }
         }
     }
 
     context(state: State)
     private fun renderMenuHints() = buildHints<State> {
-        add(actions.closeMenu)
-        add(actions.menuUp, weakSpacing = true)
-        add(actions.menuDown, weakSpacing = true)
+        addAction(actions.closeMenu)
+        addAction(actions.menuUp, weakSpacing = true)
+        addAction(actions.menuDown, weakSpacing = true)
         if (listOf(actions.closeMenu, actions.menuUp).any { it.isShown() }) {
             add(weakSpacing = true) { styles.keyHintLabels("navigate") }
         }
@@ -393,35 +387,6 @@ class UI(
     private val debugStyle: TextStyle by lazy { TextColors.magenta }
 
     companion object {
-        @Suppress("detekt:CyclomaticComplexMethod")
-        fun keyName(key: KeyboardEvent): String {
-            var k = when (key.key) {
-                "Enter" -> "enter"
-                "Escape" -> "esc"
-                "Tab" -> "tab"
-                "ArrowUp" -> "↑"
-                "ArrowDown" -> "↓"
-                "ArrowLeft" -> "←"
-                "ArrowRight" -> "→"
-                "PageUp" -> "page↑"
-                "PageDown" -> "page↓"
-                else -> key.key
-            }
-            if (key.alt) k = "alt+$k"
-            if (key.shift && key.key.length > 1) k = "shift+$k"
-            if (key.ctrl) k = "ctrl+$k"
-            return k
-        }
-
-        context(context: FullContext)
-        val Entry?.style get() = when (this?.type) {
-            null -> TextColors.magenta
-            SymbolicLink -> context.styles.link
-            Directory -> context.styles.directory
-            RegularFile -> context.styles.file
-            Unknown -> context.styles.nameDecorations
-        }
-
         context(context: FullContext)
         private fun String.dressUpEntryName(entry: Entry, isSelected: Boolean, showLinkTarget: Boolean = false): String {
             fun common(string: String): String = when {
@@ -449,94 +414,5 @@ class UI(
                 Unknown -> "${common(context.styles.nameDecorations(this))} "
             }
         }
-    }
-}
-
-context(context: Context, stylesProvider: StylesProvider)
-fun <Context> renderAction(action: Action<Context, *>): String {
-    val keyStr = when (action) {
-        is KeyAction<Context> -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
-        is MenuAction -> null
-    }
-    val desc = action.description().takeUnless { it.isBlank() }
-    val descStr = when (action) {
-        is KeyAction<*> -> desc?.let { styles.keyHintLabels(it) }
-        is MenuAction -> desc
-    }
-    val str = listOfNotNull(
-        keyStr,
-        descStr
-    ).joinToString(" ")
-    action.style()?.let { return it(str) }
-    return str
-}
-
-context(stylesProvider: StylesProvider)
-fun <Context> buildHints(block: BuildHintsScope<Context>.() -> Unit): String {
-    return BuildHintsScope<Context>(stylesProvider).apply(block).render()
-}
-
-class BuildHintsScope<Context>(
-    stylesProvider: StylesProvider,
-    private val defaultStrongSpacing : String = stylesProvider.styles.genericElements(" • ")
-) : StylesProvider by stylesProvider {
-    private enum class ElementType(val isSpacing: Boolean) {
-        WithWeakSpacing(false), WithStrongSpacing(false), WeakSpacing(true), StrongSpacing(true)
-    }
-
-    private val elements = mutableListOf<Pair<ElementType, () -> String>>()
-
-    fun render(): String = buildString {
-        var lastElementType: ElementType? = null
-        elements.forEachIndexed { index, (type, element) ->
-            when (type) {
-                ElementType.StrongSpacing -> {
-                    append(element())
-                    lastElementType = ElementType.StrongSpacing
-                }
-                ElementType.WeakSpacing -> {
-                    if (lastElementType != null && !lastElementType.isSpacing && index < elements.lastIndex) {
-                        append(element())
-                        lastElementType = ElementType.WeakSpacing
-                    }
-                }
-                ElementType.WithStrongSpacing -> {
-                    if (lastElementType != null && !lastElementType.isSpacing) {
-                        append(defaultStrongSpacing)
-                    }
-                    append(element())
-                    lastElementType = ElementType.WithStrongSpacing
-                }
-                ElementType.WithWeakSpacing -> {
-                    if (lastElementType != null && !lastElementType.isSpacing) {
-                        if (lastElementType == ElementType.WithWeakSpacing) {
-                            append(" ")
-                        } else {
-                            append(defaultStrongSpacing)
-                        }
-                    }
-                    append(element())
-                    lastElementType = ElementType.WithWeakSpacing
-                }
-            }
-        }
-    }
-
-    private fun add(type: ElementType, element: () -> String) {
-        elements += type to element
-    }
-
-    fun addSpacing(weak: Boolean = false, render: () -> String = { defaultStrongSpacing }) {
-        add(if (weak) ElementType.WeakSpacing else ElementType.StrongSpacing, render)
-    }
-
-    fun add(weakSpacing: Boolean = false, render: () -> String) {
-        add(if (weakSpacing) ElementType.WithWeakSpacing else ElementType.WithStrongSpacing, render)
-    }
-
-    context(context: Context)
-    fun add(action: KeyAction<Context>, weakSpacing: Boolean = false) {
-        if (!action.isShown()) return
-        add(weakSpacing) { renderAction(action) }
     }
 }

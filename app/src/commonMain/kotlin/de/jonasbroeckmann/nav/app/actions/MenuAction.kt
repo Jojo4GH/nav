@@ -14,7 +14,7 @@ data class MenuAction(
     private val hidden: State.() -> Boolean = { false },
     private val condition: State.() -> Boolean,
     private val action: State.() -> AppAction<*>?
-) : Action<State, Nothing?> {
+) : Action<State, Nothing?, AppAction<*>?> {
     context(state: State)
     override fun description() = state.description()
 

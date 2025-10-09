@@ -10,6 +10,7 @@ import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.AppAction
+import de.jonasbroeckmann.nav.app.ui.showTextPrompt
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.files.Path
@@ -28,9 +29,28 @@ sealed interface MacroAction : MacroRunnable {
         val choices: List<StringWithPlaceholders> = emptyList(),
         val resultTo: String = "result"
     ) : MacroAction {
+        init {
+            require(listOfNotNull(format, choices.takeIf { it.isNotEmpty() }).size <= 1) {
+                "Only one of '${::format.name}' or '${::choices.name}' can be set"
+            }
+        }
+
         context(context: MacroRuntimeContext)
         override fun run() {
-            TODO("Not yet implemented")
+            if (choices.isNotEmpty()) {
+
+            } else {
+                TODO()
+                context.showTextPrompt(
+                    title = prompt.evaluate(),
+                    initialText = default?.evaluate() ?: "",
+                    placeholder = null,
+                    submitKey = context.config.keys.submit,
+                    clearKey = context.config.keys.cancel,
+                    cancelKey = context.config.keys.cancel,
+                    validate = { input -> format?.matches(input) ?: true }
+                )
+            }
         }
     }
 

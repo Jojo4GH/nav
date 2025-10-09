@@ -2,10 +2,8 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.app.AppAction
-import de.jonasbroeckmann.nav.app.StateProvider
 
-sealed interface Action<Context, Event : InputEvent?> {
+sealed interface Action<Context, Input : InputEvent?, Output> {
     context(context: Context)
     fun description(): String
 
@@ -16,7 +14,7 @@ sealed interface Action<Context, Event : InputEvent?> {
     fun isHidden(): Boolean
 
     context(context: Context)
-    infix fun matches(input: Event): Boolean
+    infix fun matches(input: Input): Boolean
 
     context(context: Context)
     fun isAvailable(): Boolean
@@ -25,5 +23,5 @@ sealed interface Action<Context, Event : InputEvent?> {
     fun isShown() = !isHidden() && isAvailable()
 
     context(context: Context)
-    fun run(input: Event): AppAction<*>?
+    fun run(input: Input): Output
 }
