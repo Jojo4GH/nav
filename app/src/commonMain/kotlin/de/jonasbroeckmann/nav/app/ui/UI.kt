@@ -2,9 +2,9 @@ package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.animation.StoppableAnimation
 import com.github.ajalt.mordant.animation.animation
-import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.*
 import com.github.ajalt.mordant.table.*
+import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
@@ -48,32 +48,54 @@ class UI(
     }
 
     context(state: State)
-    private fun render() = verticalLayout {
+    private fun render(): Widget {
         printlnOnDebug { "Updating UI ..." }
-
-        align = TextAlign.LEFT
-
-        var additionalRows = 0
-
-        val top = renderTitle(
-            directory = state.directory,
-            filter = state.filter,
-            showCursor = !state.isTypingCommand && !state.inQuickMacroMode
+        return MainLayout(
+            top = {
+                renderTitle(
+                    directory = state.directory,
+                    filter = state.filter,
+                    showCursor = !state.isTypingCommand && !state.inQuickMacroMode
+                )
+            },
+            body = { availableLines ->
+                renderTable(
+                    entries = state.filteredItems,
+                    cursor = state.cursor,
+                    filter = state.filter,
+                    availableLines = availableLines
+                )
+            },
+            bottom = {
+                renderBottom()
+            },
+            limitToTerminalHeight = config.limitToTerminalHeight
         )
-        additionalRows += 1
+    }
 
-        val bottom = renderBottom { additionalRows += it }
+    private class MainLayout(
+        val top: () -> Widget,
+        val body: (availableLines: Int?) -> Widget,
+        val bottom: () -> Widget,
+        val limitToTerminalHeight: Boolean
+    ) : Widget {
+        override fun measure(t: Terminal, width: Int) = WidthRange(min = width, max = width)
 
-        val table = renderTable(
-            entries = state.filteredItems,
-            cursor = state.cursor,
-            filter = state.filter,
-            additionalRows = additionalRows
-        )
+        override fun render(t: Terminal, width: Int): Lines {
+            val topRendered = top().render(t)
+            val bottomRendered = bottom().render(t)
 
-        cell(top)
-        cell(table)
-        cell(bottom)
+            val availableLines = if (limitToTerminalHeight) {
+                t.updateSize()
+                t.size.height - topRendered.height - bottomRendered.height
+            } else {
+                null
+            }
+
+            val bodyRendered = body(availableLines).render(t, width)
+
+            return Lines(topRendered.lines + bodyRendered.lines + bottomRendered.lines)
+        }
     }
 
     private val selectedNamePrefix get() = when {
@@ -90,7 +112,7 @@ class UI(
         entries: List<Entry>,
         cursor: Int,
         filter: String,
-        additionalRows: Int
+        availableLines: Int?
     ) = table {
         overflowWrap = OverflowWrap.ELLIPSES
         cellBorders = Borders.LEFT_RIGHT
@@ -98,16 +120,12 @@ class UI(
         borderType = BorderType.BLANK
         padding = Padding(0)
 
-        var additionalRows = additionalRows
-
         if (entries.isEmpty()) {
             body {
                 if (filter.isNotEmpty()) {
                     row { cell(Text(styles.nameDecorations("No results …"))) }
-                    additionalRows += 1
                 } else {
                     row { cell(Text(styles.nameDecorations("There is nothing here"))) }
-                    additionalRows += 1
                 }
             }
             return@table
@@ -120,13 +138,15 @@ class UI(
                 }
                 cell(styles.nameHeader("${unselectedNamePrefix}Name"))
             }
-            additionalRows += 1
         }
+
         body {
             renderEntries(
                 entries = entries,
                 cursor = cursor,
-                otherRows = additionalRows,
+                availableLines = availableLines?.let {
+                    it - 1 // header takes one line
+                },
                 renderMore = { n ->
                     row {
                         config.shownColumns.forEach { _ ->
@@ -170,14 +190,13 @@ class UI(
     private fun SectionBuilder.renderEntries(
         entries: List<Entry>,
         cursor: Int,
-        otherRows: Int,
+        availableLines: Int?,
         renderMore: SectionBuilder.(Int) -> Unit,
         renderEntry: SectionBuilder.(Entry, Boolean) -> Unit
     ) {
         var maxVisible = if (config.maxVisibleEntries == 0) entries.size else config.maxVisibleEntries
-        if (config.limitToTerminalHeight) {
-            terminal.updateSize()
-            maxVisible = maxVisible.coerceAtMost(terminal.size.height - otherRows)
+        if (availableLines != null) {
+            maxVisible = maxVisible.coerceAtMost(availableLines)
         }
         maxVisible = maxVisible.coerceAtLeast(1)
 
@@ -199,8 +218,8 @@ class UI(
         }
     }
 
-    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean): String {
-        return "${renderPath(directory)}${renderFilter(filter, showCursor)}"
+    private fun renderTitle(directory: Path, filter: String, showCursor: Boolean): Widget {
+        return Text("${renderPath(directory)}${renderFilter(filter, showCursor)}")
     }
 
     private fun renderFilter(filter: String, showCursor: Boolean): String {
@@ -273,30 +292,24 @@ class UI(
     }
 
     context(state: State)
-    private fun renderBottom(
-        collectAdditionalRows: (Int) -> Unit
-    ): Widget = verticalLayout {
+    private fun renderBottom(): Widget = verticalLayout {
         align = TextAlign.LEFT
         this.width = ColumnWidth.Expand()
 
         if (!config.hideHints) {
             cell(renderNavHints())
-            collectAdditionalRows(1)
         }
 
         if (state.isMenuOpen) {
-            cell(renderMenu(collectAdditionalRows))
+            cell(renderMenu())
             if (!config.hideHints) {
                 cell("${styles.genericElements("•")} ${renderMenuHints()}")
-                collectAdditionalRows(1)
             }
         }
     }
 
     context(state: State)
-    private fun renderMenu(
-        collectAdditionalRows: (Int) -> Unit
-    ) = grid {
+    private fun renderMenu() = grid {
         state.shownMenuActions.forEachIndexed { i, item ->
             row {
                 cell(styles.genericElements("│"))
@@ -314,7 +327,6 @@ class UI(
                 }
             }
         }
-        collectAdditionalRows(state.shownMenuActions.size)
     }
 
     context(state: State)
