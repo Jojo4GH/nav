@@ -2,8 +2,6 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.input.enterRawMode
-import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.warning
@@ -13,7 +11,8 @@ import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.app.AppAction.Exit
 import de.jonasbroeckmann.nav.app.AppAction.NoOp
 import de.jonasbroeckmann.nav.app.actions.Action
-import de.jonasbroeckmann.nav.app.actions.Actions
+import de.jonasbroeckmann.nav.app.actions.MainActions
+import de.jonasbroeckmann.nav.app.actions.MainKeyAction
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.UI
@@ -80,7 +79,7 @@ class App(
             .toMap()
     }
 
-    private val actions = Actions(this)
+    private val actions = MainActions(this)
     override var state = State.initial(
         startingDirectory = startingDirectory,
         showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
@@ -88,6 +87,8 @@ class App(
     )
         private set
     private val ui = UI(this, actions)
+
+    override val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
 
     fun main(): Nothing = catchAllFatal(
         cleanupOnError = {
@@ -104,11 +105,8 @@ class App(
 
         try {
             while (true) {
-                ui.update()
-                val inputEvent = readInput()
-                printlnOnDebug { "Received input event: $inputEvent" }
-                if (inputEvent is KeyboardEvent) state = state.withLastReceivedEvent(inputEvent)
-                inputEvent.process().runIn(this)
+                ui.update(state)
+                readInput().process().runIn(this)
             }
         } catch (_: ExitEvent) {
             printlnOnDebug { "Exiting ..." }
@@ -125,34 +123,18 @@ class App(
         exitProcess(0)
     }
 
-    private class ExitEvent : Throwable()
-
-    private val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
-
-    private fun readInput(): InputEvent {
-        terminal.enterRawMode().use { rawMode ->
-            while (true) {
-                try {
-                    return rawMode.readEvent(inputTimeout)
-                } catch (_: RuntimeException) {
-                    continue // on timeout try again
-                }
-            }
-        }
-    }
-
     @Suppress("detekt:CyclomaticComplexMethod", "detekt:ReturnCount")
-    private fun InputEvent.process(): AppAction<*> {
-        if (this !is KeyboardEvent) return NoOp
-        if (isCtrlC) return Exit(null)
+    private fun InputEvent.process(): AppAction<*> = filterKeyboardEvents {
+        state = state.withLastReceivedEvent(this)
         if (ctrl) {
             printlnOnDebug { "Entering quick macro mode ..." }
             state = state.inQuickMacroMode(true)
         }
         if (state.inQuickMacroMode) {
             for (action in actions.quickMacroModeActions) {
-                if (!action.matches(this)) continue
-                return action.tryRun(this) ?: NoOp
+                if (context(state) { action matches this.copy(ctrl = false) }) {
+                    return action.tryRun(this) ?: NoOp
+                }
             }
             if (key in setOf("Control", "Shift", "Alt")) {
                 return NoOp
@@ -161,27 +143,29 @@ class App(
             printlnOnDebug { "Exiting quick macro mode ..." }
             state = state.inQuickMacroMode(false)
         }
-        for (action in actions.ordered) {
-            if (action.matches(this)) {
+        for (action in actions.normalModeActions) {
+            if (context(state) { action matches this }) {
                 return action.tryRun(this) ?: NoOp
             }
         }
         val command = state.command
         if (command != null) {
-            tryUpdateTextField(command)?.let { newCommand ->
-                return AppAction.UpdateState { withCommand(newCommand) }
-            }
+            updateTextField(
+                current = command,
+                onChange = { newCommand -> state = state.withCommand(newCommand) }
+            )
         } else {
-            tryUpdateTextField(state.filter)?.let { newFilter ->
-                return AppAction.UpdateState { withFilter(newFilter) }
-            }
+            updateTextField(
+                current = state.filter,
+                onChange = { newFilter -> state = state.withFilter(newFilter) }
+            )
         }
         return NoOp
-    }
+    } ?: NoOp
 
-    private fun <E : InputEvent?> Action<E>.tryRun(input: E): AppAction<*>? {
+    private fun <E : InputEvent?> Action<State, E>.tryRun(input: E): AppAction<*>? {
         try {
-            return run(input)
+            return context(state) { run(input) }
         } catch (e: IOException) {
             val msg = e.message
             when {
@@ -205,13 +189,7 @@ class App(
     fun perform(@Suppress("unused") action: NoOp) = Unit
 
     fun perform(action: AppAction.UpdateState) {
-        val newState = action.update(state)
-        if (debugMode) {
-            if (state.currentEntry != newState.currentEntry) {
-                terminal.println("New entry: ${newState.currentEntry}")
-            }
-        }
-        state = newState
+        state = action.update(state)
     }
 
     fun perform(action: AppAction.OpenFile) = openInEditor(action.file)?.also { exitCode ->
@@ -250,6 +228,13 @@ class App(
     fun perform(action: AppAction.RunMacro) {
         MacroRuntimeContext.run(action.macro)
     }
+
+    fun perform(action: AppAction.PromptText): String {
+//        ui.clear() // hide UI before prompting
+
+        TODO()
+    }
+
 
     fun perform(action: Exit): Nothing {
         action.atDirectory?.let {
@@ -347,19 +332,11 @@ class App(
         }?.exitCode
     }
 
+    class ExitEvent : Throwable()
 
     companion object {
         context(context: PartialContext)
         operator fun invoke(config: Config) = App(context, config)
-
-        private fun KeyboardEvent.tryUpdateTextField(str: String): String? {
-            if (alt || ctrl) return null
-            return when {
-                this == KeyboardEvent("Backspace") -> str.dropLast(1)
-                key.length == 1 -> str + key
-                else -> null
-            }
-        }
 
         private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
 

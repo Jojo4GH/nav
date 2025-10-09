@@ -5,22 +5,25 @@ import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.StateProvider
 
-sealed interface Action<Event : InputEvent?> {
-    context(stateProvider: StateProvider)
+sealed interface Action<Context, Event : InputEvent?> {
+    context(context: Context)
     fun description(): String
 
-    context(stateProvider: StateProvider)
+    context(context: Context)
     fun style(): TextStyle?
 
-    context(stateProvider: StateProvider)
+    context(context: Context)
     fun isHidden(): Boolean
 
-    context(stateProvider: StateProvider)
-    fun matches(input: Event): Boolean
+    context(context: Context)
+    infix fun matches(input: Event): Boolean
 
-    context(stateProvider: StateProvider)
+    context(context: Context)
     fun isAvailable(): Boolean
 
-    context(stateProvider: StateProvider)
+    context(context: Context)
+    fun isShown() = !isHidden() && isAvailable()
+
+    context(context: Context)
     fun run(input: Event): AppAction<*>?
 }

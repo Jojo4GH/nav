@@ -4,7 +4,6 @@ import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import de.jonasbroeckmann.nav.app.AppAction.*
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.macros.DefaultMacroVariables
 import de.jonasbroeckmann.nav.app.macros.DefaultMacros
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroVariableScope
@@ -18,60 +17,65 @@ import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.files.SystemFileSystem
 
-class Actions(context: FullContext) : FullContext by context {
-    private val registered = mutableListOf<KeyAction>()
-    val ordered: List<KeyAction> get() = registered
+abstract class Actions<Context, Category> {
+    protected val registered = mutableMapOf<Category?, MutableList<KeyAction<Context>>>()
 
-    private fun KeyAction.registered(): KeyAction {
-        val i = registered.size
+    protected fun KeyAction<Context>.registered(category: Category? = null): KeyAction<Context> {
+        val registeredForCategory = registered.getOrPut(category) { mutableListOf() }
+        val i = registeredForCategory.size
         return copy(
             condition = {
                 isAvailable() &&
-                    registered.asSequence().take(i).none { prioritized ->
-                        triggers.any { it in prioritized.triggers } && prioritized.isAvailable()
+                    registeredForCategory.asSequence().take(i).none { prioritized ->
+                        keys.any { it in prioritized.keys } && prioritized.isAvailable()
                     }
             }
         ).also {
-            registered += it
+            registeredForCategory += it
         }
     }
+}
 
-    val cancelQuickMacroMode = KeyAction(
-        config.keys.cancel,
-        inQuickMacroMode = true,
+typealias MainKeyAction = KeyAction<State>
+
+class MainActions(context: FullContext) : Actions<State, MainActions.Category>(), FullContext by context {
+    enum class Category {
+        QuickMacroMode
+    }
+
+    val cancelQuickMacroMode = MainKeyAction(
+        config.keys.cancel.copy(ctrl = false),
         displayKey = { config.keys.cancel },
         description = { "cancel" },
         condition = { inQuickMacroMode },
         action = { UpdateState { inQuickMacroMode(false) } }
-    ).registered()
+    ).registered(QuickMacroMode)
 
-    val quickMacroModeActions = config.macros.mapNotNull { macro ->
+    val quickMacroModeMacroActions = config.macros.mapNotNull { macro ->
         if (macro.quickModeKey == null) return@mapNotNull null
-        KeyAction(
-            macro.quickModeKey,
-            inQuickMacroMode = true,
+        MainKeyAction(
+            macro.quickModeKey.copy(ctrl = false),
             displayKey = { macro.quickModeKey },
             description = { macro.computeDescription() },
             style = { macro.computeStyle() },
             hidden = { macro.hidden },
             condition = { inQuickMacroMode && macro.computeCondition() },
             action = { RunMacro(macro) }
-        ).registered()
+        ).registered(QuickMacroMode)
     } + config.entryMacros.mapNotNull { macro ->
         if (macro.quickMacroKey == null) return@mapNotNull null
-        KeyAction(
-            macro.quickMacroKey,
-            inQuickMacroMode = true,
+        MainKeyAction(
+            macro.quickMacroKey.copy(ctrl = false),
             displayKey = { macro.quickMacroKey },
             description = { currentEntry?.let { macro.computeDescription(it) }.orEmpty() },
             style = { currentEntry.style },
             hidden = { currentEntry == null },
             condition = { inQuickMacroMode && macro.condition() },
             action = { RunEntryMacro(macro) }
-        ).registered()
+        ).registered(QuickMacroMode)
     }
 
-    val menuSubmit = KeyAction(
+    val menuSubmit = MainKeyAction(
         config.keys.submit,
         condition = { isMenuOpen },
         action = { currentMenuAction?.run(null) }
@@ -79,7 +83,7 @@ class Actions(context: FullContext) : FullContext by context {
 
     val macroActions = config.macros.mapNotNull { macro ->
         if (macro.nonQuickModeKey == null) return@mapNotNull null
-        KeyAction(
+        MainKeyAction(
             macro.nonQuickModeKey,
             description = { macro.computeDescription() },
             style = { macro.computeStyle() },
@@ -89,38 +93,38 @@ class Actions(context: FullContext) : FullContext by context {
         ).registered()
     }
 
-    val cursorUp = KeyAction(
+    val cursorUp = MainKeyAction(
         config.keys.cursor.up,
         condition = { filteredItems.isNotEmpty() },
         action = { UpdateState { withCursorShifted(-1) } }
     ).registered()
-    val cursorDown = KeyAction(
+    val cursorDown = MainKeyAction(
         config.keys.cursor.down,
         condition = { filteredItems.isNotEmpty() },
         action = { UpdateState { withCursorShifted(+1) } }
     ).registered()
-    val cursorHome = KeyAction(
+    val cursorHome = MainKeyAction(
         config.keys.cursor.home,
         condition = { filteredItems.isNotEmpty() },
         action = { UpdateState { withCursorCoerced(0) } }
     ).registered()
-    val cursorEnd = KeyAction(
+    val cursorEnd = MainKeyAction(
         config.keys.cursor.end,
         condition = { filteredItems.isNotEmpty() },
         action = { UpdateState { withCursorCoerced(filteredItems.lastIndex) } }
     ).registered()
 
-    val navigateUp = KeyAction(
+    val navigateUp = MainKeyAction(
         config.keys.nav.up,
         condition = { directory.parent != null },
         action = { UpdateState { navigatedUp() } }
     ).registered()
-    val navigateInto = KeyAction(
+    val navigateInto = MainKeyAction(
         config.keys.nav.into,
         condition = { currentEntry?.type == Directory || currentEntry?.linkTarget?.targetEntry?.type == Directory },
         action = { UpdateState { navigateTo(currentEntry?.path) } }
     ).registered()
-    val navigateOpen = KeyAction(
+    val navigateOpen = MainKeyAction(
         config.keys.nav.open,
         description = { "open in ${editorCommand ?: "editor"}" },
         style = { styles.file },
@@ -128,14 +132,14 @@ class Actions(context: FullContext) : FullContext by context {
         action = { OpenFile(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
     ).registered()
 
-    val discardCommand = KeyAction(
+    val discardCommand = MainKeyAction(
         config.keys.cancel,
         description = { "discard command" },
         condition = { isTypingCommand },
         action = { UpdateState { withCommand(null) } }
     ).registered()
 
-    val autocompleteFilter = KeyAction(
+    val autocompleteFilter = MainKeyAction(
         config.keys.filter.autocomplete, config.keys.filter.autocomplete.copy(shift = true),
         description = { "autocomplete" },
         condition = { items.isNotEmpty() },
@@ -143,7 +147,7 @@ class Actions(context: FullContext) : FullContext by context {
             val commonPrefix = items
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
-                .ifEmpty { return@KeyAction null }
+                .ifEmpty { return@MainKeyAction null }
                 .commonPrefix()
 
             val filteredState = withFilter(commonPrefix)
@@ -172,68 +176,68 @@ class Actions(context: FullContext) : FullContext by context {
 
             // Handle auto-navigation
             if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.None) {
-                return@KeyAction UpdateState { completedState }
+                return@MainKeyAction UpdateState { completedState }
             }
             completedState.filteredItems
                 .singleOrNull { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
                 ?.let { singleEntry ->
                     if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.OnSingleAfterCompletion) {
                         if (!hasFilterChanged) {
-                            return@KeyAction UpdateState { completedState.navigateTo(singleEntry.path) }
+                            return@MainKeyAction UpdateState { completedState.navigateTo(singleEntry.path) }
                         }
                     }
                     if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.OnSingle) {
-                        return@KeyAction UpdateState { completedState.navigateTo(singleEntry.path) }
+                        return@MainKeyAction UpdateState { completedState.navigateTo(singleEntry.path) }
                     }
                 }
 
             UpdateState { completedState }
         }
     ).registered()
-    val clearFilter = KeyAction(
+    val clearFilter = MainKeyAction(
         config.keys.filter.clear,
         description = { "clear filter" },
         condition = { filter.isNotEmpty() },
         action = { UpdateState { withFilter("") } }
     ).registered()
 
-    val exitMenu = KeyAction(
+    val exitMenu = MainKeyAction(
         config.keys.cancel,
         description = { "close menu" },
         condition = { isMenuOpen },
         action = { UpdateState { withMenuCursorCoerced(-1) } }
     ).registered()
-    val closeMenu = KeyAction(
+    val closeMenu = MainKeyAction(
         config.keys.menu.up,
         description = { "close menu" },
         condition = { isMenuOpen && coercedMenuCursor == 0 },
         action = { UpdateState { withMenuCursorCoerced(-1) } }
     ).registered()
-    val openMenu = KeyAction(
+    val openMenu = MainKeyAction(
         config.keys.menu.down,
         description = { "more" },
         condition = { !isMenuOpen },
         action = { UpdateState { withMenuCursorCoerced(0) } }
     ).registered()
-    val menuDown = KeyAction(
+    val menuDown = MainKeyAction(
         config.keys.menu.down,
-        condition = { isMenuOpen && coercedMenuCursor < availableMenuActions.lastIndex },
+        condition = { isMenuOpen && coercedMenuCursor < shownMenuActions.lastIndex },
         action = { UpdateState { withMenuCursorCoerced(coercedMenuCursor + 1) } }
     ).registered()
-    val menuUp = KeyAction(
+    val menuUp = MainKeyAction(
         config.keys.menu.up,
         condition = { isMenuOpen && coercedMenuCursor > 0 },
         action = { UpdateState { withMenuCursorCoerced(coercedMenuCursor - 1) } }
     ).registered()
 
-    val exitCD = KeyAction(
+    val exitCD = MainKeyAction(
         config.keys.submit,
         description = { "exit here" },
         style = { styles.path },
         condition = { directory != WorkingDirectory },
         action = { Exit(directory) }
     ).registered()
-    val exit = KeyAction(
+    val exit = MainKeyAction(
         config.keys.cancel,
         description = { "exit" },
         condition = { true },
@@ -300,7 +304,6 @@ class Actions(context: FullContext) : FullContext by context {
                 if (command.isNullOrBlank()) {
                     UpdateState { withCommand(null) }
                 } else {
-                    val exitCodeVariable = DefaultMacroVariables.ExitCode.placeholder
                     val macro = identifiedMacros[DefaultMacros.RunCommand.id] ?: DefaultMacros.RunCommand
                     RunMacro(macro)
                 }
@@ -331,6 +334,10 @@ class Actions(context: FullContext) : FullContext by context {
             }
         ),
     )
+
+    val normalModeActions = registered[null].orEmpty()
+
+    val quickMacroModeActions = registered[QuickMacroMode].orEmpty()
 
     context(state: State)
     private fun Config.EntryMacro.condition(): Boolean {

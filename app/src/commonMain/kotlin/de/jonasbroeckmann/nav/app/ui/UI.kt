@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.app.ui
 
+import com.github.ajalt.mordant.animation.StoppableAnimation
 import com.github.ajalt.mordant.animation.animation
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.*
@@ -7,62 +8,78 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.Action
-import de.jonasbroeckmann.nav.app.actions.Actions
+import de.jonasbroeckmann.nav.app.actions.MainActions
 import de.jonasbroeckmann.nav.app.actions.KeyAction
 import de.jonasbroeckmann.nav.app.actions.MenuAction
-import de.jonasbroeckmann.nav.app.state
+import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.ui.UI.Companion.keyName
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
 import kotlin.time.ExperimentalTime
-import de.jonasbroeckmann.nav.app.state.State as UIState
 
 @OptIn(ExperimentalTime::class)
 class UI(
     context: FullContext,
-    private val actions: Actions
-) : FullContext by context {
-    private val animation = terminal.animation<StateProvider> { render(it) }
+    private val actions: MainActions
+) : FullContext by context, UpdatableAnimation<State>, StoppableAnimation {
+    private val animation = terminal.animation<State> { state ->
+        context(state) { render() }
+    }
 
-    context(stateProvider: StateProvider)
-    fun update() = animation.update(state)
+    private var shownState: State? = null
 
-    fun clear() = animation.clear()
-
-    fun stop() = animation.stop()
-
-    private fun render(stateProvider: StateProvider): Widget = context(stateProvider) {
-        verticalLayout {
-            printlnOnDebug { "Updating UI ..." }
-
-            align = TextAlign.LEFT
-
-            var additionalRows = 0
-
-            val top = renderTitle(
-                directory = state.directory,
-                filter = state.filter,
-                showCursor = !state.isTypingCommand && !state.inQuickMacroMode
-            )
-            additionalRows += 1
-
-            val bottom = renderBottom { additionalRows += it }
-
-            val table = renderTable(
-                entries = state.filteredItems,
-                cursor = state.cursor,
-                filter = state.filter,
-                additionalRows = additionalRows
-            )
-
-            cell(top)
-            cell(table)
-            cell(bottom)
+    override fun update(state: State) {
+        if (state == shownState) {
+            printlnOnDebug { "Skipping UI update with unchanged state ..." }
+            return
         }
+        shownState = state
+        animation.update(state)
+    }
+
+    override fun clear() {
+        shownState = null
+        animation.clear()
+    }
+
+    override fun stop() {
+        shownState = null
+        animation.stop()
+    }
+
+    context(state: State)
+    private fun render() = verticalLayout {
+        printlnOnDebug { "Updating UI ..." }
+
+        align = TextAlign.LEFT
+
+        var additionalRows = 0
+
+        val top = renderTitle(
+            directory = state.directory,
+            filter = state.filter,
+            showCursor = !state.isTypingCommand && !state.inQuickMacroMode
+        )
+        additionalRows += 1
+
+        val bottom = renderBottom { additionalRows += it }
+
+        val table = renderTable(
+            entries = state.filteredItems,
+            cursor = state.cursor,
+            filter = state.filter,
+            additionalRows = additionalRows
+        )
+
+        cell(top)
+        cell(table)
+        cell(bottom)
     }
 
     private val selectedNamePrefix get() = when {
@@ -261,7 +278,7 @@ class UI(
         }
     }
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     private fun renderBottom(
         collectAdditionalRows: (Int) -> Unit
     ): Widget = verticalLayout {
@@ -282,11 +299,11 @@ class UI(
         }
     }
 
-    context(stateProvider: StateProvider)
+    context(state: State)
     private fun renderMenu(
         collectAdditionalRows: (Int) -> Unit
     ) = grid {
-        state.availableMenuActions.forEachIndexed { i, item ->
+        state.shownMenuActions.forEachIndexed { i, item ->
             row {
                 cell(styles.genericElements("│"))
                 val isSelected = i == state.coercedMenuCursor
@@ -303,56 +320,11 @@ class UI(
                 }
             }
         }
-        collectAdditionalRows(state.availableMenuActions.size)
+        collectAdditionalRows(state.shownMenuActions.size)
     }
 
-    context(stateProvider: StateProvider)
-    private fun renderAction(action: Action<*>): String {
-        val keyStr = when (action) {
-            is KeyAction -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
-            is MenuAction -> null
-        }
-        val desc = action.description().takeUnless { it.isBlank() }
-        val descStr = when (action) {
-            is KeyAction -> desc?.let { styles.keyHintLabels(it) }
-            is MenuAction -> desc
-        }
-        val str = listOfNotNull(
-            keyStr,
-            descStr
-        ).joinToString(" ")
-        action.style()?.let { return it(str) }
-        return str
-    }
-
-    private fun buildHints(
-        block: RenderHintsScope.() -> Unit
-    ): String {
-        val scope = RenderHintsScope().apply(block)
-        return scope.joinToString(
-            separator = styles.genericElements(" • "),
-            prefix = scope.prefix
-        )
-    }
-
-    private inner class RenderHintsScope : MutableList<String> by mutableListOf() {
-        var prefix: String = ""
-
-        context(stateProvider: StateProvider)
-        fun render(action: KeyAction) {
-            if (action.isHidden() || !action.isAvailable()) return
-            add(renderAction(action))
-        }
-
-        fun group(block: RenderHintsScope.() -> Unit) {
-            RenderHintsScope().apply(block).let {
-                if (it.isNotEmpty()) add(it.joinToString(" "))
-            }
-        }
-    }
-
-    context(stateProvider: StateProvider)
-    private fun renderNavHints() = buildHints {
+    context(state: State)
+    private fun renderNavHints() = buildHints<State> {
         if (state.inQuickMacroMode) {
             val name = when (state.currentEntry?.type) {
                 Directory -> "dir"
@@ -361,62 +333,60 @@ class UI(
                 Unknown -> "entry"
                 null -> "macro"
             }
-            prefix = state.currentEntry.style(name) + styles.genericElements(" │ ")
-            render(actions.cancelQuickMacroMode)
-            val availableMacros = actions.quickMacroModeActions.filter { it.isAvailable() }
+            add { state.currentEntry.style(name) }
+            addSpacing { styles.genericElements(" │ ") }
+            add(actions.cancelQuickMacroMode)
+            val availableMacros = actions.quickMacroModeMacroActions.filter { it.isAvailable() }
             availableMacros.forEach {
-                render(it)
+                add(it)
             }
             when {
-                actions.quickMacroModeActions.isEmpty() -> add(styles.keyHintLabels("No macros defined"))
-                availableMacros.isEmpty() -> add(styles.keyHintLabels("No macros available"))
+                actions.quickMacroModeMacroActions.isEmpty() -> add { styles.keyHintLabels("No macros defined") }
+                availableMacros.isEmpty() -> add { styles.keyHintLabels("No macros available") }
             }
         } else {
-            render(actions.navigateUp)
+            add(actions.navigateUp)
 
-            group {
-                render(actions.cursorUp)
-                render(actions.cursorDown)
-            }
+            add(actions.cursorUp, weakSpacing = true)
+            add(actions.cursorDown, weakSpacing = true)
 
-            render(actions.navigateInto)
-            render(actions.navigateOpen)
+            add(actions.navigateInto)
+            add(actions.navigateOpen)
 
-            render(actions.autocompleteFilter)
-            render(actions.clearFilter)
+            add(actions.autocompleteFilter)
+            add(actions.clearFilter)
 
-            render(actions.discardCommand)
+            add(actions.discardCommand)
 
-            render(actions.exitCD)
-            render(actions.exit)
+            add(actions.exitCD)
+            add(actions.exit)
 
-            render(actions.openMenu)
-            render(actions.exitMenu)
+            add(actions.openMenu)
+            add(actions.exitMenu)
 
             actions.macroActions.forEach { action ->
-                render(action)
+                add(action)
             }
         }
 
         if (debugMode) {
+            addSpacing(weak = true)
             if (state.inQuickMacroMode) {
-                add(debugStyle("M"))
+                add { debugStyle("M") }
             }
             state.lastReceivedEvent?.let { lastReceivedEvent ->
-                add(debugStyle("Key: ${keyName(lastReceivedEvent)}"))
+                add { debugStyle("Key: ${keyName(lastReceivedEvent)}") }
             }
         }
     }
 
-    context(stateProvider: StateProvider)
-    private fun renderMenuHints() = buildHints {
-        if (state.coercedMenuCursor == 0) {
-            render(actions.closeMenu)
-        }
-        group {
-            if (state.coercedMenuCursor > 0) render(actions.menuUp)
-            render(actions.menuDown)
-            if (this.isNotEmpty()) add(styles.keyHintLabels("navigate"))
+    context(state: State)
+    private fun renderMenuHints() = buildHints<State> {
+        add(actions.closeMenu)
+        add(actions.menuUp, weakSpacing = true)
+        add(actions.menuDown, weakSpacing = true)
+        if (listOf(actions.closeMenu, actions.menuUp).any { it.isShown() }) {
+            add(weakSpacing = true) { styles.keyHintLabels("navigate") }
         }
     }
 
@@ -479,5 +449,94 @@ class UI(
                 Unknown -> "${common(context.styles.nameDecorations(this))} "
             }
         }
+    }
+}
+
+context(context: Context, stylesProvider: StylesProvider)
+fun <Context> renderAction(action: Action<Context, *>): String {
+    val keyStr = when (action) {
+        is KeyAction<Context> -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(keyName(it)) }
+        is MenuAction -> null
+    }
+    val desc = action.description().takeUnless { it.isBlank() }
+    val descStr = when (action) {
+        is KeyAction<*> -> desc?.let { styles.keyHintLabels(it) }
+        is MenuAction -> desc
+    }
+    val str = listOfNotNull(
+        keyStr,
+        descStr
+    ).joinToString(" ")
+    action.style()?.let { return it(str) }
+    return str
+}
+
+context(stylesProvider: StylesProvider)
+fun <Context> buildHints(block: BuildHintsScope<Context>.() -> Unit): String {
+    return BuildHintsScope<Context>(stylesProvider).apply(block).render()
+}
+
+class BuildHintsScope<Context>(
+    stylesProvider: StylesProvider,
+    private val defaultStrongSpacing : String = stylesProvider.styles.genericElements(" • ")
+) : StylesProvider by stylesProvider {
+    private enum class ElementType(val isSpacing: Boolean) {
+        WithWeakSpacing(false), WithStrongSpacing(false), WeakSpacing(true), StrongSpacing(true)
+    }
+
+    private val elements = mutableListOf<Pair<ElementType, () -> String>>()
+
+    fun render(): String = buildString {
+        var lastElementType: ElementType? = null
+        elements.forEachIndexed { index, (type, element) ->
+            when (type) {
+                ElementType.StrongSpacing -> {
+                    append(element())
+                    lastElementType = ElementType.StrongSpacing
+                }
+                ElementType.WeakSpacing -> {
+                    if (lastElementType != null && !lastElementType.isSpacing && index < elements.lastIndex) {
+                        append(element())
+                        lastElementType = ElementType.WeakSpacing
+                    }
+                }
+                ElementType.WithStrongSpacing -> {
+                    if (lastElementType != null && !lastElementType.isSpacing) {
+                        append(defaultStrongSpacing)
+                    }
+                    append(element())
+                    lastElementType = ElementType.WithStrongSpacing
+                }
+                ElementType.WithWeakSpacing -> {
+                    if (lastElementType != null && !lastElementType.isSpacing) {
+                        if (lastElementType == ElementType.WithWeakSpacing) {
+                            append(" ")
+                        } else {
+                            append(defaultStrongSpacing)
+                        }
+                    }
+                    append(element())
+                    lastElementType = ElementType.WithWeakSpacing
+                }
+            }
+        }
+    }
+
+    private fun add(type: ElementType, element: () -> String) {
+        elements += type to element
+    }
+
+    fun addSpacing(weak: Boolean = false, render: () -> String = { defaultStrongSpacing }) {
+        add(if (weak) ElementType.WeakSpacing else ElementType.StrongSpacing, render)
+    }
+
+    fun add(weakSpacing: Boolean = false, render: () -> String) {
+        add(if (weakSpacing) ElementType.WithWeakSpacing else ElementType.WithStrongSpacing, render)
+    }
+
+    context(context: Context)
+    fun add(action: KeyAction<Context>, weakSpacing: Boolean = false) {
+        if (!action.isShown()) return
+        add(weakSpacing) { renderAction(action) }
     }
 }
