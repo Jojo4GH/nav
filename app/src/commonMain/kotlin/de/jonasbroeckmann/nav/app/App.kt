@@ -13,8 +13,8 @@ import de.jonasbroeckmann.nav.app.actions.MainActions
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.ui.DialogController
-import de.jonasbroeckmann.nav.app.ui.DialogRenderingScope
+import de.jonasbroeckmann.nav.app.ui.dialogs.DialogShowController
+import de.jonasbroeckmann.nav.app.ui.dialogs.DialogRenderingScope
 import de.jonasbroeckmann.nav.app.ui.RebuildableAnimation
 import de.jonasbroeckmann.nav.app.ui.buildUI
 import de.jonasbroeckmann.nav.app.ui.invalidating
@@ -32,7 +32,7 @@ import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-interface MainController : DialogController, FullContext, StateProvider {
+interface MainController : DialogShowController, FullContext, StateProvider {
     fun updateState(updater: State.() -> State)
 
     fun openInEditor(file: Path): Int?
@@ -304,7 +304,7 @@ class App(
     override fun runEntryMacro(entryMacro: Config.EntryMacro) {
         state = state.inQuickMacroMode(false)
         val command = context(state) {
-            entryMacro.computeCommand(requireNotNull(state.currentEntry))
+            entryMacro.computeCommand(requireNotNull(state.currentItem))
         }
         val result = runCommandFromUIWithShell(command) ?: return
         if (result.isSuccess) {

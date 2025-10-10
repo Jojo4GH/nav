@@ -70,3 +70,28 @@ infix fun Char.wordTypeEquals(other: Char): Boolean = when {
     this.isWhitespace() -> other.isWhitespace()
     else -> this == other
 }
+
+context(context: PartialContext)
+inline fun <T> computeStateWithKeyboardInput(
+    initialState: T,
+    onInput: T.(input: KeyboardEvent, setState: (T) -> Unit) -> Unit,
+    inputTimeout: Duration,
+    onNewState: T.() -> Unit
+): Nothing {
+    var isDirty = true
+    var state = initialState
+    while (true) {
+        if (isDirty) {
+            isDirty = false
+            state.onNewState()
+        }
+        readInput(inputTimeout).filterKeyboardEvents {
+            state.onInput(this) { newState ->
+                if (newState != state) {
+                    isDirty = true
+                }
+                state = newState
+            }
+        }
+    }
+}

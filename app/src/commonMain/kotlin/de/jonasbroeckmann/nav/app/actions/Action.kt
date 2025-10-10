@@ -25,3 +25,27 @@ sealed interface Action<Context, Input : InputEvent?, Controller> {
     context(context: Context, controller: Controller)
     fun run(input: Input)
 }
+
+inline fun <Context, Input : InputEvent?, Controller> Iterable<Action<Context, Input, Controller>>.forEachMatch(
+    context: Context,
+    input: Input,
+    onMatch: context(Context) Action<Context, Input, Controller>.() -> Unit
+) = context(context) {
+    forEach { action ->
+        if (action matches input) {
+            action.onMatch()
+        }
+    }
+}
+
+context(controller: Controller)
+fun <Context, Input : InputEvent?, Controller> Iterable<Action<Context, Input, Controller>>.handle(
+    context: Context,
+    input: Input
+): Boolean {
+    forEachMatch(context, input) {
+        run(input)
+        return true
+    }
+    return false
+}
