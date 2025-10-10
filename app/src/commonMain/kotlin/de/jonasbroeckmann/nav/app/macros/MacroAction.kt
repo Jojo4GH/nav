@@ -9,8 +9,10 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.app.AppAction
+import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
+import de.jonasbroeckmann.nav.app.openInEditor
+import de.jonasbroeckmann.nav.app.runCommand
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.files.Path
@@ -99,12 +101,10 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext)
         override fun run() {
-            val result = context.run(
-                AppAction.RunCommand(
-                    command = command.evaluate(),
-                    collectOutput = outputTo != null,
-                    collectError = errorTo != null
-                )
+            val result = runCommand(
+                command = command.evaluate(),
+                collectOutput = outputTo != null,
+                collectError = errorTo != null
             )
             context[exitCodeTo] = result?.exitCode?.toString().orEmpty()
             if (outputTo != null) {
@@ -154,7 +154,7 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext)
         override fun run() {
-            val exitCode = context.run(AppAction.OpenFile(Path(open.evaluate())))
+            val exitCode = openInEditor(Path(open.evaluate()))
             context[exitCodeTo] = exitCode?.toString().orEmpty()
         }
     }
@@ -256,7 +256,7 @@ sealed interface MacroAction : MacroRunnable {
         context(context: MacroRuntimeContext)
         override fun run() {
             if (exit) {
-                context.run(AppAction.Exit(at?.evaluate()?.parseAbsolutePathToDirectoryOrNull()))
+                exit(at?.evaluate()?.parseAbsolutePathToDirectoryOrNull())
             }
         }
     }

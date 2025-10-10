@@ -2,20 +2,16 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.app.AppAction
-import de.jonasbroeckmann.nav.app.StateProvider
-import de.jonasbroeckmann.nav.app.state
-import de.jonasbroeckmann.nav.app.state.State
 
-data class KeyAction<Context, Output>(
+data class KeyAction<Context, Controller>(
     val keys: List<KeyboardEvent>,
     private val displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
     private val description: Context.() -> String = { "" },
     private val style: Context.() -> TextStyle? = { null },
     private val hidden: Context.() -> Boolean = { false },
     private val condition: Context.() -> Boolean,
-    private val action: Context.(KeyboardEvent) -> Output
-) : Action<Context, KeyboardEvent, Output> {
+    private val action: context(Controller) Context.(KeyboardEvent) -> Unit
+) : Action<Context, KeyboardEvent,  Controller> {
     constructor(
         vararg keys: KeyboardEvent,
         displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
@@ -23,7 +19,7 @@ data class KeyAction<Context, Output>(
         style: Context.() -> TextStyle? = { null },
         hidden: Context.() -> Boolean = { false },
         condition: Context.() -> Boolean,
-        action: Context.(KeyboardEvent) -> Output
+        action: context(Controller) Context.(KeyboardEvent) -> Unit
     ) : this(
         keys = listOf(*keys),
         displayKey = displayKey,
@@ -54,7 +50,7 @@ data class KeyAction<Context, Output>(
     context(context: Context)
     override fun isAvailable() = context.condition()
 
-    context(context: Context)
+    context(context: Context, controller: Controller)
     override fun run(input: KeyboardEvent) = context.action(input)
 
     data class Trigger(val key: KeyboardEvent)

@@ -34,7 +34,6 @@ import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
 import de.jonasbroeckmann.nav.app.App
-import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
@@ -327,7 +326,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             }
         }
         terminal.info("""Opening config file at "$configPath" ...""")
-        val exitCode = AppAction.OpenFile(configPath).runIn(app)
+        val exitCode = app.openInEditor(configPath)
         exitProcess(exitCode ?: 1)
     }
 

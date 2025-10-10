@@ -1,10 +1,9 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.app.AppAction
 import de.jonasbroeckmann.nav.app.context
 import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.Entry
-import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.updateState
 
 enum class DefaultMacroProperties(
     val property: MacroProperty
@@ -108,9 +107,6 @@ enum class DefaultMacroProperties(
         val BySymbol by lazy {
             entries.associate { it.property.symbol to it.property }
         }
-
-        context(context: MacroRuntimeContext)
-        private fun updateState(block: State.() -> State) = context.run(AppAction.UpdateState(block))
     }
 }
 

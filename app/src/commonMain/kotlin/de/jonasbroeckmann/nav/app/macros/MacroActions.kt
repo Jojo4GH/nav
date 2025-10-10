@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros
 
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -10,6 +11,9 @@ value class MacroActions(private val actions: List<MacroAction> = emptyList()) :
 
     context(context: MacroRuntimeContext)
     override fun run() {
-        actions.forEach { it.run() }
+        actions.forEach {
+            context.printlnOnDebug { "Running macro action: $it" }
+            it.run()
+        }
     }
 }

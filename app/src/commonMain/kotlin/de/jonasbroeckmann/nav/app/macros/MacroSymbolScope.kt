@@ -15,17 +15,19 @@ interface MacroSymbolScope {
 }
 
 open class MacroSymbolScopeBase(
-    context: FullContext,
-    stateProvider: StateProvider
-) : MacroSymbolScope, FullContext by context, StateProvider by stateProvider {
+    private val context: FullContext,
+    private val stateProvider: StateProvider
+) : MacroSymbolScope {
 
     protected open val variables = mutableMapOf<MacroSymbol.Generic, String>()
 
-    override operator fun get(symbol: MacroSymbol) = when (symbol) {
-        is MacroSymbol.EnvironmentVariable -> symbol.get()
-        is MacroSymbol.Generic -> {
-            DefaultMacroProperties.BySymbol[symbol]?.let { return it.get() }
-            variables[symbol].orEmpty()
+    override operator fun get(symbol: MacroSymbol) = context(context, stateProvider) {
+        when (symbol) {
+            is MacroSymbol.EnvironmentVariable -> symbol.get()
+            is MacroSymbol.Generic -> {
+                DefaultMacroProperties.BySymbol[symbol]?.let { return it.get() }
+                variables[symbol].orEmpty()
+            }
         }
     }
 }

@@ -404,7 +404,7 @@ private fun buildNavHints(
         addAction(actions.openMenu, state)
         addAction(actions.exitMenu, state)
 
-        actions.macroActions.forEach { action ->
+        actions.normalModeMacroActions.forEach { action ->
             addAction(action, state)
         }
     }
