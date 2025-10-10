@@ -3,6 +3,7 @@ package de.jonasbroeckmann.nav.app.ui
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
+import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
 import de.jonasbroeckmann.nav.app.actions.register
 import de.jonasbroeckmann.nav.app.updateTextField
@@ -14,6 +15,24 @@ import kotlin.time.Duration
 
 private data class TextPromptState(
     val text: String
+)
+
+context(context: FullContext)
+fun DialogRenderingScope.defaultTextPrompt(
+    title: String,
+    initialText: String = "",
+    placeholder: String? = null,
+    validate: (String) -> Boolean = { true },
+): String? = textPrompt(
+    title = title,
+    initialText = initialText,
+    placeholder = placeholder,
+    validate = validate,
+    showHints = !context.config.hideHints,
+    submitKey = context.config.keys.submit,
+    clearKey = context.config.keys.cancel,
+    cancelKey = context.config.keys.cancel,
+    inputTimeout = context.inputTimeout
 )
 
 context(context: PartialContext, stylesProvider: StylesProvider)

@@ -43,9 +43,30 @@ inline fun KeyboardEvent.updateTextField(
     onChange: (String) -> Unit
 ) {
     contract { callsInPlace(onChange, InvocationKind.AT_MOST_ONCE) }
-    if (alt || ctrl) return
-    when {
-        this == KeyboardEvent("Backspace") -> onChange(current.dropLast(1))
-        key.length == 1 -> onChange(current + key)
+    when (this) {
+        KeyboardEvent("Backspace") -> onChange(current.dropLast(1))
+        KeyboardEvent("Backspace", ctrl = true) -> {
+            val lastChar = current.lastOrNull() ?: return
+            onChange(current.dropLastWhile { it wordTypeEquals lastChar })
+        }
+        else -> {
+            var event = this
+            if (event.ctrl || event.alt) {
+                if (event.ctrl && event.alt) {
+                    event = event.copy(ctrl = false, alt = false)
+                } else {
+                    return
+                }
+            }
+            if (event.key.length == 1) {
+                onChange(current + event.key)
+            }
+        }
     }
+}
+
+infix fun Char.wordTypeEquals(other: Char): Boolean = when {
+    this.isLetterOrDigit() || this == '_' -> other.isLetterOrDigit() || other == '_'
+    this.isWhitespace() -> other.isWhitespace()
+    else -> this == other
 }

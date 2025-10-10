@@ -334,10 +334,10 @@ class App(
         throw ExitEvent()
     }
 
-    override fun showDialog(block: DialogRenderingScope.() -> Unit) {
+    override fun <R> showDialog(block: DialogRenderingScope.() -> R): R {
         val previous = dialog
         try {
-            object : DialogRenderingScope {
+            return object : DialogRenderingScope {
                 override fun render(widget: Widget) {
                     dialog = widget
                     ui.update()

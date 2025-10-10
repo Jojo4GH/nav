@@ -3,13 +3,21 @@ package de.jonasbroeckmann.nav.app.macros
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
+import de.jonasbroeckmann.nav.app.ui.DialogRenderingScope
+import de.jonasbroeckmann.nav.app.ui.decorate
+import de.jonasbroeckmann.nav.app.ui.macroDialogDecorator
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import kotlin.collections.emptyMap
 import kotlin.collections.forEach
 
 class MacroRuntimeContext private constructor(
-    controller: MainController
+    controller: MainController,
+    private val rootMacro: Macro
 ) : MacroSymbolScopeBase(controller, controller), MainController by controller {
+
+    fun <R> showMacroDialog(block: DialogRenderingScope.() -> R) = showDialog {
+        decorate(macroDialogDecorator(rootMacro), block)
+    }
 
     operator fun set(symbol: MacroSymbol, value: String): Unit = when (symbol) {
         is MacroSymbol.EnvironmentVariable -> {
@@ -32,7 +40,7 @@ class MacroRuntimeContext private constructor(
         returnBarrier: Boolean = true,
         runnable: MacroRunnable
     ) {
-        val callContext = MacroRuntimeContext(this)
+        val callContext = MacroRuntimeContext(this, rootMacro)
 
         val input = parameters
             ?.mapValues { (_, evaluable) -> context(this) { evaluable.evaluate() } }
@@ -70,10 +78,10 @@ class MacroRuntimeContext private constructor(
 
     companion object {
         context(app: App)
-        fun run(runnable: MacroRunnable) {
-            MacroRuntimeContext(app).call(
+        fun run(macro: Macro) {
+            MacroRuntimeContext(app, rootMacro = macro).call(
                 parameters = emptyMap(),
-                runnable = runnable
+                runnable = macro
             )
         }
 
