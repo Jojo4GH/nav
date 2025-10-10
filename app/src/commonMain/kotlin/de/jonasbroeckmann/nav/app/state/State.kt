@@ -1,16 +1,22 @@
 package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.MenuAction
+import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemList
+import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemListSemantics
+import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemList
+import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemListSemantics
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.isDirectory
 import kotlinx.io.files.Path
 
 data class State private constructor(
     val directory: Path,
-    val items: List<Entry> = directory.entries(),
-    val cursor: Int,
-    val filter: String = "",
+    override val unfilteredItems: List<Entry> = directory.entries(),
+    override val cursor: Int,
+    override val filter: String = "",
     val showHiddenEntries: Boolean,
 
     private val menuCursor: Int = -1,
@@ -21,125 +27,109 @@ data class State private constructor(
     val inQuickMacroMode: Boolean = false,
 
     val lastReceivedEvent: KeyboardEvent? = null
-) {
-    val filteredItems: List<Entry> by lazy {
-        when {
-            filter.isNotEmpty() -> {
-                val lowercaseFilter = filter.lowercase()
-                items
-                    .filter { lowercaseFilter in it.path.name.lowercase() }
-                    // TODO replace with scoring algorithm
-                    .let { entries ->
-                        if (!showHiddenEntries) {
-                            entries.sortedByDescending { it.isHidden != true }
-                        } else {
-                            entries
-                        }
-                    }
-                    .sortedByDescending { it.path.name.startsWith(filter, ignoreCase = true) }
-                    .sortedByDescending { it.path.name.startsWith(filter) }
-            }
-            !showHiddenEntries -> items.filter { it.isHidden != true } // only remove hidden entries if filter is empty
-            else -> items
-        }
-    }
-    val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
+) : StateProvider, FilterableItemList<State, Entry>, NavigableItemList<State, Entry> {
+    override val state get() = this
 
-    val availableMenuActions get() = allMenuActions().filter { it.isAvailable(this) }
-    val coercedMenuCursor get() = menuCursor.coerceAtMost(availableMenuActions.lastIndex).coerceAtLeast(-1)
+    private val filterableItemListSemantics = FilterableItemListSemantics(
+        self = this,
+        lazyItems = { unfilteredItems },
+        filter = filter,
+        copyWithFilter = { copy(filter = it) },
+        filterOn = { path.name },
+        preSort = {
+            if (!showHiddenEntries) {
+                sortedByDescending { it.isHidden != true }
+            } else {
+                this
+            }
+        },
+        onNoFilter = {
+            if (!showHiddenEntries) {
+                filter { it.isHidden != true } // only remove hidden entries if filter is empty
+            } else {
+                this
+            }
+        }
+    )
+
+    override val filteredItems get() = filterableItemListSemantics.filteredItems
+
+    override fun withFilter(filter: String) = filterableItemListSemantics.withFilter(filter)
+
+    private val navigableItemListSemantics = NavigableItemListSemantics(
+        self = this,
+        lazyItems = { filteredItems },
+        cursor = cursor,
+        copyWithCursor = { copy(cursor = it) }
+    )
+
+    override val currentItem get() = navigableItemListSemantics.currentItem
+
+    override fun withCursorCoerced(cursor: Int) = navigableItemListSemantics.withCursorCoerced(cursor)
+
+    override fun withCursorShifted(offset: Int) = navigableItemListSemantics.withCursorShifted(offset)
+
+    override fun withCursorOnFirst(
+        default: Int,
+        predicate: (Entry) -> Boolean
+    ) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
+
+    override fun withCursorOnNext(predicate: (Entry) -> Boolean) = navigableItemListSemantics.withCursorOnNext(predicate)
+
+    override fun withCursorOnNextReverse(predicate: (Entry) -> Boolean) = navigableItemListSemantics.withCursorOnNextReverse(predicate)
+
+    val shownMenuActions get() = allMenuActions().filter { it.isShown() }
+    val coercedMenuCursor get() = menuCursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
     val isMenuOpen get() = menuCursor >= 0
-    val currentMenuAction get() = availableMenuActions.getOrNull(coercedMenuCursor)
+    val currentMenuAction get() = shownMenuActions.getOrNull(coercedMenuCursor)
 
     val isTypingCommand get() = command != null
 
-    fun withMenuCursor(cursor: Int?) = copy(menuCursor = cursor?.coerceAtLeast(0) ?: -1)
+    fun withMenuCursorCoerced(cursor: Int) = copy(
+        menuCursor = cursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
+    )
 
     fun withCommand(command: String?) = copy(command = command)
 
-    fun withCursorCoerced(cursor: Int) = copy(
-        cursor = cursor.coerceAtMost(filteredItems.lastIndex).coerceAtLeast(0)
-    )
+    fun navigateTo(path: Path?): State {
+        if (path == null) return this
+        if (directory == path) return this
+        if (!path.isDirectory) return this
 
-    fun withCursorShifted(offset: Int) = withCursorCoerced(
-        cursor = when {
-            filteredItems.isEmpty() -> 0
-            else -> (cursor + offset).mod(filteredItems.size)
+        tailrec fun Path.nearestChildToOrNull(parent: Path): Path? {
+            if (this.parent == parent) return this
+            return this.parent?.nearestChildToOrNull(parent)
         }
-    )
 
-    fun withCursorOn(preferredEntry: String?, default: Int = cursor) = when (preferredEntry) {
-        null -> withCursorCoerced(default)
-        else -> withCursorOnFirst(default = default) { it.path.name == preferredEntry }
-    }
-
-    fun withCursorOnFirst(default: Int = cursor, predicate: (Entry) -> Boolean): State = withCursorCoerced(
-        cursor = filteredItems.indexOfFirst { predicate(it) }.takeIf { it >= 0 } ?: default
-    )
-
-    fun withCursorOnNext(predicate: (Entry) -> Boolean): State = withCursorOnNextInOffsets(
-        offsets = 1 until filteredItems.size,
-        predicate = predicate
-    )
-
-    fun withCursorOnNextReverse(predicate: (Entry) -> Boolean): State = withCursorOnNextInOffsets(
-        offsets = (1 until filteredItems.size).map { -it },
-        predicate = predicate
-    )
-
-    private fun withCursorOnNextInOffsets(
-        offsets: Iterable<Int>,
-        predicate: (Entry) -> Boolean
-    ): State {
-        for (offset in offsets) {
-            val i = (cursor + offset).mod(filteredItems.size)
-            if (predicate(filteredItems[i])) {
-                return copy(cursor = i)
-            }
-        }
-        return this
-    }
-
-    fun withFilter(filter: String): State {
-        val tmp = copy(filter = filter)
-        return if (filteredItems.size > tmp.filteredItems.size) {
-            // if we filtered something out, move the cursor to the best match
-            tmp.withCursorCoerced(0)
+        val nearestChild = directory.nearestChildToOrNull(parent = path)
+        return if (nearestChild != null) {
+            // navigating to a parent directory, try to stay on the same entry
+            val entries = path.entries()
+            copy(
+                directory = path,
+                unfilteredItems = entries,
+                cursor = entries.indexOfFirst { it.path.name == nearestChild.name }.coerceAtLeast(0),
+                filter = ""
+            )
         } else {
-            // otherwise try to stay on the same entry
-            tmp.withCursorOn(currentEntry?.path?.name)
-        }
-    }
-
-    fun navigatedUp(): State {
-        val newDir = directory.parent ?: return this
-        val entries = newDir.entries()
-        return copy(
-            directory = newDir,
-            items = entries,
-            cursor = entries.indexOfFirst { it.path.name == directory.name }.coerceAtLeast(0),
-            filter = ""
-        )
-    }
-
-    fun navigatedInto(entry: Entry?): State {
-        return when {
-            entry == null -> this
-            entry.type == Directory || entry.linkTarget?.targetEntry?.type == Directory -> copy(
-                directory = entry.path,
-                items = entry.path.entries(),
+            // navigating to an unrelated directory, go to the top
+            copy(
+                directory = path,
+                unfilteredItems = path.entries(),
                 cursor = 0,
                 filter = ""
             )
-            else -> this
         }
     }
 
-    fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
-        return copy(items = directory.entries()).withCursorOn(preferredEntry)
+    fun navigatedUp() = navigateTo(directory.parent)
+
+    fun updatedEntries(preferredEntry: (Entry) -> Boolean = { it.path.name == currentItem?.path?.name }): State {
+        return copy(unfilteredItems = directory.entries()).withCursorOnFirst(predicate = preferredEntry)
     }
 
     fun inQuickMacroMode(enabled: Boolean = true) = when (enabled) {
-        true -> copy(inQuickMacroMode = true).withMenuCursor(null)
+        true -> copy(inQuickMacroMode = true).withMenuCursorCoerced(-1)
         false -> copy(inQuickMacroMode = false)
     }
 

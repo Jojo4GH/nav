@@ -49,7 +49,7 @@ enum class EntryColumn(
         Text("${render(entry.userPermissions)}${render(entry.groupPermissions)}${render(entry.othersPermissions)}")
     }),
 
-    HardLinkCount({ styles.hardlinkCountHeader("#HL") }, { entry ->
+    HardLinkCount({ styles.hardlinkCountHeader("HL") }, { entry ->
         Text(styles.hardlinkCount("${entry.hardlinkCount}"))
     }),
 

@@ -19,7 +19,7 @@ fun Path.finalPath(): FinalPathResult = useHandle(
         return FinalPathResult.Error(GetLastError())
     }
     // Second call to get the actual path
-    val buffer = allocArray<TCHARVar>(bufferSize.toInt())
+    val buffer = allocArray<TCHARVar>(bufferSize.toLong())
     val resultSize = GetFinalPathNameByHandleW(
         hFile = handle,
         lpszFilePath = buffer,
