@@ -483,7 +483,7 @@ decorations = false   # Whether to show decorations (default: auto)
 
 </details>
 
-### ⭐ Macros (experimental)
+## ⭐ Macros (experimental)
 
 > [!WARNING]
 > Macros are currently an experimental feature.
@@ -541,7 +541,7 @@ macros:
 
 </details>
 
-#### Conditions
+### Conditions
 
 <details open>
 <summary>YAML</summary>
@@ -592,7 +592,7 @@ macros:
 
 </details>
 
-#### Actions
+### Actions
 
 <details open>
 <summary>YAML</summary>
@@ -687,7 +687,7 @@ macros:
 
 </details>
 
-#### Properties, Variables and Placeholders
+### Properties, Variables and Placeholders
 
 Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
 Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
@@ -717,7 +717,7 @@ Any environment variable can be accessed and modified as well by using the prefi
 
 Additionally, macros can define their own mutable variables that can be used in placeholders.
 
-#### Examples
+### Examples
 
 <details open>
 <summary>YAML</summary>
@@ -771,7 +771,7 @@ macros:
 
 </details>
 
-### Entry Macros
+## Entry Macros
 
 > [!NOTE]
 > Entry macros will be superseded by [Macros](#-macros-experimental) in the future.
