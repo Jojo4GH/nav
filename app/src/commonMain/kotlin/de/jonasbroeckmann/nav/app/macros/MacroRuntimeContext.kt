@@ -14,7 +14,6 @@ class MacroRuntimeContext private constructor(
     controller: MainController,
     private val rootMacro: Macro
 ) : MacroSymbolScopeBase(controller, controller), MainController by controller {
-
     fun <R> showMacroDialog(block: DialogRenderingScope.() -> R) = showDialog {
         decorate(macroDialogDecorator(rootMacro), block)
     }

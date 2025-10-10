@@ -109,4 +109,3 @@ enum class DefaultMacroProperties(
         }
     }
 }
-

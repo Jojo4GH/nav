@@ -6,8 +6,8 @@ import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.actions.MainActions
-import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator

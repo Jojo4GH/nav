@@ -15,13 +15,11 @@ import de.jonasbroeckmann.nav.app.runMacro
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.state.semantics.autocomplete
-import de.jonasbroeckmann.nav.app.ui.dialogs.dismissDialog
 import de.jonasbroeckmann.nav.app.ui.prettyName
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
-import de.jonasbroeckmann.nav.utils.commonPrefix
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.files.SystemFileSystem
 

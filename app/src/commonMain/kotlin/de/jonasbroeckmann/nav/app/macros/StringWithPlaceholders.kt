@@ -20,7 +20,7 @@ value class StringWithPlaceholders(val raw: String) : MacroEvaluable<String> {
     companion object {
         private val PlaceholderRegex = Regex("""\{\{(.+?)\}\}""")
 
-        fun placeholder(name: String) = StringWithPlaceholders("{{${name}}}")
+        fun placeholder(name: String) = StringWithPlaceholders("{{$name}}")
 
         val Empty = StringWithPlaceholders("")
     }
