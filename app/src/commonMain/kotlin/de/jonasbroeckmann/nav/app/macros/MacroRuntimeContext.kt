@@ -3,6 +3,7 @@ package de.jonasbroeckmann.nav.app.macros
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import kotlin.collections.emptyMap
 import kotlin.collections.forEach
 
@@ -11,9 +12,16 @@ class MacroRuntimeContext private constructor(
 ) : MacroSymbolScopeBase(controller, controller), MainController by controller {
 
     operator fun set(symbol: MacroSymbol, value: String): Unit = when (symbol) {
-        is MacroSymbol.EnvironmentVariable -> symbol.set(value)
+        is MacroSymbol.EnvironmentVariable -> {
+            printlnOnDebug { "Setting environment variable $symbol to '$value'" }
+            symbol.set(value)
+        }
         is MacroSymbol.Generic -> {
-            DefaultMacroProperties.BySymbol[symbol]?.let { return it.trySet(value) }
+            DefaultMacroProperties.BySymbol[symbol]?.let {
+                printlnOnDebug { "Setting property $symbol to '$value'" }
+                return it.trySet(value)
+            }
+            printlnOnDebug { "Setting variable $symbol to '$value'" }
             variables[symbol] = value
         }
     }

@@ -3,6 +3,7 @@ package de.jonasbroeckmann.nav.app.macros
 import com.github.ajalt.mordant.terminal.danger
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.StateProvider
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.setEnvironmentVariable
 
@@ -38,7 +39,7 @@ sealed class MacroSymbol {
         private const val ENV_PREFIX = "env"
 
         fun fromString(string: String) = if (string.startsWith("$ENV_PREFIX$PREFIX_SEPARATOR")) {
-            EnvironmentVariable(string)
+            EnvironmentVariable(string.removePrefix("$ENV_PREFIX$PREFIX_SEPARATOR"))
         } else {
             Generic(string)
         }
