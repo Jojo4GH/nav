@@ -195,6 +195,7 @@ class App(
             for (action in actions.quickMacroModeActions) {
                 if (context(state) { action matches this.copy(ctrl = false) }) {
                     action.tryRun(this)
+                    state = state.inQuickMacroMode(false)
                     return
                 }
             }

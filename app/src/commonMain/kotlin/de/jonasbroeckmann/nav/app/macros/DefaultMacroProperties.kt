@@ -110,6 +110,3 @@ enum class DefaultMacroProperties(
     }
 }
 
-object DefaultMacroSymbols {
-    val ExitCode = MacroSymbol.Generic("exitCode")
-}
