@@ -45,7 +45,7 @@ fun <T, R> DialogRenderingScope.dialog(
     }
 
     try {
-        context(scope) {
+        context(scope, Unit) {
             while (true) {
                 while (isStateDirty) {
                     isStateDirty = false
@@ -69,7 +69,7 @@ fun <T, R> DialogRenderingScope.dialog(
 }
 
 interface DialogController {
-    fun show(block: DialogRenderingScope.() -> Unit)
+    fun showDialog(block: DialogRenderingScope.() -> Unit)
 }
 
 interface DialogRenderingScope {

@@ -8,10 +8,9 @@ import com.github.ajalt.mordant.terminal.warning
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import de.jonasbroeckmann.nav.Constants.BinaryName
-import de.jonasbroeckmann.nav.app.AppAction.Exit
-import de.jonasbroeckmann.nav.app.AppAction.NoOp
 import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.MainActions
+import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.DialogController
@@ -33,10 +32,58 @@ import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+interface MainController : DialogController, FullContext, StateProvider {
+    fun updateState(updater: State.() -> State)
+
+    fun openInEditor(file: Path): Int?
+
+    fun runCommand(command: String, collectOutput: Boolean = false, collectError: Boolean = false): RunCommandResult?
+
+    data class RunCommandResult(
+        val exitCode: Int,
+        val stdout: String?,
+        val stderr: String?
+    ) {
+        val isSuccess get() = exitCode == 0
+    }
+
+    fun runMacro(macro: Macro)
+
+    fun runEntryMacro(entryMacro: Config.EntryMacro)
+
+    fun exit(atDirectory: Path? = null): Nothing
+}
+
+context(controller: MainController)
+fun updateState(updater: State.() -> State) = controller.updateState(updater)
+
+context(controller: MainController)
+fun openInEditor(file: Path): Int? = controller.openInEditor(file)
+
+context(controller: MainController)
+fun runCommand(
+    command: String,
+    collectOutput: Boolean = false,
+    collectError: Boolean = false
+) = controller.runCommand(
+    command = command,
+    collectOutput = collectOutput,
+    collectError = collectError
+)
+
+context(controller: MainController)
+fun runMacro(macro: Macro) = controller.runMacro(macro)
+
+context(controller: MainController)
+fun runEntryMacro(entryMacro: Config.EntryMacro) = controller.runEntryMacro(entryMacro)
+
+context(controller: MainController)
+fun exit(atDirectory: Path? = null): Nothing = controller.exit(atDirectory)
+
 class App(
     context: PartialContext,
     override val config: Config
-) : FullContext, PartialContext by context, StateProvider, DialogController {
+) : MainController, PartialContext by context {
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
         context.command.configurationOptions.editor
@@ -82,15 +129,6 @@ class App(
             .toMap()
     }
 
-//    private val ui = UI(
-//        context = this,
-//        actions = actions,
-//        state = State.initial(
-//            startingDirectory = startingDirectory,
-//            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
-//            allMenuActions = { actions.menuActions }
-//        )
-//    )
     private val ui = RebuildableAnimation(terminal) {
         buildUI(
             actions = actions,
@@ -108,11 +146,8 @@ class App(
             allMenuActions = { actions.menuActions }
         )
     )
-        private set
 
     private var dialog: Widget? by ui.invalidating(initial = null)
-
-
 
     override val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
 
@@ -132,7 +167,7 @@ class App(
         try {
             while (true) {
                 ui.update()
-                readInput(inputTimeout).process().runIn(this)
+                readInput(inputTimeout).process()
             }
         } catch (_: ExitEvent) {
             printlnOnDebug { "Exiting ..." }
@@ -150,7 +185,7 @@ class App(
     }
 
     @Suppress("detekt:CyclomaticComplexMethod", "detekt:ReturnCount")
-    private fun InputEvent.process(): AppAction<*> = filterKeyboardEvents {
+    private fun InputEvent.process() = filterKeyboardEvents {
         state = state.withLastReceivedEvent(this)
         if (ctrl) {
             printlnOnDebug { "Entering quick macro mode ..." }
@@ -159,11 +194,12 @@ class App(
         if (state.inQuickMacroMode) {
             for (action in actions.quickMacroModeActions) {
                 if (context(state) { action matches this.copy(ctrl = false) }) {
-                    return action.tryRun(this)
+                    action.tryRun(this)
+                    return
                 }
             }
             if (key in setOf("Control", "Shift", "Alt")) {
-                return NoOp
+                return
             }
             // no action matched, so we continue as normal
             printlnOnDebug { "Exiting quick macro mode ..." }
@@ -171,7 +207,8 @@ class App(
         }
         for (action in actions.normalModeActions) {
             if (context(state) { action matches this }) {
-                return action.tryRun(this)
+                action.tryRun(this)
+                return
             }
         }
         val command = state.command
@@ -186,12 +223,12 @@ class App(
                 onChange = { newFilter -> state = state.withFilter(newFilter) }
             )
         }
-        return NoOp
-    } ?: NoOp
+        return
+    } ?: Unit
 
-    private fun <E : InputEvent?> Action<State, E, AppAction<*>>.tryRun(input: E): AppAction<*> {
+    private fun <E : InputEvent?> Action<State, E, MainController>.tryRun(input: E) {
         try {
-            return context(state) { run(input) }
+            context(state) { run(input) }
         } catch (e: IOException) {
             val msg = e.message
             when {
@@ -208,62 +245,96 @@ class App(
                     terminal.info("If this should be considered a bug, please report it.")
                 }
             }
-            return NoOp
         }
     }
 
-    fun perform(@Suppress("unused") action: NoOp) = Unit
-
-    fun perform(action: AppAction.UpdateState) {
-        state = action.update(state)
+    override fun updateState(updater: State.() -> State) {
+        state = updater(state)
     }
 
-    fun perform(action: AppAction.OpenFile) = openInEditor(action.file)?.also { exitCode ->
-        if (exitCode != 0) {
-            terminal.danger("Received exit code $exitCode")
+    override fun openInEditor(file: Path): Int? {
+        val editorCommand = editorCommand ?: run {
+            terminal.danger("Could not open file. No editor configured")
+            return null
+        }
+        // if the command is quoted or a single word, we assume it's a single path to the executable
+        val fullPath = Regex("\"(.+)\"").matchEntire(editorCommand)?.groupValues[1]
+            ?: editorCommand.takeUnless { it.any { c -> c.isWhitespace() } }
+        if (fullPath != null) {
+            return runCommandFromUI(
+                exe = which(fullPath)?.toString() ?: fullPath,
+                args = listOf("$file")
+            ) {
+                stdin(Inherit)
+            }?.let {
+                if (!it.isSuccess) {
+                    terminal.danger("Received exit code ${it.exitCode}")
+                }
+                it.exitCode
+            }
+        }
+        // otherwise we assume it's a complex command that needs to be interpreted by a shell
+        var fileString = "$file"
+        if (fileString.any { c -> c.isWhitespace() }) {
+            // try to escape spaces in file path
+            fileString = "\"$fileString\""
+        }
+        return runCommandFromUIWithShell(
+            command = "$editorCommand $fileString"
+        ) {
+            stdin(Inherit)
+        }?.let {
+            if (!it.isSuccess) {
+                terminal.danger("Received exit code ${it.exitCode}")
+            }
+            it.exitCode
         }
     }
 
-    fun perform(action: AppAction.RunCommand) = runCommandFromUIWithShell(
-        command = action.command,
-        collectOutput = action.collectOutput,
-        collectError = action.collectError
+    override fun runCommand(
+        command: String,
+        collectOutput: Boolean,
+        collectError: Boolean
+    ): MainController.RunCommandResult? = runCommandFromUIWithShell(
+        command = command,
+        collectOutput = collectOutput,
+        collectError = collectError
     )
 
-    fun perform(action: AppAction.RunEntryMacro) {
+    override fun runEntryMacro(entryMacro: Config.EntryMacro) {
         state = state.inQuickMacroMode(false)
         val command = context(state) {
-            action.entryMacro.computeCommand(requireNotNull(state.currentEntry))
+            entryMacro.computeCommand(requireNotNull(state.currentEntry))
         }
         val result = runCommandFromUIWithShell(command) ?: return
         if (result.isSuccess) {
-            when (action.entryMacro.afterSuccessfulCommand) {
+            when (entryMacro.afterSuccessfulCommand) {
                 Config.AfterMacroCommand.DoNothing -> { /* no-op */ }
-                Config.AfterMacroCommand.ExitAtCurrentDirectory -> Exit(state.directory).run()
-                Config.AfterMacroCommand.ExitAtInitialDirectory -> Exit(null).run()
+                Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(state.directory)
+                Config.AfterMacroCommand.ExitAtInitialDirectory -> exit()
             }
         } else {
-            when (action.entryMacro.afterFailedCommand) {
+            when (entryMacro.afterFailedCommand) {
                 Config.AfterMacroCommand.DoNothing -> terminal.danger("Received exit code ${result.exitCode}")
-                Config.AfterMacroCommand.ExitAtCurrentDirectory -> Exit(state.directory).run()
-                Config.AfterMacroCommand.ExitAtInitialDirectory -> Exit(null).run()
+                Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(state.directory)
+                Config.AfterMacroCommand.ExitAtInitialDirectory -> exit()
             }
         }
     }
 
-    fun perform(action: AppAction.RunMacro) {
-        MacroRuntimeContext.run(action.macro)
+    override fun runMacro(macro: Macro) {
+        MacroRuntimeContext.run(macro)
     }
 
-    fun perform(action: Exit): Nothing {
-        action.atDirectory?.let {
+    override fun exit(atDirectory: Path?): Nothing {
+        atDirectory?.let {
             printlnOnDebug { "Broadcasting \"$it\" to parent shell ..." }
             CDFile.broadcastChangeDirectory(it)
         }
         throw ExitEvent()
     }
 
-    override fun show(block: DialogRenderingScope.() -> Unit) {
+    override fun showDialog(block: DialogRenderingScope.() -> Unit) {
         val previous = dialog
         try {
             object : DialogRenderingScope {
@@ -282,7 +353,7 @@ class App(
         collectOutput: Boolean = false,
         collectError: Boolean = false,
         configuration: Command.() -> Command = { this }
-    ): AppAction.RunCommand.Result? {
+    ): MainController.RunCommandResult? {
         val (exe, args) = when (val shell = shell) {
             null -> {
                 terminal.danger("I do not know how to interpret the command without a shell: $command")
@@ -306,7 +377,7 @@ class App(
         collectOutput: Boolean = false,
         collectError: Boolean = false,
         configuration: Command.() -> Command = { this }
-    ): AppAction.RunCommand.Result? {
+    ): MainController.RunCommandResult? {
         ui.clear() // hide UI before running command
         printlnOnDebug { "Running $exe with args $args" }
         val result = try {
@@ -323,7 +394,7 @@ class App(
             val stderr = if (collectError) child.bufferedStderr()?.readAll() else null
             val exitCode = child.wait()
             printlnOnDebug { "  Got exit code: $exitCode" }
-            AppAction.RunCommand.Result(
+            MainController.RunCommandResult(
                 exitCode = exitCode,
                 stdout = stdout,
                 stderr = stderr
@@ -334,35 +405,6 @@ class App(
         }
         state = state.updatedEntries() // update in case the command changed something
         return result
-    }
-
-    private fun openInEditor(file: Path): Int? {
-        val editorCommand = editorCommand ?: run {
-            terminal.danger("Could not open file. No editor configured")
-            return null
-        }
-        // if the command is quoted or a single word, we assume it's a single path to the executable
-        val fullPath = Regex("\"(.+)\"").matchEntire(editorCommand)?.groupValues[1]
-            ?: editorCommand.takeUnless { it.any { c -> c.isWhitespace() } }
-        if (fullPath != null) {
-            return runCommandFromUI(
-                exe = which(fullPath)?.toString() ?: fullPath,
-                args = listOf("$file")
-            ) {
-                stdin(Inherit)
-            }?.exitCode
-        }
-        // otherwise we assume it's a complex command that needs to be interpreted by a shell
-        var fileString = "$file"
-        if (fileString.any { c -> c.isWhitespace() }) {
-            // try to escape spaces in file path
-            fileString = "\"$fileString\""
-        }
-        return runCommandFromUIWithShell(
-            command = "$editorCommand $fileString"
-        ) {
-            stdin(Inherit)
-        }?.exitCode
     }
 
     class ExitEvent : Throwable()
@@ -416,8 +458,5 @@ class App(
         private val specifyEditorMessage: String get() {
             return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
         }
-
-        context(app: App)
-        private fun <R> AppAction<R>.run() = runIn(app)
     }
 }

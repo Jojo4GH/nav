@@ -1,20 +1,43 @@
 package de.jonasbroeckmann.nav.app.actions
 
-abstract class KeyActions<Context, Category, Output> {
-    protected val registered = mutableMapOf<Category?, MutableList<KeyAction<Context, Output>>>()
+import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextStyle
 
-    protected fun KeyAction<Context, Output>.registered(category: Category? = null): KeyAction<Context,Output> {
-        val registeredForCategory = registered.getOrPut(category) { mutableListOf() }
+abstract class KeyActions<Context, Controller, Category> {
+    protected val registered = mutableMapOf<Category, MutableList<KeyAction<Context, Controller>>>()
+
+    protected fun Category.registerKeyAction(action: KeyAction<Context, Controller>): KeyAction<Context, Controller> {
+        val registeredForCategory = registered.getOrPut(this) { mutableListOf() }
         val i = registeredForCategory.size
-        return copy(
+        return action.copy(
             condition = {
-                isAvailable() &&
+                action.isAvailable() &&
                     registeredForCategory.asSequence().take(i).none { prioritized ->
-                        keys.any { it in prioritized.keys } && prioritized.isAvailable()
+                        action.keys.any { it in prioritized.keys } && prioritized.isAvailable()
                     }
             }
         ).also {
             registeredForCategory += it
         }
     }
+
+    protected fun Category.registerKeyAction(
+        vararg keys: KeyboardEvent,
+        displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
+        description: Context.() -> String = { "" },
+        style: Context.() -> TextStyle? = { null },
+        hidden: Context.() -> Boolean = { false },
+        condition: Context.() -> Boolean,
+        action: context(Controller) Context.(KeyboardEvent) -> Unit
+    ) = registerKeyAction(
+        KeyAction(
+            keys = keys,
+            displayKey = displayKey,
+            description = description,
+            style = style,
+            hidden = hidden,
+            condition = condition,
+            action = action
+        )
+    )
 }

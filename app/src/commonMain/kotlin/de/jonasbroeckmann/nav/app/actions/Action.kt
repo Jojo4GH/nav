@@ -3,7 +3,7 @@ package de.jonasbroeckmann.nav.app.actions
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 
-sealed interface Action<Context, Input : InputEvent?, Output> {
+sealed interface Action<Context, Input : InputEvent?, Controller> {
     context(context: Context)
     fun description(): String
 
@@ -22,6 +22,6 @@ sealed interface Action<Context, Input : InputEvent?, Output> {
     context(context: Context)
     fun isShown() = !isHidden() && isAvailable()
 
-    context(context: Context)
-    fun run(input: Input): Output
+    context(context: Context, controller: Controller)
+    fun run(input: Input)
 }

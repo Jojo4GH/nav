@@ -4,6 +4,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
+import de.jonasbroeckmann.nav.app.actions.register
 import de.jonasbroeckmann.nav.app.updateTextField
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.config.StylesProvider

@@ -1,14 +1,14 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import de.jonasbroeckmann.nav.app.App
-import de.jonasbroeckmann.nav.app.AppAction
+import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
 import kotlin.collections.emptyMap
 import kotlin.collections.forEach
 
 class MacroRuntimeContext private constructor(
-    private val app: App
-) : MacroSymbolScopeBase(app, app) {
+    controller: MainController
+) : MacroSymbolScopeBase(controller, controller), MainController by controller {
 
     operator fun set(symbol: MacroSymbol, value: String): Unit = when (symbol) {
         is MacroSymbol.EnvironmentVariable -> symbol.set(value)
@@ -18,15 +18,13 @@ class MacroRuntimeContext private constructor(
         }
     }
 
-    fun <R> run(appAction: AppAction<R>) = appAction.runIn(app)
-
     fun call(
         parameters: Map<MacroSymbol, MacroEvaluable<String>>? = emptyMap(),
         capture: Map<MacroSymbol, MacroEvaluable<String>>? = emptyMap(),
         returnBarrier: Boolean = true,
         runnable: MacroRunnable
     ) {
-        val callContext = MacroRuntimeContext(app)
+        val callContext = MacroRuntimeContext(this)
 
         val input = parameters
             ?.mapValues { (_, evaluable) -> context(this) { evaluable.evaluate() } }
