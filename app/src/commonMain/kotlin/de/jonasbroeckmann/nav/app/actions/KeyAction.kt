@@ -11,7 +11,7 @@ data class KeyAction<Context, Controller>(
     private val hidden: Context.() -> Boolean = { false },
     private val condition: Context.() -> Boolean,
     private val action: context(Controller) Context.(KeyboardEvent) -> Unit
-) : Action<Context, KeyboardEvent,  Controller> {
+) : Action<Context, KeyboardEvent, Controller> {
     constructor(
         vararg keys: KeyboardEvent,
         displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },

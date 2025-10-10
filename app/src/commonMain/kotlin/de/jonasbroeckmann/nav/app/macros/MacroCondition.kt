@@ -12,7 +12,6 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable(with = MacroCondition.Companion::class)
 sealed interface MacroCondition : MacroEvaluable<Boolean> {
-
     val usedSymbols: Set<MacroSymbol>
 
     @Serializable

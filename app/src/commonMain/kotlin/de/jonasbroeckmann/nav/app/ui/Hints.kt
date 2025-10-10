@@ -15,7 +15,10 @@ class HintsBuilder<Context>(
     private val defaultStrongSpacing: String
 ) {
     private enum class ElementType(val isSpacing: Boolean) {
-        WithWeakSpacing(false), WithStrongSpacing(false), WeakSpacing(true), StrongSpacing(true)
+        WithWeakSpacing(false),
+        WithStrongSpacing(false),
+        WeakSpacing(true),
+        StrongSpacing(true)
     }
 
     private val elements = mutableListOf<Pair<ElementType, () -> String>>()

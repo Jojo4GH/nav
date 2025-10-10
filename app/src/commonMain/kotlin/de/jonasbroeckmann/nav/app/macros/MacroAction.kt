@@ -78,7 +78,6 @@ sealed interface MacroAction : MacroRunnable {
         val capture: Map<String, StringWithPlaceholders>? = null,
         val continueOnReturn: Boolean = true
     ) : MacroAction {
-
         context(context: MacroRuntimeContext)
         override fun run() {
             val macroId = macro.evaluate()
@@ -226,10 +225,17 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         @Serializable
         enum class Style {
-            @SerialName("info") Info,
-            @SerialName("success") Success,
-            @SerialName("warning") Warning,
-            @SerialName("error") Error,
+            @SerialName("info")
+            Info,
+
+            @SerialName("success")
+            Success,
+
+            @SerialName("warning")
+            Warning,
+
+            @SerialName("error")
+            Error,
         }
 
         context(context: MacroRuntimeContext)

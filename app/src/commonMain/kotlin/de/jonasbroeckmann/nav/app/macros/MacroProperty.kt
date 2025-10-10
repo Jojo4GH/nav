@@ -5,7 +5,6 @@ import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.StateProvider
 
 sealed interface MacroProperty : MacroEvaluable<String>, MacroIdentified {
-
     context(_: FullContext, _: StateProvider)
     fun get(): String
 

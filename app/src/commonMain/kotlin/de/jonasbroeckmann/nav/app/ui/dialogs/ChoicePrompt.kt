@@ -37,6 +37,7 @@ fun DialogRenderingScope.defaultChoicePrompt(
     inputTimeout = context.inputTimeout
 )
 
+@Suppress("detekt:LongMethod", "detekt:CyclomaticComplexMethod")
 context(context: PartialContext, stylesProvider: StylesProvider)
 fun DialogRenderingScope.choicePrompt(
     title: String,
@@ -188,7 +189,10 @@ private data class ChoicePromptState private constructor(
 
     override fun withCursorShifted(offset: Int) = navigableItemListSemantics.withCursorShifted(offset)
 
-    override fun withCursorOnFirst(default: Int, predicate: (String) -> Boolean) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
+    override fun withCursorOnFirst(
+        default: Int,
+        predicate: (String) -> Boolean
+    ) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
 
     override fun withCursorOnNext(predicate: (String) -> Boolean) = navigableItemListSemantics.withCursorOnNext(predicate)
 

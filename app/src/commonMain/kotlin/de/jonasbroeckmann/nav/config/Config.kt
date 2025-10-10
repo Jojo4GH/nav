@@ -9,9 +9,7 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
-import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.Macro
@@ -302,6 +300,7 @@ data class Config private constructor(
             }
         }
 
+        @Suppress("detekt:ReturnCount")
         context(context: PartialContext)
         fun load(): Config {
             fun errorOnLoad(e: Exception, message: Any?): Config {

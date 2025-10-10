@@ -69,7 +69,10 @@ data class State private constructor(
 
     override fun withCursorShifted(offset: Int) = navigableItemListSemantics.withCursorShifted(offset)
 
-    override fun withCursorOnFirst(default: Int, predicate: (Entry) -> Boolean) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
+    override fun withCursorOnFirst(
+        default: Int,
+        predicate: (Entry) -> Boolean
+    ) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
 
     override fun withCursorOnNext(predicate: (Entry) -> Boolean) = navigableItemListSemantics.withCursorOnNext(predicate)
 
