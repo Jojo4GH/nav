@@ -13,6 +13,8 @@ import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
+import kotlin.text.indexOf
+import kotlin.text.substring
 
 context(context: FullContext)
 fun buildUI(
@@ -81,15 +83,8 @@ private fun buildTable(
         return@table
     }
 
-    val selectedNamePrefix = when {
-        accessibilityDecorations -> "▊"
-        else -> ""
-    }
-
-    val unselectedNamePrefix = when {
-        accessibilityDecorations -> " "
-        else -> ""
-    }
+    val selectedNamePrefix = if (accessibilityDecorations) "▊" else ""
+    val unselectedNamePrefix = if (accessibilityDecorations) " " else ""
 
     header {
         row {
@@ -140,8 +135,8 @@ private fun buildTable(
                             entry = entry,
                             isSelected = isSelected,
                             filter = filter,
-                            selectedNamePrefix = { selectedNamePrefix },
-                            unselectedNamePrefix = { unselectedNamePrefix }
+                            selectedNamePrefix = selectedNamePrefix,
+                            unselectedNamePrefix = unselectedNamePrefix
                         )
                     )
                 )
@@ -213,43 +208,41 @@ private fun buildName(
     entry: Entry,
     isSelected: Boolean,
     filter: String,
-    selectedNamePrefix: () -> String,
-    unselectedNamePrefix: () -> String
+    selectedNamePrefix: String,
+    unselectedNamePrefix: String
 ): String {
     val filterMarkerStyle = styles.filterMarker + TextStyles.bold
     val selectedStyle = TextStyles.inverse
     return entry.path.name
-        .let {
-            if (filter.isNotEmpty()) {
-                // highlight all filter occurrences
-                var index = 0
-                var result = ""
-                while (index < it.length) {
-                    val found = it.indexOf(filter, index, ignoreCase = true)
-                    if (found < 0) {
-                        result += it.substring(index, it.length)
-                        break
-                    }
-                    result += it.substring(index, found)
-                    index = found
-
-                    result += filterMarkerStyle(it.substring(index, index + filter.length))
-                    index += filter.length
-                }
-                result
-            } else {
-                it
-            }
-        }
+        .let { highlightFilterOccurrences(it, filter, filterMarkerStyle) }
         .let { if (isSelected) selectedStyle(it) else it }
         .let { "\u0006$it" } // prevent filter highlighting from getting removed
         .dressUpEntryName(entry, isSelected = isSelected, showLinkTarget = true)
         .let {
             when (isSelected) {
-                true -> "${styles.path(selectedNamePrefix())}$it"
-                false -> "${styles.nameDecorations(unselectedNamePrefix())}$it"
+                true -> "${styles.path(selectedNamePrefix)}$it"
+                false -> "${styles.nameDecorations(unselectedNamePrefix)}$it"
             }
         }
+}
+
+fun highlightFilterOccurrences(text: String, filter: String, highlightStyle: TextStyle): String {
+    if (filter.isEmpty()) return text
+    var index = 0
+    var result = ""
+    while (index < text.length) {
+        val found = text.indexOf(filter, index, ignoreCase = true)
+        if (found < 0) {
+            result += text.substring(index, text.length)
+            break
+        }
+        result += text.substring(index, found)
+        index = found
+
+        result += highlightStyle(text.substring(index, index + filter.length))
+        index += filter.length
+    }
+    return result
 }
 
 context(_: StylesProvider)
@@ -364,14 +357,14 @@ private fun buildNavHints(
     debugMode: Boolean
 ) = buildHints {
     if (state.inQuickMacroMode) {
-        val name = when (state.currentEntry?.type) {
+        val name = when (state.currentItem?.type) {
             Directory -> "dir"
             RegularFile -> "file"
             SymbolicLink -> "link"
             Unknown -> "entry"
             null -> "macro"
         }
-        add { state.currentEntry.style(name) }
+        add { state.currentItem.style(name) }
         addSpacing { styles.genericElements(" │ ") }
         addAction(actions.cancelQuickMacroMode, state)
         val availableMacros = context(state) {

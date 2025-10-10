@@ -10,7 +10,7 @@ import kotlinx.io.files.Path
 
 data class State private constructor(
     val directory: Path,
-    val items: List<Entry> = directory.entries(),
+    val unfilteredItems: List<Entry> = directory.entries(),
     val cursor: Int,
     val filter: String = "",
     val showHiddenEntries: Boolean,
@@ -30,7 +30,7 @@ data class State private constructor(
         when {
             filter.isNotEmpty() -> {
                 val lowercaseFilter = filter.lowercase()
-                items
+                unfilteredItems
                     .filter { lowercaseFilter in it.path.name.lowercase() }
                     // TODO replace with scoring algorithm
                     .let { entries ->
@@ -43,11 +43,11 @@ data class State private constructor(
                     .sortedByDescending { it.path.name.startsWith(filter, ignoreCase = true) }
                     .sortedByDescending { it.path.name.startsWith(filter) }
             }
-            !showHiddenEntries -> items.filter { it.isHidden != true } // only remove hidden entries if filter is empty
-            else -> items
+            !showHiddenEntries -> unfilteredItems.filter { it.isHidden != true } // only remove hidden entries if filter is empty
+            else -> unfilteredItems
         }
     }
-    val currentEntry: Entry? get() = filteredItems.getOrNull(cursor)
+    val currentItem: Entry? get() = filteredItems.getOrNull(cursor)
 
     val shownMenuActions get() = allMenuActions().filter { it.isShown() }
     val coercedMenuCursor get() = menuCursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
@@ -72,11 +72,6 @@ data class State private constructor(
             else -> (cursor + offset).mod(filteredItems.size)
         }
     )
-
-    fun withCursorOn(preferredEntry: String?, default: Int = cursor) = when (preferredEntry) {
-        null -> withCursorCoerced(default)
-        else -> withCursorOnFirst(default = default) { it.path.name == preferredEntry }
-    }
 
     fun withCursorOnFirst(default: Int = cursor, predicate: (Entry) -> Boolean): State = withCursorCoerced(
         cursor = filteredItems.indexOfFirst { predicate(it) }.takeIf { it >= 0 } ?: default
@@ -112,7 +107,7 @@ data class State private constructor(
             tmp.withCursorCoerced(0)
         } else {
             // otherwise try to stay on the same entry
-            tmp.withCursorOn(currentEntry?.path?.name)
+            tmp.withCursorOnFirst { it.path.name == currentItem?.path?.name }
         }
     }
 
@@ -132,7 +127,7 @@ data class State private constructor(
             val entries = path.entries()
             copy(
                 directory = path,
-                items = entries,
+                unfilteredItems = entries,
                 cursor = entries.indexOfFirst { it.path.name == nearestChild.name }.coerceAtLeast(0),
                 filter = ""
             )
@@ -140,7 +135,7 @@ data class State private constructor(
             // navigating to an unrelated directory, go to the top
             copy(
                 directory = path,
-                items = path.entries(),
+                unfilteredItems = path.entries(),
                 cursor = 0,
                 filter = ""
             )
@@ -149,8 +144,8 @@ data class State private constructor(
 
     fun navigatedUp() = navigateTo(directory.parent)
 
-    fun updatedEntries(preferredEntry: String? = currentEntry?.path?.name): State {
-        return copy(items = directory.entries()).withCursorOn(preferredEntry)
+    fun updatedEntries(preferredEntry: (Entry) -> Boolean = { it.path.name == currentItem?.path?.name }): State {
+        return copy(unfilteredItems = directory.entries()).withCursorOnFirst(predicate = preferredEntry)
     }
 
     fun inQuickMacroMode(enabled: Boolean = true) = when (enabled) {

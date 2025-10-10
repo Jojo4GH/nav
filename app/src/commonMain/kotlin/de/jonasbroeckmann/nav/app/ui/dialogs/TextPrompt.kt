@@ -1,17 +1,18 @@
-package de.jonasbroeckmann.nav.app.ui
+package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
+import de.jonasbroeckmann.nav.app.actions.handle
 import de.jonasbroeckmann.nav.app.actions.register
+import de.jonasbroeckmann.nav.app.ui.buildHints
 import de.jonasbroeckmann.nav.app.updateTextField
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 import kotlin.time.Duration
-
 
 private data class TextPromptState(
     val text: String
@@ -30,7 +31,7 @@ fun DialogRenderingScope.defaultTextPrompt(
     validate = validate,
     showHints = !context.config.hideHints,
     submitKey = context.config.keys.submit,
-    clearKey = context.config.keys.cancel,
+    clearKey = context.config.keys.filter.clear,
     cancelKey = context.config.keys.cancel,
     inputTimeout = context.inputTimeout
 )
@@ -47,13 +48,13 @@ fun DialogRenderingScope.textPrompt(
     validate: (String) -> Boolean = { true },
     inputTimeout: Duration
 ): String? {
-    val actions = buildKeyActions<DialogScope<TextPromptState, String?>, Unit> {
+    val actions: List<DialogKeyAction<TextPromptState, String?>> = buildKeyActions {
         if (clearKey != null) {
             register(
                 clearKey,
                 description = { "clear" },
-                condition = { state.text.isNotEmpty() },
-                action = { state = state.copy(text = "") },
+                condition = { text.isNotEmpty() },
+                action = { updateState { copy(text = "") } },
             )
         }
         if (cancelKey != null) {
@@ -61,47 +62,47 @@ fun DialogRenderingScope.textPrompt(
                 cancelKey,
                 description = { "cancel" },
                 condition = { true },
-                action = { closeWith(null) },
+                action = { dismissDialog(null) },
             )
         }
         register(
             submitKey,
             description = { "submit" },
-            condition = { validate(state.text) },
-            action = { closeWith(state.text) },
+            condition = { validate(text) },
+            action = { dismissDialog(text) },
         )
     }
-    return dialog(
+    return inputDialog(
         initialState = TextPromptState(
             text = initialText
         ),
-        actions = actions,
-        onUnhandledInput = { input ->
+        onInput = onInput@{ input ->
+            if (actions.handle(state, input)) return@onInput
             input.updateTextField(state.text) { newText ->
-                state = state.copy(text = newText)
+                updateState { copy(text = newText) }
             }
         },
         inputTimeout = inputTimeout,
-    ) { state ->
+    ) {
         verticalLayout {
             align = LEFT
             cell(title)
             cell(
                 buildString {
                     append("❯ ")
-                    if (state.text.isEmpty()) {
+                    if (text.isEmpty()) {
                         append(TextStyles.dim(placeholder ?: "type input"))
                     } else {
-                        append(state.text)
+                        append(text)
                         append("_")
                     }
                 }
             )
             if (showHints) {
                 cell(
-                    buildHints<DialogScope<TextPromptState, String?>> {
-                        addActions(actions, this@dialog)
-                        if (!validate(state.text)) {
+                    buildHints {
+                        addActions(actions, this@inputDialog)
+                        if (!validate(text)) {
                             add { styles.genericElements("input not valid") }
                         }
                     }

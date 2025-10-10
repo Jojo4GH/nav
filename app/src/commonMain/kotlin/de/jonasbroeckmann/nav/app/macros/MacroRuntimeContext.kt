@@ -3,9 +3,9 @@ package de.jonasbroeckmann.nav.app.macros
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
-import de.jonasbroeckmann.nav.app.ui.DialogRenderingScope
-import de.jonasbroeckmann.nav.app.ui.decorate
-import de.jonasbroeckmann.nav.app.ui.macroDialogDecorator
+import de.jonasbroeckmann.nav.app.ui.dialogs.DialogRenderingScope
+import de.jonasbroeckmann.nav.app.ui.dialogs.decorate
+import de.jonasbroeckmann.nav.app.ui.dialogs.macroDialogDecorator
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import kotlin.collections.emptyMap
 import kotlin.collections.forEach

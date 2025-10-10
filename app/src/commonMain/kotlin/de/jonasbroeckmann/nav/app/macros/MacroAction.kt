@@ -13,8 +13,10 @@ import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
 import de.jonasbroeckmann.nav.app.openInEditor
 import de.jonasbroeckmann.nav.app.runCommand
-import de.jonasbroeckmann.nav.app.ui.defaultTextPrompt
-import de.jonasbroeckmann.nav.app.ui.textPrompt
+import de.jonasbroeckmann.nav.app.ui.dialogs.choicePrompt
+import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
+import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
+import de.jonasbroeckmann.nav.app.ui.dialogs.textPrompt
 import de.jonasbroeckmann.nav.command.dangerOnDebug
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
@@ -42,10 +44,17 @@ sealed interface MacroAction : MacroRunnable {
 
         context(context: MacroRuntimeContext)
         override fun run() {
-            if (choices.isNotEmpty()) {
-
+            val result = if (choices.isNotEmpty()) {
+                val evaluatedChoices = choices.map { it.evaluate() }
+                context.showMacroDialog {
+                    defaultChoicePrompt(
+                        title = prompt.evaluate(),
+                        choices = evaluatedChoices,
+                        defaultChoice = default?.evaluate()?.let { default -> evaluatedChoices.indexOf(default).takeIf { it >= 0 } } ?: 0
+                    )
+                }
             } else {
-                val result = context.showMacroDialog {
+                context.showMacroDialog {
                     defaultTextPrompt(
                         title = prompt.evaluate(),
                         initialText = default?.evaluate() ?: "",
@@ -53,12 +62,12 @@ sealed interface MacroAction : MacroRunnable {
                         validate = { input -> format?.matches(input) ?: true }
                     )
                 }
-                if (result == null) {
-                    context.dangerOnDebug { "Aborting macro because prompt was cancelled." }
-                    context.doReturn()
-                }
-                context[resultTo] = result
             }
+            if (result == null) {
+                context.dangerOnDebug { "Aborting macro because prompt was cancelled." }
+                context.doReturn()
+            }
+            context[resultTo] = result
         }
     }
 

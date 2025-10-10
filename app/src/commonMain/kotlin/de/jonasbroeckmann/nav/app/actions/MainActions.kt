@@ -53,9 +53,9 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         QuickMacroMode.registerKeyAction(
             macro.quickMacroKey.copy(ctrl = false),
             displayKey = { macro.quickMacroKey },
-            description = { currentEntry?.let { macro.computeDescription(it) }.orEmpty() },
-            style = { currentEntry.style },
-            hidden = { currentEntry == null },
+            description = { currentItem?.let { macro.computeDescription(it) }.orEmpty() },
+            style = { currentItem.style },
+            hidden = { currentItem == null },
             condition = { inQuickMacroMode && macro.condition() },
             action = { runEntryMacro(macro) }
         )
@@ -107,15 +107,15 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
     )
     val navigateInto = NormalMode.registerKeyAction(
         config.keys.nav.into,
-        condition = { currentEntry?.type == Directory || currentEntry?.linkTarget?.targetEntry?.type == Directory },
-        action = { updateState { navigateTo(currentEntry?.path) } }
+        condition = { currentItem?.type == Directory || currentItem?.linkTarget?.targetEntry?.type == Directory },
+        action = { updateState { navigateTo(currentItem?.path) } }
     )
     val navigateOpen = NormalMode.registerKeyAction(
         config.keys.nav.open,
         description = { "open in ${editorCommand ?: "editor"}" },
         style = { styles.file },
-        condition = { currentEntry?.type == RegularFile || currentEntry?.linkTarget?.targetEntry?.type == RegularFile },
-        action = { openInEditor(currentEntry?.path ?: throw IllegalStateException("Cannot open file")) }
+        condition = { currentItem?.type == RegularFile || currentItem?.linkTarget?.targetEntry?.type == RegularFile },
+        action = { openInEditor(currentItem?.path ?: throw IllegalStateException("Cannot open file")) }
     )
 
     val discardCommand = NormalMode.registerKeyAction(
@@ -128,9 +128,9 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
     val autocompleteFilter = NormalMode.registerKeyAction(
         config.keys.filter.autocomplete, config.keys.filter.autocomplete.copy(shift = true),
         description = { "autocomplete" },
-        condition = { items.isNotEmpty() },
+        condition = { unfilteredItems.isNotEmpty() },
         action = action@{ keyEvent ->
-            val commonPrefix = items
+            val commonPrefix = unfilteredItems
                 .map { it.path.name.lowercase() }
                 .filter { it.startsWith(filter.lowercase()) }
                 .ifEmpty { return@action }
@@ -242,9 +242,9 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         }.toTypedArray(),
         *config.entryMacros.map { macro ->
             MenuAction(
-                description = { currentEntry?.let { macro.computeDescription(it) }.orEmpty() },
-                style = { currentEntry.style },
-                hidden = { currentEntry == null },
+                description = { currentItem?.let { macro.computeDescription(it) }.orEmpty() },
+                style = { currentItem.style },
+                hidden = { currentItem == null },
                 condition = { macro.condition() },
                 action = { runEntryMacro(macro) }
             )
@@ -252,19 +252,19 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         MenuAction(
             description = { "New file: \"${filter}\"" },
             style = { styles.file },
-            condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
+            condition = { filter.isNotEmpty() && !unfilteredItems.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.sink(directory / filter).close()
-                updateState { withFilter("").updatedEntries(filter) }
+                updateState { withFilter("").updatedEntries { it.path.name == filter } }
             }
         ),
         MenuAction(
             description = { "New directory: \"${filter}\"" },
             style = { styles.directory },
-            condition = { filter.isNotEmpty() && !items.any { it.path.name == filter } },
+            condition = { filter.isNotEmpty() && !unfilteredItems.any { it.path.name == filter } },
             action = {
                 SystemFileSystem.createDirectories(directory / filter)
-                updateState { withFilter("").updatedEntries(filter) }
+                updateState { withFilter("").updatedEntries { it.path.name == filter } }
             }
         ),
         MenuAction(
@@ -297,7 +297,7 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         ),
         MenuAction(
             description = {
-                val currentEntry = currentEntry
+                val currentEntry = currentItem
                 requireNotNull(currentEntry)
                 val style = when (currentEntry.type) {
                     SymbolicLink -> styles.link
@@ -307,9 +307,9 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
                 }
                 style("Delete: ${currentEntry.path.name}")
             },
-            condition = { currentEntry.let { it != null && it.type != Directory } },
+            condition = { currentItem.let { it != null && it.type != Directory } },
             action = {
-                val currentEntry = requireNotNull(currentEntry)
+                val currentEntry = requireNotNull(currentItem)
                 when (currentEntry.type) {
                     SymbolicLink -> SystemFileSystem.delete(currentEntry.path)
                     Directory -> SystemFileSystem.delete(currentEntry.path)
@@ -327,7 +327,7 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
 
     context(state: State)
     private fun Config.EntryMacro.condition(): Boolean {
-        val currentEntry = state.currentEntry
+        val currentEntry = state.currentItem
         return when (currentEntry?.type) {
             null -> false
             SymbolicLink -> onSymbolicLink

@@ -45,20 +45,20 @@ enum class DefaultMacroProperties(
     EntryPath(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("entryPath"),
-            onGet = { state.currentEntry?.path?.toString() }
+            onGet = { state.currentItem?.path?.toString() }
         )
     ),
     EntryName(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("entryName"),
-            onGet = { state.currentEntry?.path?.name }
+            onGet = { state.currentItem?.path?.name }
         )
     ),
     EntryType(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("entryType"),
             onGet = {
-                when (state.currentEntry?.type) {
+                when (state.currentItem?.type) {
                     Entry.Type.Directory -> "directory"
                     Entry.Type.RegularFile -> "file"
                     Entry.Type.SymbolicLink -> "link"

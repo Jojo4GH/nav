@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.ui
+package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.rendering.TextAlign
 import com.github.ajalt.mordant.rendering.TextStyles
@@ -6,6 +6,8 @@ import com.github.ajalt.mordant.table.verticalLayout
 import com.github.ajalt.mordant.widgets.HorizontalRule
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
+import de.jonasbroeckmann.nav.app.ui.Decorator
+import de.jonasbroeckmann.nav.app.ui.style
 
 context(_: MacroRuntimeContext)
 fun macroDialogDecorator(macro: Macro) = Decorator { dialog ->
