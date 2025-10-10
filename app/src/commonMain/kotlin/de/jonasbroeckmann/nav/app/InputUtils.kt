@@ -37,6 +37,7 @@ inline fun <R> InputEvent.filterKeyboardEvents(
     return block()
 }
 
+// TODO move to [de.jonasbroeckmann.nav.app.state.semantics] (just like autocomplete)
 @OptIn(ExperimentalContracts::class)
 inline fun KeyboardEvent.updateTextField(
     current: String,
