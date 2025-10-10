@@ -13,8 +13,6 @@ import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
-import kotlin.text.indexOf
-import kotlin.text.substring
 
 context(context: FullContext)
 fun buildUI(
@@ -224,25 +222,6 @@ private fun buildName(
                 false -> "${styles.nameDecorations(unselectedNamePrefix)}$it"
             }
         }
-}
-
-fun highlightFilterOccurrences(text: String, filter: String, highlightStyle: TextStyle): String {
-    if (filter.isEmpty()) return text
-    var index = 0
-    var result = ""
-    while (index < text.length) {
-        val found = text.indexOf(filter, index, ignoreCase = true)
-        if (found < 0) {
-            result += text.substring(index, text.length)
-            break
-        }
-        result += text.substring(index, found)
-        index = found
-
-        result += highlightStyle(text.substring(index, index + filter.length))
-        index += filter.length
-    }
-    return result
 }
 
 context(_: StylesProvider)

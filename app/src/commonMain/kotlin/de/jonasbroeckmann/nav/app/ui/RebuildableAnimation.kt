@@ -6,31 +6,24 @@ import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.terminal.Terminal
 import kotlin.properties.Delegates
 
-interface Invalidatable {
-    fun invalidate()
-}
+class RebuildableAnimation(
+    terminal: Terminal,
+    private val onBuild: () -> Widget
+) : StoppableAnimation {
+    private val animation = terminal.animation<Widget> { it }
 
-class WidgetRebuilder(private val onBuild: () -> Widget) : Invalidatable {
     private var currentWidget: Widget? = null
 
-    override fun invalidate() {
+    fun invalidate() {
         currentWidget = null
     }
 
-    val widget: Widget get() = currentWidget ?: onBuild().also { currentWidget = it }
-}
-
-class RebuildableAnimation(
-    terminal: Terminal,
-    private val rebuilder: WidgetRebuilder
-) : StoppableAnimation, Invalidatable by rebuilder {
-
-    constructor(terminal: Terminal, onBuild: () -> Widget) : this(terminal, WidgetRebuilder(onBuild))
-
-    private val animation = terminal.animation<Widget> { it }
-
     fun update() {
-        animation.update(rebuilder.widget)
+        var widget = currentWidget
+        if (widget == null) {
+            widget = onBuild().also { currentWidget = it }
+        }
+        animation.update(widget)
     }
 
     override fun clear() {
@@ -42,7 +35,7 @@ class RebuildableAnimation(
     }
 }
 
-fun <T> Invalidatable.invalidating(initial: T) = Delegates.observable(initial) { _, old, new ->
+fun <T> RebuildableAnimation.invalidating(initial: T) = Delegates.observable(initial) { _, old, new ->
     if (old != new) {
         invalidate()
     }

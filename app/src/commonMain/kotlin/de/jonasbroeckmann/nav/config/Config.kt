@@ -282,9 +282,9 @@ data class Config private constructor(
     companion object {
         val DefaultPaths by lazy {
             listOf(
-                UserHome / ".config" / "nav.toml",
                 UserHome / ".config" / "nav.yaml",
                 UserHome / ".config" / "nav.yml",
+                UserHome / ".config" / "nav.toml",
             )
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"
