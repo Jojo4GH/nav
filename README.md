@@ -180,15 +180,16 @@ home-manager.users.user.programs = {
 ## 🔧 Configuration
 
 To create or edit the config file you can use the `--edit-config` command line option.
-Config files can be written in either [TOML](https://toml.io) or [YAML](https://yaml.org) format (but not both).
-The default locations for the file are `~/.config/nav.toml`, `~/.config/nav.yaml` or `~/.config/nav.yml`.
+Config files can be written in either [YAML](https://yaml.org) or [TOML](https://toml.io) format (but not both).
+The default locations for the file are `~/.config/nav.yaml`, `~/.config/nav.yml` or `~/.config/nav.toml`.
+If you intend to define [macros](#macros), please use the YAML format.
 You can change this by setting the `NAV_CONFIG` environment variable:
 
 <details>
 <summary>Linux</summary>
 
 ```sh
-export NAV_CONFIG=~/some/other/path/nav.toml
+export NAV_CONFIG=~/some/other/path/nav.yaml
 ```
 
 </details>
@@ -197,7 +198,7 @@ export NAV_CONFIG=~/some/other/path/nav.toml
 <summary>Powershell</summary>
 
 ```powershell
-$ENV:NAV_CONFIG = "$HOME\some\other\path\nav.toml"
+$ENV:NAV_CONFIG = "$HOME\some\other\path\nav.yaml"
 ```
 
 </details>
@@ -207,6 +208,39 @@ You can also use the `--config` command line option to explicitly specify a conf
 The default configuration looks as follows:
 
 ### General
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+# If not specified, uses the first that exists of the following:
+# $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
+# You can also use the --editor command line option to override this
+editor: null
+
+suppressInitCheck: false
+clearOnExit: true
+
+limitToTerminalHeight: true
+maxVisibleEntries: 40 # Set to 0 for unlimited entries
+maxVisiblePathElements: 6
+showHiddenEntries: true
+hideHints: false
+
+# Used to distinguish escape sequences on Linux terminals
+inputTimeoutMillis: 4 # Set to 0 for no timeout
+
+# Which columns to show for each entry and how to order them
+shownColumns:
+- Permissions       # Permissions of the entry in unix style
+# - HardLinkCount   # Number of hard links to the entry (not shown by default)
+# - UserName        # Name of the user owning the entry (not shown by default)
+# - GroupName       # Name of the group owning the entry (not shown by default)
+- EntrySize         # Size of the file
+- LastModified      # Time of last modification
+```
+
+</details>
 
 <details>
 <summary>TOML</summary>
@@ -242,79 +276,7 @@ shownColumns = [
 
 </details>
 
-<details>
-<summary>YAML</summary>
-
-```yaml
-# If not specified, uses the first that exists of the following:
-# $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
-# You can also use the --editor command line option to override this
-editor: null
-
-suppressInitCheck: false
-clearOnExit: true
-
-limitToTerminalHeight: true
-maxVisibleEntries: 40
-maxVisiblePathElements: 6
-showHiddenEntries: true
-hideHints: false
-
-# Used to distinguish escape sequences on Linux terminals
-inputTimeoutMillis: 4 # Set to 0 for no timeout
-
-# Which columns to show for each entry and how to order them
-shownColumns:
-- Permissions       # Permissions of the entry in unix style
-# - HardLinkCount   # Number of hard links to the entry (not shown by default)
-# - UserName        # Name of the user owning the entry (not shown by default)
-# - GroupName       # Name of the group owning the entry (not shown by default)
-- EntrySize         # Size of the file
-- LastModified      # Time of last modification
-```
-
-</details>
-
 ### Controls
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[keys]
-
-submit = "Enter"
-cancel = "Escape"
-
-cursor.up = "ArrowUp"
-cursor.down = "ArrowDown"
-cursor.home = "Home"
-cursor.end = "End"
-
-nav.up = "ArrowLeft"
-nav.into = "ArrowRight"
-nav.open = "ArrowRight"
-
-menu.up = "PageUp"
-menu.down = "PageDown"
-
-filter.autocomplete = "Tab"
-filter.clear = "Escape"
-
-[autocomplete]
-
-# Controls the behavior of the auto complete feature
-# - "CommonPrefixCycle": Auto completes the largest common prefix and cycles through all entries
-# - "CommonPrefixStop": Auto completes the largest common prefix and stops
-style = "CommonPrefixCycle"
-# Controls auto navigation on completion
-# - "None": Do not auto navigate
-# - "OnSingleAfterCompletion": Auto completes the entry and on second action navigates
-# - "OnSingle": Auto completes the entry and navigates immediately (not recommended)
-autoNavigation = "OnSingleAfterCompletion"
-```
-
-</details>
 
 <details>
 <summary>YAML</summary>
@@ -357,9 +319,107 @@ autocomplete:
 
 </details>
 
+<details>
+<summary>TOML</summary>
+
+```toml
+[keys]
+
+submit = "Enter"
+cancel = "Escape"
+
+cursor.up = "ArrowUp"
+cursor.down = "ArrowDown"
+cursor.home = "Home"
+cursor.end = "End"
+
+nav.up = "ArrowLeft"
+nav.into = "ArrowRight"
+nav.open = "ArrowRight"
+
+menu.up = "PageUp"
+menu.down = "PageDown"
+
+filter.autocomplete = "Tab"
+filter.clear = "Escape"
+
+[autocomplete]
+
+# Controls the behavior of the auto complete feature
+# - "CommonPrefixCycle": Auto completes the largest common prefix and cycles through all entries
+# - "CommonPrefixStop": Auto completes the largest common prefix and stops
+style = "CommonPrefixCycle"
+# Controls auto navigation on completion
+# - "None": Do not auto navigate
+# - "OnSingleAfterCompletion": Auto completes the entry and on second action navigates
+# - "OnSingle": Auto completes the entry and navigates immediately (not recommended)
+autoNavigation = "OnSingleAfterCompletion"
+```
+
+</details>
+
 For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
 
 ### Appearance
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+colors:
+  # Possible values for themes are:
+  # - Retro (default theme)
+  # - Monochrome (default simpleTheme)
+  # - SimpleColor
+  # - Random
+  # - Sunset
+  # - Xmas
+  # - Hub
+  # - Ice
+  # - Darcula
+  # - AtomOneDark
+  theme: Retro
+  simpleTheme: Monochrome   # Used for terminals with less color capabilities (see: accessibility.simpleColors)
+
+  # The following colors can also be explicitly set (default: theme/simpleTheme colors):
+  path: null
+  filter: null
+  filterMarker: null
+  keyHints: null
+  keyHintLabels: null
+  genericElements: null
+  
+  permissionRead: null
+  permissionWrite: null
+  permissionExecute: null
+  permissionHeader: null
+  hardlinkCount: null
+  hardlinkCountHeader: null
+  user: null
+  userHeader: null
+  group: null
+  groupHeader: null
+  entrySize: null
+  entrySizeHeader: null
+  modificationTime: null
+  modificationTimeHeader: null
+  
+  directory: null
+  file: null
+  link: null
+  nameHeader: null
+  nameDecorations: null
+
+modificationTime:     # Configure how the modification time is rendered
+  minimumBrightness: 0.4
+  halfBrightnessAtHours: 12.0
+
+accessibility:
+  decorations: null   # Whether to use the simple color theme (default: auto)
+  simpleColors: null  # Whether to show decorations (default: auto)
+```
+
+</details>
 
 <details>
 <summary>TOML</summary>
@@ -423,94 +483,12 @@ decorations = false   # Whether to show decorations (default: auto)
 
 </details>
 
-<details>
-<summary>YAML</summary>
-
-```yaml
-colors:
-  # Possible values for themes are:
-  # - Retro (default theme)
-  # - Monochrome (default simpleTheme)
-  # - SimpleColor
-  # - Random
-  # - Sunset
-  # - Xmas
-  # - Hub
-  # - Ice
-  # - Darcula
-  # - AtomOneDark
-  theme: Retro
-  simpleTheme: Monochrome   # Used for terminals with less color capabilities (see: accessibility.simpleColors)
-
-  # The following colors can also be explicitly set (default: theme/simpleTheme colors):
-  path: null
-  filter: null
-  filterMarker: null
-  keyHints: null
-  keyHintLabels: null
-  genericElements: null
-  
-  permissionRead: null
-  permissionWrite: null
-  permissionExecute: null
-  permissionHeader: null
-  hardlinkCount: null
-  hardlinkCountHeader: null
-  user: null
-  userHeader: null
-  group: null
-  groupHeader: null
-  entrySize: null
-  entrySizeHeader: null
-  modificationTime: null
-  modificationTimeHeader: null
-  
-  directory: null
-  file: null
-  link: null
-  nameHeader: null
-  nameDecorations: null
-
-modificationTime:     # Configure how the modification time is rendered
-  minimumBrightness: 0.4
-  halfBrightnessAtHours: 12.0
-
-accessibility:
-  decorations: null   # Whether to use the simple color theme (default: auto)
-  simpleColors: null  # Whether to show decorations (default: auto)
-```
-
-</details>
-
 ### Entry Macros
 
+> [!NOTE]
+> Entry macros will be superseded by [Macros](#-macros-experimental) in the future.
+
 You can define custom macros that work with entries (e.g. directories, files) in the configuration file as follows:
-
-<details>
-<summary>TOML</summary>
-
-```toml
-[[entryMacros]]
-# The description displayed (required) (see placeholders)
-description = "..."
-# The conditions for the macro to be available (defaults to false)
-onFile = false
-onDirectory = false
-onSymbolicLink = false
-# The command to run (required) (see placeholders)
-command = "..."
-# What to do after the command was executed. Possible values are:
-# - "DoNothing": Do nothing
-# - "ExitAtCurrentDirectory": Exit at the current directory
-# - "ExitAtInitialDirectory": Exit at the initial directory
-afterCommand = "..."            # Defaults to "DoNothing"
-afterSuccessfulCommand = "..."  # Defaults to value of afterCommand
-afterFailedCommand = "..."      # Defaults to value of afterCommand
-# The key to trigger the macro or null for no quick macro (defaults to null)
-quickMacroKey = "..."
-```
-
-</details>
 
 <details>
 <summary>YAML</summary>
@@ -538,6 +516,32 @@ entryMacros:
 
 </details>
 
+<details>
+<summary>TOML</summary>
+
+```toml
+[[entryMacros]]
+# The description displayed (required) (see placeholders)
+description = "..."
+# The conditions for the macro to be available (defaults to false)
+onFile = false
+onDirectory = false
+onSymbolicLink = false
+# The command to run (required) (see placeholders)
+command = "..."
+# What to do after the command was executed. Possible values are:
+# - "DoNothing": Do nothing
+# - "ExitAtCurrentDirectory": Exit at the current directory
+# - "ExitAtInitialDirectory": Exit at the initial directory
+afterCommand = "..."            # Defaults to "DoNothing"
+afterSuccessfulCommand = "..."  # Defaults to value of afterCommand
+afterFailedCommand = "..."      # Defaults to value of afterCommand
+# The key to trigger the macro or null for no quick macro (defaults to null)
+quickMacroKey = "..."
+```
+
+</details>
+
 There are several placeholders available for `description` and `command`:
 - `{initialDir}`: The initial directory where nav was started
 - `{dir}`: The current directory inside nav
@@ -549,6 +553,43 @@ Macros are available in the menu (default `PageDown`).
 They can also quickly be triggered by tapping `ctrl` together with or followed by the `quickMacroKey`.
 
 Examples:
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+entryMacros:
+
+- # An alternative editor macro
+  description: open {entryName} in code
+  command: code '{entryPath}'
+  afterSuccessfulCommand: ExitAtCurrentDirectory
+  onFile: true
+  onDirectory: true
+  quickMacroKey: ArrowRight
+  
+- # Same as above, but waits for the editor to close before returning again to nav
+  description: open {entryName} in code and wait
+  command: code --wait '{entryPath}'
+  onFile: true
+  onDirectory: true
+  quickMacroKey: shift+ArrowRight
+  
+- # A macro for deleting directories recursively
+  description: delete {entryName} recursively
+  command: rm -rf '{entryPath}'
+  onDirectory: true
+  quickMacroKey: Delete
+  
+- # A macro for printing the full path of the entry
+  description: print full path
+  command: echo '{entryPath}'
+  onFile: true
+  onDirectory: true
+  onSymbolicLink: true
+```
+
+</details>
 
 <details>
 <summary>TOML</summary>
@@ -589,39 +630,284 @@ onSymbolicLink = true
 
 </details>
 
+### ⭐ Macros (experimental)
+
+> [!WARNING]
+> Macros are currently an experimental feature.
+> They may change in future releases with no guarantees of compatibility.
+> Please report any [issues](https://github.com/Jojo4GH/nav/issues/new).
+
+With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
+
+Macros are available in the menu (default `PageDown`) or with their `nonQuickModeKey`.
+They can also quickly be triggered by tapping `ctrl` together with or followed by their `quickModeKey`.
+
+Currently, only the YAML configuration can be used to define macros:
+
 <details>
 <summary>YAML</summary>
 
 ```yaml
-entryMacros:
+# Defines a list of macros
+macros:
 
-- # An alternative editor macro
-  description: open {entryName} in code
-  command: code '{entryPath}'
-  afterSuccessfulCommand: ExitAtCurrentDirectory
-  onFile: true
-  onDirectory: true
-  quickMacroKey: ArrowRight
+- # Unique id of the macro used for referencing it (optional, default: null)
+  id: null
   
-- # Same as above, but waits for the editor to close before returning again to nav
-  description: open {entryName} in code and wait
-  command: code --wait '{entryPath}'
-  onFile: true
-  onDirectory: true
-  quickMacroKey: shift+ArrowRight
+  # Description of the macro shown in nav (supports placeholders, required if not hidden, default: "")
+  description: ""
   
-- # A macro for deleting directories recursively
-  description: delete {entryName} recursively
-  command: rm -rf '{entryPath}'
-  onDirectory: true
-  quickMacroKey: Delete
+  # Whether to hide the macro in nav (optional, default: false)
+  hidden: false
   
-- # A macro for printing the full path of the entry
-  description: print full path
-  command: echo '{entryPath}'
-  onFile: true
-  onDirectory: true
-  onSymbolicLink: true
+  # Key used to trigger the macro in quick macro mode (optional, default: null)
+  quickModeKey: null
+  
+  # Key used to trigger the macro in normal mode (optional, default: null)
+  nonQuickModeKey: null
+  
+  # The condition that must be met for the macro to be available (optional, default: null, see "Conditions" below)
+  # If no condition is specified, the macro is always available.
+  # If their condition is met, macros are shown in the following places:
+  # - In quick macro mode, if a 'quickModeKey' is set and is not 'hidden'
+  # - In key hints, if a 'nonQuickModeKey' is set and is not 'hidden'
+  # - In the menu, if not 'hidden'
+  condition:
+    # ...
+  
+  # The actions to run when the macro is triggered (optional, default: [])
+  # See "Actions" below
+  run:
+  - # action 1
+  - # action 2
+  - # ...
+```
+
+</details>
+
+#### Conditions
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+# Possible conditions are:
+
+  # True if any child condition is true (similar to logical OR)
+- any:
+  - # child condition 1
+  - # child condition 2
+  - # ...
+  
+  # True if all child conditions are true (similar to logical AND)
+- all:
+  - # child condition 1
+  - # child condition 2
+  - # ...
+  
+  # True if the child condition is false (similar to logical NOT)
+- not:
+    # child condition
+  
+  # True if all values are equal (the values support placeholders)
+- equal: [ "value 1", "value 2", ... ]
+  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
+
+  # True if any values are not equal (the values support placeholders)
+- notEqual: [ "value 1", "value 2", ... ]
+  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
+
+  # True if the entire value matches the given regular expression
+- match: "..."        # A regex pattern (required)
+  in: "..."           # (supports placeholders, required)
+
+  # True if the value is empty
+- empty: "..."        # (supports placeholders, required)
+
+  # True if the value is not empty
+- notEmpty: "..."     # (supports placeholders, required)
+
+  # True if the value contains only whitespace 
+- blank: "..."        # (supports placeholders, required)
+  
+  # True if the value does not contain only whitespace
+- notBlank: "..."     # (supports placeholders, required)
+```
+
+</details>
+
+#### Actions
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+# Possible actions are:
+
+  # If the condition is true, run the 'then' actions, otherwise run the 'else' actions.
+- if:                         # A condition (required, see "Conditions")
+    # ...
+  then:                       # Array of actions (optional, default: [])
+  - # then action 1
+  - # then action 2
+  - # ...
+  else:                       # Array of actions (optional, default: [])
+  - # else action 1
+  - # else action 2
+  - # ...
+
+  # Prints the given message.
+- print: "..."                # (supports placeholders, required)
+  style: null                 # (optional, default: null, valid values: ["info", "success", "warning", "error"])
+  debug: false                # Whether to only print in debug mode (optional, default: false)
+
+  # Sets the given properties/variables to the given values.
+  # The properties must be mutable.
+  # No property/variable that is set can appear in placeholders on the value side in the same set action
+  # (use multiple set actions instead).
+- set:
+    # name1: "value 1"        # (value supports placeholders)
+    # name2: "value 2"        # ^^
+    # ...
+
+  # Runs the sub macro with the given id.
+- macro: "..."                # (required)
+  ignoreCondition: false      # Whether to ignore the macro's condition (optional, default: false)
+  # A map of parameters to pass to the sub macro (the values supports placeholders, optional, default: null)
+  # If this is null, then all currently set variables are passed to the sub macro.
+  # All set parameters are available in the sub macro as variables.
+  # Modifying those variables in the sub macro does not affect the parent macro.
+  parameters: null
+  # A map of values to capture from the sub macro (the values supports placeholders, optional, default: null)
+  # The keys are the names of properties/variables to assign in the parent macro
+  # The values are evaluated in the sub macro's context.
+  capture: null
+  # Whether to continue executing the current macro if the sub macro explicitly returns (optional, default: true)
+  continueOnReturn: true
+
+  # Runs the given command.
+  # Commands are run in the directory where nav currently is (see {{directory}} placeholder).
+- command: "..."              # (supports placeholders, required)
+  exitCodeTo: "exitCode"      # The variable/property to store the exit code in (optional, default: "exitCode")
+  # The variable/property to store the standard output in (optional, default: null)
+  # If this is null, the output gets printed to the terminal.
+  outputTo: null
+  trimTrailingNewline: true   # Whether to trim a single trailing newline from the output (optional, default: true)
+  # The variable/property to store the standard error in (optional, default: null)
+  # If this is null, the error output gets printed to the terminal.
+  errorTo: null
+
+  # Opens the given file in the editor (see 'editor' configuration or '--editor' command line option).
+- open: "..."                 # (supports placeholders, required)
+  exitCodeTo: "exitCode"      # The variable/property to store the editor's exit code in (optional, default: "exitCode")
+
+  # Prompts the user for input.
+  # Not both 'format' and 'choices' can be specified at the same time.
+  # If choices are specified, the user must select one of the choices.
+  # Otherwise, the user must enter a value matching the format (if specified).
+- prompt: "..."               # The message to show (supports placeholders, required)
+  format: null                # A regex pattern the entire input must match (optional, default: null)
+  choices: []                 # A list of choices (values support placeholders, optional, default: [])
+  default: null               # The default value (supports placeholders, optional, default: null)
+  resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
+
+  # Matches the entire value against the given regex pattern.
+  # If it matches, the capturing groups are stored in the given properties/variables.
+  # The first capturing group is stored in the first property/variable, the second in the second, etc.
+- match: "..."                # A regex pattern (required)
+  in: "..."                   # (supports placeholders, required)
+  groupsTo: []                # A list of properties/variables to store the capturing groups in (optional, default: [])
+
+  # Explicitly returns from the current macro (but not from nav) if the value is true.
+  # Any action in this macro after this action is not executed.
+  # Actions in possible parent macros may still be executed.
+- return: true                # (required)
+
+  # Immediately exits nav if the value is true.
+  # If no directory is specified, nav exits at the working directory it was started from.
+- exit: true                  # (required)
+  at: null                    # The directory to exit at (supports placeholders, optional, default: null)
+```
+
+</details>
+
+#### Properties, Variables and Placeholders
+
+Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
+Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
+They can appear multiple times in a string and anywhere inside the string.
+Placeholders are replaced once (no recursive replacement).
+Currently, there is no escaping mechanism for placeholders.
+
+There are several built-in properties, some of which can be modified to affect nav's behavior:
+
+- `workingDirectory`: The working directory of nav's process. This property is read-only.
+- `startingDirectory`: The directory where nav was started (i.e. the directory specified in the command line). This property is read-only.
+- `shell`: The shell that nav currently uses (see `--shell`). This property is read-only.
+- `debugMode`: Whether nav is currently running in debug mode. This property is read-only.
+- `directory`: The current directory inside nav. This property can be modified.
+- `entryPath`: The path of the currently highlighted entry. This property is read-only.
+- `entryName`: The name of the currently highlighted entry. This property is read-only.
+- `entryType`: The type of the currently highlighted entry. Possible values are `directory`, `file` and `link`. This property is read-only.
+- `entryCursorPosition`: The index of the currently highlighted entry relative to all filtered entries. This property can be modified.
+- `menuCursorPosition`: The index of the currently highlighted menu item. This property can be modified.
+- `filter`: The current filter string or empty if no filter is set. This property can be modified.
+- `filteredEntriesCount`: The number of entries currently matching the filter. This property is read-only.
+- `command`: The currently typed command or empty if no command is typed. This property can be modified.
+
+Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
+Additionally, macros can define their own mutable variables that can be used in placeholders with the `set` action.
+
+#### Examples
+
+<details>
+<summary>YAML</summary>
+
+```yaml
+macros:
+
+# Open the current entry in code
+- description: open {{entryName}} in code
+  quickModeKey: ArrowRight
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - command: code "{{entryPath}}"
+
+# Rename the current entry
+- description: rename {{entryName}}
+  nonQuickModeKey: F6
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - prompt: "New name:"
+    format: "[^\\/:*?\"<>|]+"  # Valid filename characters on most systems
+    default: "{{entryName}}"
+    resultTo: newName
+  - command: mv "{{entryName}}" "{{newName}}"
+
+# Delete the current directory recursively after confirmation
+- description: delete {{entryName}} recursively
+  condition:
+    equal: [ "{{entryType}}", "directory" ]
+  run:
+  - prompt: "Are you sure you want to delete {{entryName}} recursively?"
+    choices: [ "No", "Yes" ]
+    default: "No"
+    resultTo: "confirmation"
+  - if:
+      equal: [ "{{confirmation}}", "Yes" ]
+    then:
+    - command: rm -rf "{{entryPath}}"
+
+# Navigate to the home directory if not already there
+- description: home
+  quickModeKey: Home
+  condition:
+    notEqual: [ "{{directory}}", "{{env:HOME}}" ]  # or "{{env:USERPROFILE}}" on Windows
+  run:
+  - set:
+      directory: "{{env:HOME}}"  # or "{{env:USERPROFILE}}" on Windows
 ```
 
 </details>

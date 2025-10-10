@@ -2,57 +2,56 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.app.App
-import de.jonasbroeckmann.nav.app.state.State
 
-data class KeyAction(
-    val triggers: List<Trigger>,
-    val displayKey: (State) -> KeyboardEvent? = { null },
-    override val description: State.() -> String? = { null },
-    private val style: State.() -> TextStyle? = { null },
-    private val condition: State.() -> Boolean,
-    private val action: State.(KeyboardEvent) -> App.Event?
-) : Action<KeyboardEvent> {
+data class KeyAction<Context, Controller>(
+    val keys: List<KeyboardEvent>,
+    private val displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
+    private val description: Context.() -> String = { "" },
+    private val style: Context.() -> TextStyle? = { null },
+    private val hidden: Context.() -> Boolean = { false },
+    private val condition: Context.() -> Boolean,
+    private val action: context(Controller) Context.(KeyboardEvent) -> Unit
+) : Action<Context, KeyboardEvent, Controller> {
     constructor(
         vararg keys: KeyboardEvent,
-        displayKey: (State) -> KeyboardEvent? = { keys.firstOrNull() },
-        description: State.() -> String? = { null },
-        style: State.() -> TextStyle? = { null },
-        condition: State.() -> Boolean,
-        action: State.(KeyboardEvent) -> App.Event?
+        displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
+        description: Context.() -> String = { "" },
+        style: Context.() -> TextStyle? = { null },
+        hidden: Context.() -> Boolean = { false },
+        condition: Context.() -> Boolean,
+        action: context(Controller) Context.(KeyboardEvent) -> Unit
     ) : this(
-        triggers = keys.map { Trigger(it, false) },
+        keys = listOf(*keys),
         displayKey = displayKey,
         description = description,
         style = style,
+        hidden = hidden,
         condition = condition,
         action = action
     )
 
-    context(state: State)
-    override fun style() = state.style()
+    context(context: Context)
+    fun displayKey() = context.displayKey()
 
-    override fun matches(state: State, input: KeyboardEvent): Boolean {
-        val trigger = Trigger(input, state.inQuickMacroMode)
-        return trigger in triggers && isAvailable(state)
+    context(context: Context)
+    override fun description() = context.description()
+
+    context(context: Context)
+    override fun style() = context.style()
+
+    context(context: Context)
+    override fun isHidden() = context.hidden()
+
+    context(context: Context)
+    override fun matches(input: KeyboardEvent): Boolean {
+        return input in keys && isAvailable()
     }
 
-    override fun isAvailable(state: State) = state.condition()
+    context(context: Context)
+    override fun isAvailable() = context.condition()
 
-    override fun perform(state: State, input: KeyboardEvent) = state.action(input)
+    context(context: Context, controller: Controller)
+    override fun run(input: KeyboardEvent) = context.action(input)
 
-    data class Trigger private constructor(
-        val key: KeyboardEvent,
-        val inQuickMacroMode: Boolean
-    ) {
-        companion object {
-            operator fun invoke(
-                key: KeyboardEvent,
-                inQuickMacroMode: Boolean
-            ) = Trigger(
-                key = if (inQuickMacroMode) key.copy(ctrl = false) else key,
-                inQuickMacroMode = inQuickMacroMode
-            )
-        }
-    }
+    data class Trigger(val key: KeyboardEvent)
 }

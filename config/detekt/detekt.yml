@@ -915,7 +915,7 @@ ktlint:
     maxLineLength: 140
     indentSize: 4
   ContextReceiverMapping:
-    active: true
+    active: false
     autoCorrect: true
     maxLineLength: 140
     indentSize: 4

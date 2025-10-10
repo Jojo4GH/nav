@@ -7,10 +7,12 @@ import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
+import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
+import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.EntryColumn
@@ -23,6 +25,7 @@ import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlin.lazy
 
 @Serializable
 data class Config private constructor(
@@ -54,7 +57,8 @@ data class Config private constructor(
     val autocomplete: Autocomplete = Autocomplete(),
     val modificationTime: ModificationTime = ModificationTime(),
 
-    val entryMacros: List<EntryMacro> = emptyList()
+    val entryMacros: List<EntryMacro> = emptyList(),
+    val macros: List<Macro> = emptyList(),
 ) : ConfigProvider {
     override val config get() = this
 
@@ -276,16 +280,16 @@ data class Config private constructor(
     companion object {
         val DefaultPaths by lazy {
             listOf(
-                UserHome / ".config" / "nav.toml",
                 UserHome / ".config" / "nav.yaml",
                 UserHome / ".config" / "nav.yml",
+                UserHome / ".config" / "nav.toml",
             )
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
         context(context: PartialContext)
         fun findExplicitPath(): Path? = context.command.configurationOptions.configPath?.let { Path(it) }
-            ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+            ?: getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
         fun findDefaultPath(mustExist: Boolean = true): Path? {
             val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile }
@@ -296,8 +300,14 @@ data class Config private constructor(
             }
         }
 
+        @Suppress("detekt:ReturnCount")
         context(context: PartialContext)
         fun load(): Config {
+            fun errorOnLoad(e: Exception, message: Any?): Config {
+                context.dangerThrowable(e, "Could not load config: $message")
+                context.terminal.warning("Using default config")
+                return Config()
+            }
             try {
                 val explicitPath = findExplicitPath()?.also {
                     require(it.exists()) { "The specified config does not exist: $it" }
@@ -319,10 +329,10 @@ data class Config private constructor(
                         return Config()
                     }
                 }
+            } catch (e: YamlException) {
+                return errorOnLoad(e, e)
             } catch (e: Exception) {
-                context.dangerThrowable(e, "Could not load config: ${e.message}")
-                context.terminal.warning("Using default config")
-                return Config()
+                return errorOnLoad(e, e.message)
             }
         }
 
@@ -343,6 +353,15 @@ data class Config private constructor(
         ).decodeFromSource(
             deserializer = serializer(),
             source = path.rawSource().asOkioSource()
+        )
+
+        fun serializeToYaml(config: Config): String = Yaml(
+            configuration = YamlConfiguration(
+                strictMode = false
+            )
+        ).encodeToString(
+            serializer = serializer(),
+            value = config
         )
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")

@@ -1,0 +1,43 @@
+package de.jonasbroeckmann.nav.app.actions
+
+import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextStyle
+
+abstract class KeyActions<Context, Controller, Category> {
+    protected val registered = mutableMapOf<Category, MutableList<KeyAction<Context, Controller>>>()
+
+    protected fun Category.registerKeyAction(action: KeyAction<Context, Controller>): KeyAction<Context, Controller> {
+        val registeredForCategory = registered.getOrPut(this) { mutableListOf() }
+        val i = registeredForCategory.size
+        return action.copy(
+            condition = {
+                action.isAvailable() &&
+                    registeredForCategory.asSequence().take(i).none { prioritized ->
+                        action.keys.any { it in prioritized.keys } && prioritized.isAvailable()
+                    }
+            }
+        ).also {
+            registeredForCategory += it
+        }
+    }
+
+    protected fun Category.registerKeyAction(
+        vararg keys: KeyboardEvent,
+        displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
+        description: Context.() -> String = { "" },
+        style: Context.() -> TextStyle? = { null },
+        hidden: Context.() -> Boolean = { false },
+        condition: Context.() -> Boolean,
+        action: context(Controller) Context.(KeyboardEvent) -> Unit
+    ) = registerKeyAction(
+        KeyAction(
+            keys = keys,
+            displayKey = displayKey,
+            description = description,
+            style = style,
+            hidden = hidden,
+            condition = condition,
+            action = action
+        )
+    )
+}

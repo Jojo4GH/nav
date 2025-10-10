@@ -2,22 +2,32 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.state.State
 
 data class MenuAction(
-    override val description: State.() -> String?,
+    private val description: State.() -> String,
     private val style: State.() -> TextStyle? = { null },
     val selectedStyle: TextStyle? = TextStyles.inverse.style,
+    private val hidden: State.() -> Boolean = { false },
     private val condition: State.() -> Boolean,
-    private val action: State.() -> App.Event?
-) : Action<Nothing?> {
+    private val action: context(MainController) State.() -> Unit
+) : Action<State, Nothing?, MainController> {
+    context(state: State)
+    override fun description() = state.description()
+
     context(state: State)
     override fun style() = state.style()
 
-    override fun matches(state: State, input: Nothing?) = isAvailable(state)
+    context(state: State)
+    override fun isHidden() = state.hidden()
 
-    override fun isAvailable(state: State) = state.condition()
+    context(state: State)
+    override fun matches(input: Nothing?) = isAvailable()
 
-    override fun perform(state: State, input: Nothing?) = state.action()
+    context(state: State)
+    override fun isAvailable() = state.condition()
+
+    context(state: State, controller: MainController)
+    override fun run(input: Nothing?) = state.action()
 }
