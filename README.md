@@ -483,7 +483,7 @@ decorations = false   # Whether to show decorations (default: auto)
 
 </details>
 
-### Entry Macros
+## Entry Macros
 
 > [!NOTE]
 > Entry macros will be superseded by [Macros](#-macros-experimental) in the future.
@@ -630,7 +630,7 @@ onSymbolicLink = true
 
 </details>
 
-### ⭐ Macros (experimental)
+## ⭐ Macros (experimental)
 
 > [!WARNING]
 > Macros are currently an experimental feature.
@@ -685,7 +685,7 @@ macros:
 
 </details>
 
-#### Conditions
+### Conditions
 
 <details>
 <summary>YAML</summary>
@@ -736,7 +736,7 @@ macros:
 
 </details>
 
-#### Actions
+### Actions
 
 <details>
 <summary>YAML</summary>
@@ -831,7 +831,7 @@ macros:
 
 </details>
 
-#### Properties, Variables and Placeholders
+### Properties, Variables and Placeholders
 
 Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
 Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
@@ -858,7 +858,7 @@ There are several built-in properties, some of which can be modified to affect n
 Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
 Additionally, macros can define their own mutable variables that can be used in placeholders with the `set` action.
 
-#### Examples
+### Examples
 
 <details>
 <summary>YAML</summary>
