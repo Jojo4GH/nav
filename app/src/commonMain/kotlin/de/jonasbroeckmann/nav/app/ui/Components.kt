@@ -2,16 +2,21 @@ package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
+import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.Action
 import de.jonasbroeckmann.nav.app.actions.KeyAction
 import de.jonasbroeckmann.nav.app.actions.MenuAction
+import de.jonasbroeckmann.nav.app.macros.Macro
+import de.jonasbroeckmann.nav.app.state
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.Entry.Type.SymbolicLink
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Unknown
+import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 
@@ -64,4 +69,11 @@ val Entry?.style get() = when (this?.type) {
     Directory -> styles.directory
     RegularFile -> styles.file
     Unknown -> styles.nameDecorations
+}
+
+context(_: StylesProvider, _: StateProvider)
+val Macro.style get() = when {
+    dependsOnEntry -> state.currentEntry.style
+    dependsOnFilter && state.filter.isNotEmpty() -> styles.filter
+    else -> TextStyle()
 }

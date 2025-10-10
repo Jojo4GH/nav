@@ -69,9 +69,18 @@ fun <T, R> DialogRenderingScope.dialog(
 }
 
 interface DialogController {
-    fun showDialog(block: DialogRenderingScope.() -> Unit)
+    fun <R> showDialog(block: DialogRenderingScope.() -> R): R
 }
 
 interface DialogRenderingScope {
     fun render(widget: Widget)
 }
+
+fun interface Decorator : (Widget) -> Widget
+
+inline fun <R> DialogRenderingScope.decorate(
+    decorator: Decorator,
+    block: DialogRenderingScope.() -> R
+) = object : DialogRenderingScope {
+    override fun render(widget: Widget) = this@decorate.render(decorator(widget))
+}.block()

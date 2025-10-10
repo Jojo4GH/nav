@@ -43,7 +43,7 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
             macro.quickModeKey.copy(ctrl = false),
             displayKey = { macro.quickModeKey },
             description = { macro.computeDescription() },
-            style = { macro.computeStyle() },
+            style = { macro.style },
             hidden = { macro.hidden },
             condition = { inQuickMacroMode && macro.computeCondition() },
             action = { runMacro(macro) }
@@ -72,7 +72,7 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         NormalMode.registerKeyAction(
             macro.nonQuickModeKey,
             description = { macro.computeDescription() },
-            style = { macro.computeStyle() },
+            style = { macro.style },
             hidden = { macro.hidden },
             condition = { macro.computeCondition() },
             action = { runMacro(macro) }
@@ -234,7 +234,7 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         *config.macros.map { macro ->
             MenuAction(
                 description = { macro.computeDescription() },
-                style = { macro.computeStyle() },
+                style = { macro.style },
                 hidden = { macro.hidden },
                 condition = { macro.computeCondition() },
                 action = { runMacro(macro) }
@@ -339,13 +339,6 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
 
     context(state: State)
     private fun Macro.computeDescription() = MacroSymbolScope.empty { description.evaluate() }
-
-    context(state: State)
-    private fun Macro.computeStyle() = when {
-        dependsOnEntry -> state.currentEntry.style
-        dependsOnFilter && state.filter.isNotEmpty() -> styles.filter
-        else -> null
-    }
 
     context(state: State)
     private fun Macro.computeCondition() = MacroSymbolScope.empty { available() }

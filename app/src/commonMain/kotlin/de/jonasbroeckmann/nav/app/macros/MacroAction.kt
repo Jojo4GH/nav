@@ -13,6 +13,9 @@ import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
 import de.jonasbroeckmann.nav.app.openInEditor
 import de.jonasbroeckmann.nav.app.runCommand
+import de.jonasbroeckmann.nav.app.ui.defaultTextPrompt
+import de.jonasbroeckmann.nav.app.ui.textPrompt
+import de.jonasbroeckmann.nav.command.dangerOnDebug
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.files.Path
@@ -42,16 +45,19 @@ sealed interface MacroAction : MacroRunnable {
             if (choices.isNotEmpty()) {
 
             } else {
-                TODO()
-//                context.showTextPrompt(
-//                    title = prompt.evaluate(),
-//                    initialText = default?.evaluate() ?: "",
-//                    placeholder = null,
-//                    submitKey = context.config.keys.submit,
-//                    clearKey = context.config.keys.cancel,
-//                    cancelKey = context.config.keys.cancel,
-//                    validate = { input -> format?.matches(input) ?: true }
-//                )
+                val result = context.showMacroDialog {
+                    defaultTextPrompt(
+                        title = prompt.evaluate(),
+                        initialText = default?.evaluate() ?: "",
+                        placeholder = null,
+                        validate = { input -> format?.matches(input) ?: true }
+                    )
+                }
+                if (result == null) {
+                    context.dangerOnDebug { "Aborting macro because prompt was cancelled." }
+                    context.doReturn()
+                }
+                context[resultTo] = result
             }
         }
     }
