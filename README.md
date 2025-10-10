@@ -486,7 +486,7 @@ decorations = false   # Whether to show decorations (default: auto)
 ### Entry Macros
 
 > [!NOTE]
-> Entry macros will be superseded by [Macros](#macros) in the future.
+> Entry macros will be superseded by [Macros](#-macros-experimental) in the future.
 
 You can define custom macros that work with entries (e.g. directories, files) in the configuration file as follows:
 
@@ -635,6 +635,7 @@ onSymbolicLink = true
 > [!WARNING]
 > Macros are currently an experimental feature.
 > They may change in future releases with no guarantees of compatibility.
+> Please report any [issues](https://github.com/Jojo4GH/nav/issues/new).
 
 With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
 
