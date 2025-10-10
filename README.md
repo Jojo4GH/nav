@@ -278,7 +278,9 @@ shownColumns = [
 
 ### Controls
 
-<details>
+For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
+
+<details open>
 <summary>YAML</summary>
 
 ```yaml
@@ -358,11 +360,9 @@ autoNavigation = "OnSingleAfterCompletion"
 
 </details>
 
-For valid key names see [web keyboard event values](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values).
-
 ### Appearance
 
-<details>
+<details open>
 <summary>YAML</summary>
 
 ```yaml
@@ -479,6 +479,294 @@ halfBrightnessAtHours = 12.0
 
 simpleColors = false  # Whether to use the simple color theme (default: auto)
 decorations = false   # Whether to show decorations (default: auto)
+```
+
+</details>
+
+### ⭐ Macros (experimental)
+
+> [!WARNING]
+> Macros are currently an experimental feature.
+> They may change in future releases with no guarantees of compatibility.
+> Please report any [issues](https://github.com/Jojo4GH/nav/issues/new).
+> For the more limited but stable variant, see [Entry Macros](#entry-macros).
+
+With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
+
+Macros are available in the menu (default `PageDown`) or with their `nonQuickModeKey`.
+They can also quickly be triggered by tapping `ctrl` together with or followed by their `quickModeKey`.
+
+Currently, only the YAML configuration can be used to define macros:
+
+<details open>
+<summary>YAML</summary>
+
+```yaml
+# Defines a list of macros
+macros:
+
+- # Unique id of the macro used for referencing it (optional, default: null)
+  id: null
+  
+  # Description of the macro shown in nav (supports placeholders, required if not hidden, default: "")
+  description: ""
+  
+  # Whether to hide the macro in nav (optional, default: false)
+  hidden: false
+  
+  # Key used to trigger the macro in quick macro mode (optional, default: null)
+  # For valid key names see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
+  quickModeKey: null
+  
+  # Key used to trigger the macro in normal mode (optional, default: null)
+  # For valid key names see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
+  nonQuickModeKey: null
+  
+  # The condition that must be met for the macro to be available (optional, default: null, see "Conditions" below)
+  # If no condition is specified, the macro is always available.
+  # If their condition is met, macros are shown in the following places:
+  # - In quick macro mode, if a 'quickModeKey' is set and is not 'hidden'
+  # - In key hints, if a 'nonQuickModeKey' is set and is not 'hidden'
+  # - In the menu, if not 'hidden'
+  condition:
+    # ...
+  
+  # The actions to run when the macro is triggered (optional, default: [])
+  # See "Actions" below
+  run:
+  - # action 1
+  - # action 2
+  - # ...
+```
+
+</details>
+
+#### Conditions
+
+<details open>
+<summary>YAML</summary>
+
+```yaml
+# Possible conditions are:
+
+  # True if any child condition is true (similar to logical OR)
+- any:
+  - # child condition 1
+  - # child condition 2
+  - # ...
+  
+  # True if all child conditions are true (similar to logical AND)
+- all:
+  - # child condition 1
+  - # child condition 2
+  - # ...
+  
+  # True if the child condition is false (similar to logical NOT)
+- not:
+    # child condition
+  
+  # True if all values are equal (the values support placeholders)
+- equal: [ "value 1", "value 2", ... ]
+  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
+
+  # True if any values are not equal (the values support placeholders)
+- notEqual: [ "value 1", "value 2", ... ]
+  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
+
+  # True if the entire value matches the given regular expression
+- match: "..."        # A regex pattern (required)
+  in: "..."           # (supports placeholders, required)
+
+  # True if the value is empty
+- empty: "..."        # (supports placeholders, required)
+
+  # True if the value is not empty
+- notEmpty: "..."     # (supports placeholders, required)
+
+  # True if the value contains only whitespace 
+- blank: "..."        # (supports placeholders, required)
+  
+  # True if the value does not contain only whitespace
+- notBlank: "..."     # (supports placeholders, required)
+```
+
+</details>
+
+#### Actions
+
+<details open>
+<summary>YAML</summary>
+
+```yaml
+# Possible actions are:
+
+  # If the condition is true, run the 'then' actions, otherwise run the 'else' actions.
+- if:                         # A condition (required, see "Conditions")
+    # ...
+  then:                       # Array of actions (optional, default: [])
+  - # then action 1
+  - # then action 2
+  - # ...
+  else:                       # Array of actions (optional, default: [])
+  - # else action 1
+  - # else action 2
+  - # ...
+
+  # Prints the given message.
+- print: "..."                # (supports placeholders, required)
+  style: null                 # (optional, default: null, valid values: ["info", "success", "warning", "error"])
+  debug: false                # Whether to only print in debug mode (optional, default: false)
+
+  # Sets the given properties/variables to the given values.
+  # The properties must be mutable.
+  # No property/variable that is set can appear in placeholders on the value side in the same set action
+  # (use multiple set actions instead).
+- set:
+    # name1: "value 1"        # (value supports placeholders)
+    # name2: "value 2"        # ^^
+    # ...
+
+  # Runs the sub macro with the given id.
+- macro: "..."                # (required)
+  ignoreCondition: false      # Whether to ignore the macro's condition (optional, default: false)
+  # A map of parameters to pass to the sub macro (the values supports placeholders, optional, default: null)
+  # If this is null, then all currently set variables are passed to the sub macro.
+  # All set parameters are available in the sub macro as variables.
+  # Modifying those variables in the sub macro does not affect the parent macro.
+  parameters: null
+  # A map of values to capture from the sub macro (the values supports placeholders, optional, default: null)
+  # The keys are the names of properties/variables to assign in the parent macro
+  # The values are evaluated in the sub macro's context.
+  capture: null
+  # Whether to continue executing the current macro if the sub macro explicitly returns (optional, default: true)
+  continueOnReturn: true
+
+  # Runs the given command.
+  # Commands are run in the directory where nav currently is (see {{directory}} placeholder).
+- command: "..."              # (supports placeholders, required)
+  exitCodeTo: "exitCode"      # The variable/property to store the exit code in (optional, default: "exitCode")
+  # The variable/property to store the standard output in (optional, default: null)
+  # If this is null, the output gets printed to the terminal.
+  outputTo: null
+  trimTrailingNewline: true   # Whether to trim a single trailing newline from the output (optional, default: true)
+  # The variable/property to store the standard error in (optional, default: null)
+  # If this is null, the error output gets printed to the terminal.
+  errorTo: null
+
+  # Opens the given file in the editor (see 'editor' configuration or '--editor' command line option).
+- open: "..."                 # (supports placeholders, required)
+  exitCodeTo: "exitCode"      # The variable/property to store the editor's exit code in (optional, default: "exitCode")
+
+  # Prompts the user for input.
+  # Not both 'format' and 'choices' can be specified at the same time.
+  # If choices are specified, the user must select one of the choices.
+  # Otherwise, the user must enter a value matching the format (if specified).
+- prompt: "..."               # The message to show (supports placeholders, required)
+  format: null                # A regex pattern the entire input must match (optional, default: null)
+  choices: []                 # A list of choices (values support placeholders, optional, default: [])
+  default: null               # The default value (supports placeholders, optional, default: null)
+  resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
+
+  # Matches the entire value against the given regex pattern.
+  # If it matches, the capturing groups are stored in the given properties/variables.
+  # The first capturing group is stored in the first property/variable, the second in the second, etc.
+- match: "..."                # A regex pattern (required)
+  in: "..."                   # (supports placeholders, required)
+  groupsTo: []                # A list of properties/variables to store the capturing groups in (optional, default: [])
+
+  # Explicitly returns from the current macro (but not from nav) if the value is true.
+  # Any action in this macro after this action is not executed.
+  # Actions in possible parent macros may still be executed.
+- return: true                # (required)
+
+  # Immediately exits nav if the value is true.
+  # If no directory is specified, nav exits at the working directory it was started from.
+- exit: true                  # (required)
+  at: null                    # The directory to exit at (supports placeholders, optional, default: null)
+```
+
+</details>
+
+#### Properties, Variables and Placeholders
+
+Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
+Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
+They can appear multiple times in a string and anywhere inside the string.
+Placeholders are replaced once (no recursive replacement).
+Currently, there is no escaping mechanism for placeholders.
+
+There are several built-in properties, some of which can be modified to affect nav's behavior:
+
+| Name                   | Mutable | Description                                                                                                           |
+|------------------------|:-------:|-----------------------------------------------------------------------------------------------------------------------|
+| `workingDirectory`     |    ❌    | The working directory of nav's process                                                                                |
+| `startingDirectory`    |    ❌    | The directory where nav was started (i.e. the directory specified in the command line)                                |
+| `shell`                |    ❌    | The shell that nav currently uses (see `--shell`)                                                                     |
+| `debugMode`            |    ❌    | Whether nav is currently running in debug mode                                                                        |
+| `directory`            |    ✅    | The current directory inside nav                                                                                      |
+| `entryPath`            |    ❌    | The path of the currently highlighted entry or empty if no entry is highlighted.                                      |
+| `entryName`            |    ❌    | The name of the currently highlighted entry or empty if no entry is highlighted.                                      |
+| `entryType`            |    ❌    | The type of the currently highlighted entry.<br>Possible values are `directory`, `file`, `link`, `unknown` and empty. |
+| `entryCursorPosition`  |    ✅    | The index of the currently highlighted entry relative to all filtered entries                                         |
+| `menuCursorPosition`   |    ✅    | The index of the currently highlighted menu item                                                                      |
+| `filter`               |    ✅    | The current filter string or empty if no filter is set                                                                |
+| `filteredEntriesCount` |    ❌    | The number of entries currently matching the filter                                                                   |
+| `command`              |    ✅    | The currently typed command or empty if no command is typed                                                           |
+
+Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
+
+Additionally, macros can define their own mutable variables that can be used in placeholders.
+
+#### Examples
+
+<details open>
+<summary>YAML</summary>
+
+```yaml
+macros:
+
+# Open the current entry in code
+- description: open {{entryName}} in code
+  quickModeKey: ArrowRight
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - command: code "{{entryPath}}"
+
+# Rename the current entry
+- description: rename {{entryName}}
+  nonQuickModeKey: F6
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - prompt: "New name:"
+    format: "[^\\/:*?\"<>|]+"  # Valid filename characters on most systems
+    default: "{{entryName}}"
+    resultTo: newName
+  - command: mv "{{entryName}}" "{{newName}}"
+
+# Delete the current directory recursively after confirmation
+- description: delete {{entryName}} recursively
+  condition:
+    equal: [ "{{entryType}}", "directory" ]
+  run:
+  - prompt: "Are you sure you want to delete {{entryName}} recursively?"
+    choices: [ "No", "Yes" ]
+    default: "No"
+    resultTo: "confirmation"
+  - if:
+      equal: [ "{{confirmation}}", "Yes" ]
+    then:
+    - command: rm -rf "{{entryPath}}"
+
+# Navigate to the home directory if not already there
+- description: home
+  quickModeKey: Home
+  condition:
+    notEqual: [ "{{directory}}", "{{env:HOME}}" ]  # or "{{env:USERPROFILE}}" on Windows
+  run:
+  - set:
+      directory: "{{env:HOME}}"  # or "{{env:USERPROFILE}}" on Windows
 ```
 
 </details>
@@ -626,288 +914,6 @@ command = "echo '{entryPath}'"
 onFile = true
 onDirectory = true
 onSymbolicLink = true
-```
-
-</details>
-
-### ⭐ Macros (experimental)
-
-> [!WARNING]
-> Macros are currently an experimental feature.
-> They may change in future releases with no guarantees of compatibility.
-> Please report any [issues](https://github.com/Jojo4GH/nav/issues/new).
-
-With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
-
-Macros are available in the menu (default `PageDown`) or with their `nonQuickModeKey`.
-They can also quickly be triggered by tapping `ctrl` together with or followed by their `quickModeKey`.
-
-Currently, only the YAML configuration can be used to define macros:
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-# Defines a list of macros
-macros:
-
-- # Unique id of the macro used for referencing it (optional, default: null)
-  id: null
-  
-  # Description of the macro shown in nav (supports placeholders, required if not hidden, default: "")
-  description: ""
-  
-  # Whether to hide the macro in nav (optional, default: false)
-  hidden: false
-  
-  # Key used to trigger the macro in quick macro mode (optional, default: null)
-  quickModeKey: null
-  
-  # Key used to trigger the macro in normal mode (optional, default: null)
-  nonQuickModeKey: null
-  
-  # The condition that must be met for the macro to be available (optional, default: null, see "Conditions" below)
-  # If no condition is specified, the macro is always available.
-  # If their condition is met, macros are shown in the following places:
-  # - In quick macro mode, if a 'quickModeKey' is set and is not 'hidden'
-  # - In key hints, if a 'nonQuickModeKey' is set and is not 'hidden'
-  # - In the menu, if not 'hidden'
-  condition:
-    # ...
-  
-  # The actions to run when the macro is triggered (optional, default: [])
-  # See "Actions" below
-  run:
-  - # action 1
-  - # action 2
-  - # ...
-```
-
-</details>
-
-#### Conditions
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-# Possible conditions are:
-
-  # True if any child condition is true (similar to logical OR)
-- any:
-  - # child condition 1
-  - # child condition 2
-  - # ...
-  
-  # True if all child conditions are true (similar to logical AND)
-- all:
-  - # child condition 1
-  - # child condition 2
-  - # ...
-  
-  # True if the child condition is false (similar to logical NOT)
-- not:
-    # child condition
-  
-  # True if all values are equal (the values support placeholders)
-- equal: [ "value 1", "value 2", ... ]
-  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
-
-  # True if any values are not equal (the values support placeholders)
-- notEqual: [ "value 1", "value 2", ... ]
-  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
-
-  # True if the entire value matches the given regular expression
-- match: "..."        # A regex pattern (required)
-  in: "..."           # (supports placeholders, required)
-
-  # True if the value is empty
-- empty: "..."        # (supports placeholders, required)
-
-  # True if the value is not empty
-- notEmpty: "..."     # (supports placeholders, required)
-
-  # True if the value contains only whitespace 
-- blank: "..."        # (supports placeholders, required)
-  
-  # True if the value does not contain only whitespace
-- notBlank: "..."     # (supports placeholders, required)
-```
-
-</details>
-
-#### Actions
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-# Possible actions are:
-
-  # If the condition is true, run the 'then' actions, otherwise run the 'else' actions.
-- if:                         # A condition (required, see "Conditions")
-    # ...
-  then:                       # Array of actions (optional, default: [])
-  - # then action 1
-  - # then action 2
-  - # ...
-  else:                       # Array of actions (optional, default: [])
-  - # else action 1
-  - # else action 2
-  - # ...
-
-  # Prints the given message.
-- print: "..."                # (supports placeholders, required)
-  style: null                 # (optional, default: null, valid values: ["info", "success", "warning", "error"])
-  debug: false                # Whether to only print in debug mode (optional, default: false)
-
-  # Sets the given properties/variables to the given values.
-  # The properties must be mutable.
-  # No property/variable that is set can appear in placeholders on the value side in the same set action
-  # (use multiple set actions instead).
-- set:
-    # name1: "value 1"        # (value supports placeholders)
-    # name2: "value 2"        # ^^
-    # ...
-
-  # Runs the sub macro with the given id.
-- macro: "..."                # (required)
-  ignoreCondition: false      # Whether to ignore the macro's condition (optional, default: false)
-  # A map of parameters to pass to the sub macro (the values supports placeholders, optional, default: null)
-  # If this is null, then all currently set variables are passed to the sub macro.
-  # All set parameters are available in the sub macro as variables.
-  # Modifying those variables in the sub macro does not affect the parent macro.
-  parameters: null
-  # A map of values to capture from the sub macro (the values supports placeholders, optional, default: null)
-  # The keys are the names of properties/variables to assign in the parent macro
-  # The values are evaluated in the sub macro's context.
-  capture: null
-  # Whether to continue executing the current macro if the sub macro explicitly returns (optional, default: true)
-  continueOnReturn: true
-
-  # Runs the given command.
-  # Commands are run in the directory where nav currently is (see {{directory}} placeholder).
-- command: "..."              # (supports placeholders, required)
-  exitCodeTo: "exitCode"      # The variable/property to store the exit code in (optional, default: "exitCode")
-  # The variable/property to store the standard output in (optional, default: null)
-  # If this is null, the output gets printed to the terminal.
-  outputTo: null
-  trimTrailingNewline: true   # Whether to trim a single trailing newline from the output (optional, default: true)
-  # The variable/property to store the standard error in (optional, default: null)
-  # If this is null, the error output gets printed to the terminal.
-  errorTo: null
-
-  # Opens the given file in the editor (see 'editor' configuration or '--editor' command line option).
-- open: "..."                 # (supports placeholders, required)
-  exitCodeTo: "exitCode"      # The variable/property to store the editor's exit code in (optional, default: "exitCode")
-
-  # Prompts the user for input.
-  # Not both 'format' and 'choices' can be specified at the same time.
-  # If choices are specified, the user must select one of the choices.
-  # Otherwise, the user must enter a value matching the format (if specified).
-- prompt: "..."               # The message to show (supports placeholders, required)
-  format: null                # A regex pattern the entire input must match (optional, default: null)
-  choices: []                 # A list of choices (values support placeholders, optional, default: [])
-  default: null               # The default value (supports placeholders, optional, default: null)
-  resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
-
-  # Matches the entire value against the given regex pattern.
-  # If it matches, the capturing groups are stored in the given properties/variables.
-  # The first capturing group is stored in the first property/variable, the second in the second, etc.
-- match: "..."                # A regex pattern (required)
-  in: "..."                   # (supports placeholders, required)
-  groupsTo: []                # A list of properties/variables to store the capturing groups in (optional, default: [])
-
-  # Explicitly returns from the current macro (but not from nav) if the value is true.
-  # Any action in this macro after this action is not executed.
-  # Actions in possible parent macros may still be executed.
-- return: true                # (required)
-
-  # Immediately exits nav if the value is true.
-  # If no directory is specified, nav exits at the working directory it was started from.
-- exit: true                  # (required)
-  at: null                    # The directory to exit at (supports placeholders, optional, default: null)
-```
-
-</details>
-
-#### Properties, Variables and Placeholders
-
-Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
-Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
-They can appear multiple times in a string and anywhere inside the string.
-Placeholders are replaced once (no recursive replacement).
-Currently, there is no escaping mechanism for placeholders.
-
-There are several built-in properties, some of which can be modified to affect nav's behavior:
-
-- `workingDirectory`: The working directory of nav's process. This property is read-only.
-- `startingDirectory`: The directory where nav was started (i.e. the directory specified in the command line). This property is read-only.
-- `shell`: The shell that nav currently uses (see `--shell`). This property is read-only.
-- `debugMode`: Whether nav is currently running in debug mode. This property is read-only.
-- `directory`: The current directory inside nav. This property can be modified.
-- `entryPath`: The path of the currently highlighted entry. This property is read-only.
-- `entryName`: The name of the currently highlighted entry. This property is read-only.
-- `entryType`: The type of the currently highlighted entry. Possible values are `directory`, `file` and `link`. This property is read-only.
-- `entryCursorPosition`: The index of the currently highlighted entry relative to all filtered entries. This property can be modified.
-- `menuCursorPosition`: The index of the currently highlighted menu item. This property can be modified.
-- `filter`: The current filter string or empty if no filter is set. This property can be modified.
-- `filteredEntriesCount`: The number of entries currently matching the filter. This property is read-only.
-- `command`: The currently typed command or empty if no command is typed. This property can be modified.
-
-Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
-Additionally, macros can define their own mutable variables that can be used in placeholders with the `set` action.
-
-#### Examples
-
-<details>
-<summary>YAML</summary>
-
-```yaml
-macros:
-
-# Open the current entry in code
-- description: open {{entryName}} in code
-  quickModeKey: ArrowRight
-  condition:
-    notEmpty: "{{entryName}}"
-  run:
-  - command: code "{{entryPath}}"
-
-# Rename the current entry
-- description: rename {{entryName}}
-  nonQuickModeKey: F6
-  condition:
-    notEmpty: "{{entryName}}"
-  run:
-  - prompt: "New name:"
-    format: "[^\\/:*?\"<>|]+"  # Valid filename characters on most systems
-    default: "{{entryName}}"
-    resultTo: newName
-  - command: mv "{{entryName}}" "{{newName}}"
-
-# Delete the current directory recursively after confirmation
-- description: delete {{entryName}} recursively
-  condition:
-    equal: [ "{{entryType}}", "directory" ]
-  run:
-  - prompt: "Are you sure you want to delete {{entryName}} recursively?"
-    choices: [ "No", "Yes" ]
-    default: "No"
-    resultTo: "confirmation"
-  - if:
-      equal: [ "{{confirmation}}", "Yes" ]
-    then:
-    - command: rm -rf "{{entryPath}}"
-
-# Navigate to the home directory if not already there
-- description: home
-  quickModeKey: Home
-  condition:
-    notEqual: [ "{{directory}}", "{{env:HOME}}" ]  # or "{{env:USERPROFILE}}" on Windows
-  run:
-  - set:
-      directory: "{{env:HOME}}"  # or "{{env:USERPROFILE}}" on Windows
 ```
 
 </details>
