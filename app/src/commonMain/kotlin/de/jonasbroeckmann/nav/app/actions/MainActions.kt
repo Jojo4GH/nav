@@ -14,6 +14,8 @@ import de.jonasbroeckmann.nav.app.runEntryMacro
 import de.jonasbroeckmann.nav.app.runMacro
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.state.semantics.autocomplete
+import de.jonasbroeckmann.nav.app.ui.dialogs.dismissDialog
 import de.jonasbroeckmann.nav.app.ui.prettyName
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.app.updateState
@@ -129,55 +131,15 @@ class MainActions(context: FullContext) : KeyActions<State, MainController, Main
         config.keys.filter.autocomplete, config.keys.filter.autocomplete.copy(shift = true),
         description = { "autocomplete" },
         condition = { unfilteredItems.isNotEmpty() },
-        action = action@{ keyEvent ->
-            val commonPrefix = unfilteredItems
-                .map { it.path.name.lowercase() }
-                .filter { it.startsWith(filter.lowercase()) }
-                .ifEmpty { return@action }
-                .commonPrefix()
-
-            val filteredState = withFilter(commonPrefix)
-            val hasFilterChanged = !filteredState.filter.equals(filter, ignoreCase = true)
-
-            // Handle autocomplete
-            val completedState = when (config.autocomplete.style) {
-                CommonPrefixStop -> {
-                    filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
-                }
-                CommonPrefixCycle -> {
-                    if (hasFilterChanged) {
-                        // Go to first
-                        filteredState.withCursorOnFirst { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
-                    } else {
-                        if (keyEvent.shift) {
-                            // Go to previous
-                            filteredState.withCursorOnNextReverse { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
-                        } else {
-                            // Go to next
-                            filteredState.withCursorOnNext { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
-                        }
-                    }
-                }
-            }
-
-            // Handle auto-navigation
-            if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.None) {
-                return@action updateState { completedState }
-            }
-            completedState.filteredItems
-                .singleOrNull { it.path.name.startsWith(commonPrefix, ignoreCase = true) }
-                ?.let { singleEntry ->
-                    if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.OnSingleAfterCompletion) {
-                        if (!hasFilterChanged) {
-                            return@action updateState { completedState.navigateTo(singleEntry.path) }
-                        }
-                    }
-                    if (config.autocomplete.autoNavigation == Config.Autocomplete.AutoNavigation.OnSingle) {
-                        return@action updateState { completedState.navigateTo(singleEntry.path) }
-                    }
-                }
-
-            updateState { completedState }
+        action = {
+            autocomplete(
+                autocompleteOn = { path.name },
+                style = config.autocomplete.style,
+                autoNavigation = config.autocomplete.autoNavigation,
+                invertDirection = it.shift,
+                onUpdate = { newState -> updateState { newState } },
+                onAutoNavigate = { newState, item -> updateState { newState.navigateTo(item.path) } }
+            )
         }
     )
     val clearFilter = NormalMode.registerKeyAction(

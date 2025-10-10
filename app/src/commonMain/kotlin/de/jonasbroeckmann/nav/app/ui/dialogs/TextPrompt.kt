@@ -14,10 +14,6 @@ import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 import kotlin.time.Duration
 
-private data class TextPromptState(
-    val text: String
-)
-
 context(context: FullContext)
 fun DialogRenderingScope.defaultTextPrompt(
     title: String,
@@ -111,3 +107,7 @@ fun DialogRenderingScope.textPrompt(
         }
     }
 }
+
+private data class TextPromptState(
+    val text: String
+)
