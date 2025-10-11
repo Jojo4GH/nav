@@ -209,7 +209,7 @@ The default configuration looks as follows:
 
 ### General
 
-<details>
+<details open>
 <summary>YAML</summary>
 
 ```yaml
