@@ -2,34 +2,30 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
+import de.jonasbroeckmann.nav.app.StateManager
 import de.jonasbroeckmann.nav.app.actions.KeyAction
-import de.jonasbroeckmann.nav.app.computeStateWithKeyboardInput
-import de.jonasbroeckmann.nav.command.PartialContext
-import kotlin.time.Duration
+import de.jonasbroeckmann.nav.app.captureKeyboardEvents
 
 private class DialogExitEvent(val toReturn: Any?) : Throwable()
 
 typealias DialogKeyAction<T, R> = KeyAction<T, DialogController<T, R>>
 
-context(context: PartialContext)
-fun <T, R> DialogRenderingScope.inputDialog(
+fun <T, R> DialogScope.inputDialog(
     initialState: T,
     onInput: DialogController<T, R>.(KeyboardEvent) -> Unit,
-    inputTimeout: Duration,
     build: T.() -> Widget
 ): R {
     try {
-        computeStateWithKeyboardInput(
-            initialState = initialState,
-            onInput = { input, setState ->
-                DialogControllerImpl<T, R>(
-                    get = { this },
-                    set = setState
-                ).onInput(input)
-            },
-            inputTimeout = inputTimeout,
-            onNewState = { render(build()) }
-        )
+        val stateManager = StateManager(initialState)
+        var state by stateManager::state
+        stateManager.consume { render(build(it)) }
+        captureKeyboardEvents { input ->
+            DialogControllerImpl<T, R>(
+                get = { state },
+                set = { state = it }
+            ).onInput(input)
+            stateManager.consume { render(build(it)) }
+        }
     } catch (e: DialogExitEvent) {
         @Suppress("UNCHECKED_CAST")
         return e.toReturn as R

@@ -3,19 +3,18 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
-import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
 import de.jonasbroeckmann.nav.app.actions.handle
 import de.jonasbroeckmann.nav.app.actions.register
+import de.jonasbroeckmann.nav.app.state.semantics.updateTextField
 import de.jonasbroeckmann.nav.app.ui.buildHints
-import de.jonasbroeckmann.nav.app.updateTextField
-import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
-import kotlin.time.Duration
 
-context(context: FullContext)
-fun DialogRenderingScope.defaultTextPrompt(
+context(_: StylesProvider, _: ConfigProvider)
+fun DialogScope.defaultTextPrompt(
     title: String,
     initialText: String = "",
     placeholder: String? = null,
@@ -25,15 +24,14 @@ fun DialogRenderingScope.defaultTextPrompt(
     initialText = initialText,
     placeholder = placeholder,
     validate = validate,
-    showHints = !context.config.hideHints,
-    submitKey = context.config.keys.submit,
-    clearKey = context.config.keys.filter.clear,
-    cancelKey = context.config.keys.cancel,
-    inputTimeout = context.inputTimeout
+    showHints = !config.hideHints,
+    submitKey = config.keys.submit,
+    clearKey = config.keys.filter.clear,
+    cancelKey = config.keys.cancel
 )
 
-context(context: PartialContext, stylesProvider: StylesProvider)
-fun DialogRenderingScope.textPrompt(
+context(stylesProvider: StylesProvider)
+fun DialogScope.textPrompt(
     title: String,
     initialText: String = "",
     placeholder: String? = null,
@@ -41,8 +39,7 @@ fun DialogRenderingScope.textPrompt(
     submitKey: KeyboardEvent,
     clearKey: KeyboardEvent? = null,
     cancelKey: KeyboardEvent? = null,
-    validate: (String) -> Boolean = { true },
-    inputTimeout: Duration
+    validate: (String) -> Boolean = { true }
 ): String? {
     val actions: List<DialogKeyAction<TextPromptState, String?>> = buildKeyActions {
         if (clearKey != null) {
@@ -77,8 +74,7 @@ fun DialogRenderingScope.textPrompt(
             input.updateTextField(state.text) { newText ->
                 updateState { copy(text = newText) }
             }
-        },
-        inputTimeout = inputTimeout,
+        }
     ) {
         verticalLayout {
             align = LEFT

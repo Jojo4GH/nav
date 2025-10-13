@@ -1,6 +1,9 @@
 package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.InputEvent
+import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.input.enterRawMode
+import com.github.ajalt.mordant.input.isCtrlC
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
@@ -15,11 +18,10 @@ import de.jonasbroeckmann.nav.app.actions.MainActions
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.ui.RebuildableAnimation
+import de.jonasbroeckmann.nav.app.state.semantics.updateTextField
+import de.jonasbroeckmann.nav.app.ui.WidgetAnimation
 import de.jonasbroeckmann.nav.app.ui.buildUI
-import de.jonasbroeckmann.nav.app.ui.dialogs.DialogRenderingScope
-import de.jonasbroeckmann.nav.app.ui.dialogs.DialogShowController
-import de.jonasbroeckmann.nav.app.ui.invalidating
+import de.jonasbroeckmann.nav.app.ui.dialogs.DialogScope
 import de.jonasbroeckmann.nav.command.*
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.exitProcess
@@ -29,54 +31,6 @@ import kotlinx.io.IOException
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-
-interface MainController : DialogShowController, FullContext, StateProvider {
-    fun updateState(updater: State.() -> State)
-
-    fun openInEditor(file: Path): Int?
-
-    fun runCommand(command: String, collectOutput: Boolean = false, collectError: Boolean = false): RunCommandResult?
-
-    data class RunCommandResult(
-        val exitCode: Int,
-        val stdout: String?,
-        val stderr: String?
-    ) {
-        val isSuccess get() = exitCode == 0
-    }
-
-    fun runMacro(macro: Macro)
-
-    fun runEntryMacro(entryMacro: Config.EntryMacro)
-
-    fun exit(atDirectory: Path? = null): Nothing
-}
-
-context(controller: MainController)
-fun updateState(updater: State.() -> State) = controller.updateState(updater)
-
-context(controller: MainController)
-fun openInEditor(file: Path): Int? = controller.openInEditor(file)
-
-context(controller: MainController)
-fun runCommand(
-    command: String,
-    collectOutput: Boolean = false,
-    collectError: Boolean = false
-) = controller.runCommand(
-    command = command,
-    collectOutput = collectOutput,
-    collectError = collectError
-)
-
-context(controller: MainController)
-fun runMacro(macro: Macro) = controller.runMacro(macro)
-
-context(controller: MainController)
-fun runEntryMacro(entryMacro: Config.EntryMacro) = controller.runEntryMacro(entryMacro)
-
-context(controller: MainController)
-fun exit(atDirectory: Path? = null): Nothing = controller.exit(atDirectory)
 
 class App(
     context: PartialContext,
@@ -127,25 +81,49 @@ class App(
             .toMap()
     }
 
-    private val ui = RebuildableAnimation(terminal) {
-        buildUI(
+    private val actions = MainActions(this)
+
+    private val stateManager = StateManager(
+        initial = AppState(
             actions = actions,
-            state = state,
-            dialog = dialog
-        )
-    }
-
-    private val actions: MainActions by ui.invalidating(initial = MainActions(this))
-
-    override var state: State by ui.invalidating(
-        initial = State.initial(
-            startingDirectory = startingDirectory,
-            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
-            allMenuActions = { actions.menuActions }
+            state = State.initial(
+                startingDirectory = startingDirectory,
+                showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+                allMenuActions = { actions.menuActions }
+            ),
+            dialog = null
         )
     )
 
-    private var dialog: Widget? by ui.invalidating(initial = null)
+    override var state
+        get() = stateManager.state.state
+        set(value) {
+            stateManager.state = stateManager.state.copy(state = value)
+        }
+
+    private var dialog
+        get() = stateManager.state.dialog
+        set(value) {
+            stateManager.state = stateManager.state.copy(dialog = value)
+        }
+
+    private data class AppState(
+        val actions: MainActions,
+        val state: State,
+        val dialog: Widget?
+    )
+
+    private val ui = WidgetAnimation(terminal)
+
+    fun WidgetAnimation.tryUpdate() = stateManager.consume { state ->
+        render(
+            widget = buildUI(
+                actions = state.actions,
+                state = state.state,
+                dialog = state.dialog
+            )
+        )
+    }
 
     override val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
 
@@ -163,9 +141,12 @@ class App(
         terminal.cursor.hide(showOnExit = false)
 
         try {
-            while (true) {
-                ui.update()
-                readInput(inputTimeout).process()
+            useInputMode(Normal) {
+                ui.tryUpdate()
+                captureInputEvents { input ->
+                    processInput(input)
+                    ui.tryUpdate()
+                }
             }
         } catch (_: ExitEvent) {
             printlnOnDebug { "Exiting ..." }
@@ -183,47 +164,47 @@ class App(
     }
 
     @Suppress("detekt:CyclomaticComplexMethod", "detekt:ReturnCount")
-    private fun InputEvent.process() = filterKeyboardEvents {
-        state = state.withLastReceivedEvent(this)
-        if (ctrl) {
+    private fun processInput(input: InputEvent) {
+        if (input !is KeyboardEvent) return
+        if (input.ctrl) {
             printlnOnDebug { "Entering quick macro mode ..." }
-            state = state.inQuickMacroMode(true)
+            state = state.withInputMode(QuickMacro)
         }
-        if (state.inQuickMacroMode) {
+        if (state.inputMode == QuickMacro) {
             for (action in actions.quickMacroModeActions) {
-                if (context(state) { action matches this.copy(ctrl = false) }) {
-                    action.tryRun(this)
-                    state = state.inQuickMacroMode(false)
+                if (context(state) { action matches input.copy(ctrl = false) }) {
+                    action.tryRun(input)
+                    state = state.withInputMode(currentInputMode)
                     return
                 }
             }
-            if (key in setOf("Control", "Shift", "Alt")) {
+            if (input.key in setOf("Control", "Shift", "Alt")) {
                 return
             }
             // no action matched, so we continue as normal
             printlnOnDebug { "Exiting quick macro mode ..." }
-            state = state.inQuickMacroMode(false)
+            state = state.withInputMode(currentInputMode)
         }
         for (action in actions.normalModeActions) {
-            if (context(state) { action matches this }) {
-                action.tryRun(this)
+            if (context(state) { action matches input }) {
+                action.tryRun(input)
                 return
             }
         }
         val command = state.command
         if (command != null) {
-            updateTextField(
+            input.updateTextField(
                 current = command,
                 onChange = { newCommand -> state = state.withCommand(newCommand) }
             )
         } else {
-            updateTextField(
+            input.updateTextField(
                 current = state.filter,
                 onChange = { newFilter -> state = state.withFilter(newFilter) }
             )
         }
         return
-    } ?: Unit
+    }
 
     private fun <E : InputEvent?> Action<State, E, MainController>.tryRun(input: E) {
         try {
@@ -301,7 +282,6 @@ class App(
     )
 
     override fun runEntryMacro(entryMacro: Config.EntryMacro) {
-        state = state.inQuickMacroMode(false)
         val command = context(state) {
             entryMacro.computeCommand(requireNotNull(state.currentItem))
         }
@@ -333,15 +313,18 @@ class App(
         throw ExitEvent()
     }
 
-    override fun <R> showDialog(block: DialogRenderingScope.() -> R): R {
+    override fun <R> showDialog(block: DialogScope.() -> R): R {
         val previous = dialog
         try {
-            return object : DialogRenderingScope {
-                override fun render(widget: Widget) {
-                    dialog = widget
-                    ui.update()
+            useInputMode(Dialog) {
+                val scope = object : DialogScope, InputMode by this {
+                    override fun render(widget: Widget) {
+                        dialog = widget
+                        ui.tryUpdate()
+                    }
                 }
-            }.block()
+                return scope.block()
+            }
         } finally {
             dialog = previous
         }
@@ -406,7 +389,47 @@ class App(
         return result
     }
 
-    class ExitEvent : Throwable()
+    private fun readInput(): InputEvent {
+        terminal.enterRawMode().use { rawMode ->
+            while (true) {
+                val input = try {
+                    rawMode.readEvent(inputTimeout)
+                } catch (_: RuntimeException) {
+                    continue // on timeout try again
+                }
+                printlnOnDebug { "Received input event: $input" }
+                if (input is KeyboardEvent) {
+                    state = state.withLastReceivedEvent(input)
+                    if (input.isCtrlC) throw ExitEvent()
+                }
+                return input
+            }
+        }
+    }
+
+    private val inputModeStack = ArrayDeque<InputModeKey>()
+    private val currentInputMode: InputModeKey get() = inputModeStack.lastOrNull() ?: InputModeKey.Normal
+
+    override fun enterInputMode(mode: InputModeKey): InputMode {
+        printlnOnDebug { "Switching input mode $currentInputMode to $mode ..." }
+        inputModeStack.addLast(mode)
+        state = state.withInputMode(currentInputMode)
+        return object : InputMode {
+            override fun readInput() = this@App.readInput()
+
+            override fun close() {
+                val top = inputModeStack.lastOrNull()
+                require(top == mode) {
+                    "Input mode stack corrupted. Expected $mode but was $top. Current stack: $inputModeStack"
+                }
+                inputModeStack.removeLast()
+                state = state.withInputMode(currentInputMode)
+                printlnOnDebug { "Restored input mode from $mode to $currentInputMode" }
+            }
+        }
+    }
+
+    private class ExitEvent : Throwable()
 
     companion object {
         context(context: PartialContext)
