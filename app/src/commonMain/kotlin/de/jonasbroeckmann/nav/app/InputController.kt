@@ -2,7 +2,6 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.command.PartialContext
 
 interface InputController {
     fun enterInputMode(mode: InputModeKey): InputMode
@@ -14,7 +13,9 @@ interface InputMode : AutoCloseable {
 
 sealed interface InputModeKey {
     data object Normal : InputModeKey
+
     data object QuickMacro : InputModeKey
+
     data object Dialog : InputModeKey
 }
 

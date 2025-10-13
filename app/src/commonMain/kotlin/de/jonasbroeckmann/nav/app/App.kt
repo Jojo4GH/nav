@@ -97,11 +97,15 @@ class App(
 
     override var state
         get() = stateManager.state.state
-        set(value) { stateManager.state = stateManager.state.copy(state = value) }
+        set(value) {
+            stateManager.state = stateManager.state.copy(state = value)
+        }
 
     private var dialog
         get() = stateManager.state.dialog
-        set(value) { stateManager.state = stateManager.state.copy(dialog = value) }
+        set(value) {
+            stateManager.state = stateManager.state.copy(dialog = value)
+        }
 
     private data class AppState(
         val actions: MainActions,

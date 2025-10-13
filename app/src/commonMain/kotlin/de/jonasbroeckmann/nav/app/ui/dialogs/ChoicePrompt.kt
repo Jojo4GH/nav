@@ -7,14 +7,9 @@ import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
 import de.jonasbroeckmann.nav.app.actions.handle
 import de.jonasbroeckmann.nav.app.actions.register
-import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemList
-import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemListSemantics
-import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemList
-import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemListSemantics
-import de.jonasbroeckmann.nav.app.state.semantics.autocomplete
+import de.jonasbroeckmann.nav.app.state.semantics.*
 import de.jonasbroeckmann.nav.app.ui.buildHints
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
-import de.jonasbroeckmann.nav.app.state.semantics.updateTextField
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config
