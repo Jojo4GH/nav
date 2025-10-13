@@ -3,7 +3,7 @@ package de.jonasbroeckmann.nav.app.macros
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
-import de.jonasbroeckmann.nav.app.ui.dialogs.DialogRenderingScope
+import de.jonasbroeckmann.nav.app.ui.dialogs.DialogScope
 import de.jonasbroeckmann.nav.app.ui.dialogs.decorate
 import de.jonasbroeckmann.nav.app.ui.dialogs.macroDialogDecorator
 import de.jonasbroeckmann.nav.command.printlnOnDebug
@@ -14,7 +14,7 @@ class MacroRuntimeContext private constructor(
     controller: MainController,
     private val rootMacro: Macro
 ) : MacroSymbolScopeBase(controller, controller), MainController by controller {
-    fun <R> showMacroDialog(block: DialogRenderingScope.() -> R) = showDialog {
+    fun <R> showMacroDialog(block: DialogScope.() -> R) = showDialog {
         decorate(macroDialogDecorator(rootMacro), block)
     }
 

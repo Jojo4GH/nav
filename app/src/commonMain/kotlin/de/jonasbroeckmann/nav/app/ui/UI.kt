@@ -5,6 +5,8 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.InputModeKey
+import de.jonasbroeckmann.nav.app.InputModeKey.QuickMacro
 import de.jonasbroeckmann.nav.app.actions.MainActions
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
@@ -26,11 +28,16 @@ fun buildUI(
                 directory = state.directory,
                 maxVisiblePathElements = context.config.maxVisiblePathElements,
                 debugMode = context.debugMode,
-                filterElement = state.filter.takeUnless { it.isEmpty() }?.let { filter ->
-                    buildFilter(
-                        filter = filter,
-                        showCursor = !state.isTypingCommand && !state.inQuickMacroMode
-                    )
+                filterElement = run {
+                    val hasFocus = state.inputMode == Normal && !state.isTypingCommand
+                    if (hasFocus || state.filter.isNotEmpty()) {
+                        buildFilter(
+                            filter = state.filter,
+                            showCursor = hasFocus
+                        )
+                    } else {
+                        null
+                    }
                 }
             )
         },
@@ -374,7 +381,7 @@ private fun buildNavHints(
     state: State,
     debugMode: Boolean
 ) = buildHints {
-    if (state.inQuickMacroMode) {
+    if (state.inputMode == QuickMacro) {
         val name = when (state.currentItem?.type) {
             Directory -> "dir"
             RegularFile -> "file"
@@ -422,8 +429,10 @@ private fun buildNavHints(
 
     if (debugMode) {
         addSpacing(weak = true)
-        if (state.inQuickMacroMode) {
-            add { styles.debugStyle("M") }
+        when (state.inputMode) {
+            Normal -> { /* no-op */ }
+            QuickMacro -> add { styles.debugStyle("M") }
+            Dialog -> add { styles.debugStyle("D") }
         }
         state.lastReceivedEvent?.let { lastReceivedEvent ->
             add { styles.debugStyle("Key: ${lastReceivedEvent.prettyName}") }
