@@ -1,3 +1,5 @@
+@file:Suppress("detekt:CyclomaticComplexMethod")
+
 package de.jonasbroeckmann.nav.app.ui
 
 import com.github.ajalt.mordant.rendering.*
@@ -5,7 +7,6 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.InputModeKey
 import de.jonasbroeckmann.nav.app.InputModeKey.QuickMacro
 import de.jonasbroeckmann.nav.app.actions.MainActions
 import de.jonasbroeckmann.nav.app.state.Entry
@@ -271,7 +272,6 @@ private fun buildFilter(
     }
 }
 
-@Suppress("detekt:CyclomaticComplexMethod")
 context(_: StylesProvider)
 private fun buildName(
     entry: Entry,

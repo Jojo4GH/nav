@@ -6,8 +6,8 @@ import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.actions.buildKeyActions
 import de.jonasbroeckmann.nav.app.actions.handle
 import de.jonasbroeckmann.nav.app.actions.register
-import de.jonasbroeckmann.nav.app.ui.buildHints
 import de.jonasbroeckmann.nav.app.state.semantics.updateTextField
+import de.jonasbroeckmann.nav.app.ui.buildHints
 import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config

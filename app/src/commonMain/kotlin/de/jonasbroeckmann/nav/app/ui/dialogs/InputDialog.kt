@@ -2,9 +2,9 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
+import de.jonasbroeckmann.nav.app.StateManager
 import de.jonasbroeckmann.nav.app.actions.KeyAction
 import de.jonasbroeckmann.nav.app.captureKeyboardEvents
-import de.jonasbroeckmann.nav.app.StateManager
 
 private class DialogExitEvent(val toReturn: Any?) : Throwable()
 
