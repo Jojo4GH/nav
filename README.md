@@ -49,11 +49,27 @@ Or maybe you just want to quickly jump to a directory and inspect some files on 
 Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to navigate your filesystem.
 
 - ➡️ Use arrow keys to navigate everywhere
-- ⌨️ Type to filter entries, press `Tab` to autocomplete
+- ⌨️ Type to filter entries, press <kbd>Tab</kbd> to autocomplete
 - ✏️ Instantly edit files with your favorite editor on the fly
 - 📈 Create files and directories or run commands everywhere
-- ✅ Press `Enter` to move your shell to the current directory
-- ⭐ Define custom macros for even more powerful workflows
+- ✅ Press <kbd>Enter</kbd> to move your shell to the current directory
+- 🔧 [Configure](#-configuration) everything to your liking
+- ⭐ Define [custom macros](#-macros-experimental) for even more powerful workflows
+
+### Contents
+
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+  - [General](#general)
+  - [Controls](#controls)
+  - [Appearance](#appearance)
+- [Macros (experimental)](#-macros-experimental)
+  - [Conditions](#conditions)
+  - [Actions](#actions)
+  - [Properties, Variables & Placeholders](#properties-variables--placeholders)
+  - [Examples](#examples)
+- [Entry Macros](#entry-macros)
+- [Known Issues](#known-issues)
 
 ## 🚀 Installation
 
@@ -176,6 +192,27 @@ home-manager.users.user.programs = {
 ```
 
 </details>
+
+### 3. Basic Usage
+
+The default keybinds are:
+
+| Key                                   | Description                          | [Configuration](#controls)                                          |
+|---------------------------------------|--------------------------------------|---------------------------------------------------------------------|
+| <kbd>↑</kbd>/<kbd>↓</kbd>             | Move cursor up/down                  | `keys.cursor.up`, `keys.cursor.down`                                |
+| <kbd>Home</kbd>/<kbd>End</kbd>        | Move cursor to first/last            | `keys.cursor.home`, `keys.cursor.end`                               |
+| <kbd>←</kbd>                          | Go up one directory                  | `keys.nav.up`                                                       |
+| <kbd>→</kbd>                          | Go into directory / Open file        | `keys.nav.into`, `keys.nav.open`                                    |
+| <kbd>Enter</kbd>                      | Exit and cd to directory / Submit    | `keys.submit`                                                       |
+| <kbd>Esc</kbd>                        | Exit (don't cd) / Cancel             | `keys.cancel`                                                       |
+| <kbd>ctrl</kbd>+<kbd>C</kbd>          | Exit                                 | -                                                                   |
+| <kbd>PageUp</kbd>/<kbd>PageDown</kbd> | Open menu / Move menu cursor up/down | `keys.menu.up`, `keys.menu.down`                                    |
+| <kbd>Tab</kbd>                        | Autocomplete                         | `keys.filter.autocomplete`, `autocomplete` (see [below](#controls)) |
+| <kbd>Esc</kbd>                        | Clear filter or input                | `keys.filter.clear`                                                 |
+| `...`                                 | Type filter or input                 | -                                                                   |
+| <kbd>ctrl</kbd> + `...`               | Quick macro mode                     | See [macros](#-macros-experimental)                                 |
+
+All available keybinds are (by default) also shown at the bottom in nav.
 
 ## 🔧 Configuration
 
@@ -493,8 +530,8 @@ decorations = false   # Whether to show decorations (default: auto)
 
 With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
 
-Macros are available in the menu (default `PageDown`) or with their `nonQuickModeKey`.
-They can also quickly be triggered by tapping `ctrl` together with or followed by their `quickModeKey`.
+Macros are available in the menu (default <kbd>PageDown</kbd>) or with their `nonQuickModeKey`.
+They can also quickly be triggered by tapping <kbd>ctrl</kbd> together with or followed by their `quickModeKey`.
 
 Currently, only the YAML configuration can be used to define macros:
 
@@ -687,7 +724,7 @@ macros:
 
 </details>
 
-### Properties, Variables and Placeholders
+### Properties, Variables & Placeholders
 
 Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
 Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
@@ -725,48 +762,70 @@ Additionally, macros can define their own mutable variables that can be used in 
 ```yaml
 macros:
 
-# Open the current entry in code
+# Open the current entry in code (Trigger: ctrl+ArrowRight)
 - description: open {{entryName}} in code
   quickModeKey: ArrowRight
   condition:
-    notEmpty: "{{entryName}}"
+    notEmpty: "{{entryName}}"                       # Only if we have an entry
   run:
   - command: code "{{entryPath}}"
 
-# Rename the current entry
+# Rename the current entry (Trigger: F6)
 - description: rename {{entryName}}
   nonQuickModeKey: F6
   condition:
     notEmpty: "{{entryName}}"
   run:
   - prompt: "New name:"
-    format: "[^\\/:*?\"<>|]+"  # Valid filename characters on most systems
+    format: "[^\\/:*?\"<>|]+"                       # Valid filename characters on most systems
     default: "{{entryName}}"
     resultTo: newName
   - command: mv "{{entryName}}" "{{newName}}"
 
-# Delete the current directory recursively after confirmation
-- description: delete {{entryName}} recursively
+# Delete the current entry (non-empty directories only after confirmation) (Trigger: Delete)
+- description: delete {{entryName}}
+  nonQuickModeKey: Delete
   condition:
-    equal: [ "{{entryType}}", "directory" ]
+    notEmpty: "{{entryName}}"
   run:
-  - prompt: "Are you sure you want to delete {{entryName}} recursively?"
-    choices: [ "No", "Yes" ]
-    default: "No"
-    resultTo: "confirmation"
-  - if:
-      equal: [ "{{confirmation}}", "Yes" ]
+  - if:                                             # Perform special checks for directories
+      equal: [ "{{entryType}}", "directory" ]       
     then:
-    - command: rm -rf "{{entryPath}}"
+    - command: ls -A "{{entryPath}}"                # Get directory contents
+      outputTo: "directoryContents"
+    - if:
+        notBlank: "{{directoryContents}}"           
+      then:
+      - prompt: "Are you sure you want to delete non-empty directory '{{entryName}}'?"
+        choices: [ "No", "Yes" ]                    # Confirm if directory is not empty
+        default: "No"
+        resultTo: "confirmation"
+      - if:
+          notEqual: [ "{{confirmation}}", "Yes" ]   # Check if confirmed
+        then:
+        - return: true                              # Return from macro if not confirmed
+  - command: rm -rf "{{entryPath}}"                 # Delete
 
-# Navigate to the home directory if not already there
+# Navigate to the home directory if not already there (Trigger: ctrl+Home)
 - description: home
   quickModeKey: Home
   condition:
-    notEqual: [ "{{directory}}", "{{env:HOME}}" ]  # or "{{env:USERPROFILE}}" on Windows
+    notEqual: [ "{{directory}}", "{{env:HOME}}" ]   # or "{{env:USERPROFILE}}" on Windows
   run:
   - set:
-      directory: "{{env:HOME}}"  # or "{{env:USERPROFILE}}" on Windows
+      directory: "{{env:HOME}}"                     # or "{{env:USERPROFILE}}" on Windows
+
+# Create a hardlink of the current file (Trigger: Select from menu)
+- description: Create hardlink of {{entryName}}
+  condition:
+    equal: [ "{{entryType}}", "file" ]              # Only for files
+  run:
+  - prompt: "Link path:"
+    format: ".+"                                    # Not empty
+    default: "/data/temp/"                          # Pre-fill with /data/temp/
+    resultTo: linkPath
+  - command: mkdir -p "$(dirname '{{linkPath}}')"   # Create parent directories
+  - command: ln "{{entryPath}}" "{{linkPath}}"      # Create the hardlink
 ```
 
 </details>
@@ -837,8 +896,8 @@ There are several placeholders available for `description` and `command`:
 - `{entryName}`: The name of the currently highlighted entry
 - `{filter}`: The current filter string or empty if no filter is set
 
-Macros are available in the menu (default `PageDown`).
-They can also quickly be triggered by tapping `ctrl` together with or followed by the `quickMacroKey`.
+Macros are available in the menu (default <kbd>PageDown</kbd>).
+They can also quickly be triggered by tapping <kbd>ctrl</kbd> together with or followed by the `quickMacroKey`.
 
 Examples:
 
