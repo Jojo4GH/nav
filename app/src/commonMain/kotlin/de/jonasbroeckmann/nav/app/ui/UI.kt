@@ -24,10 +24,14 @@ fun buildUI(
         top = {
             buildTitle(
                 directory = state.directory,
-                filter = state.filter,
-                showCursor = !state.isTypingCommand && !state.inQuickMacroMode,
                 maxVisiblePathElements = context.config.maxVisiblePathElements,
-                debugMode = context.debugMode
+                debugMode = context.debugMode,
+                filterElement = state.filter.takeUnless { it.isEmpty() }?.let { filter ->
+                    buildFilter(
+                        filter = filter,
+                        showCursor = !state.isTypingCommand && !state.inQuickMacroMode
+                    )
+                }
             )
         },
         fill = { availableLines ->
@@ -178,12 +182,74 @@ private fun SectionBuilder.buildEntries(
 context(_: StylesProvider)
 private fun buildTitle(
     directory: Path,
-    filter: String,
-    showCursor: Boolean,
     maxVisiblePathElements: Int,
-    debugMode: Boolean
-): Widget {
-    return Text("${buildPath(directory, maxVisiblePathElements, debugMode)}${buildFilter(filter, showCursor)}")
+    debugMode: Boolean,
+    filterElement: String?
+): Widget = Text(buildPathWithFilter(directory, maxVisiblePathElements, debugMode, filterElement))
+
+context(_: StylesProvider)
+private fun buildPathWithFilter(
+    path: Path,
+    maxVisibleElements: Int,
+    debugMode: Boolean,
+    filterElement: String?
+): String {
+    fun Path.elements(): List<String> = when (val parent = parent) {
+        null if isAbsolute -> emptyList()
+        null -> listOf(name)
+        else -> parent.elements() + listOf(name)
+    }
+
+    var prefix: String? = null
+    var elements = path.elements()
+
+    // replace user home with "~" and get prefix
+    val userHomeElements = UserHome.elements()
+    if (userHomeElements.withIndex().all { (i, it) -> it == elements.getOrNull(i) }) {
+        elements = listOf("~") + elements.drop(userHomeElements.size)
+    } else if (path.isAbsolute) {
+        prefix = "$path".substringBefore(RealSystemPathSeparator)
+    }
+
+    // shorten elements, e.g. if maxVisibleElements is 3:
+    // [a, b, c] -> [a, b, c]
+    // [a, b, c, d] -> [a, …, c, d]
+    // [a, b, c, d, e] -> [a, …, d, e]
+    if (elements.size > maxVisibleElements) {
+        val visibleAtEnd = (maxVisibleElements - 1).coerceAtLeast(1)
+        val visibleAtStart = (maxVisibleElements - visibleAtEnd).coerceAtLeast(0)
+        elements = elements.take(visibleAtStart) + listOf("…") + elements.takeLast(visibleAtEnd)
+    }
+
+    // apply styles to prefix and path
+    prefix = prefix?.let { styles.path(it) }
+    elements = elements.map { styles.path(it) }
+
+    // append filter
+    if (filterElement != null) {
+        elements = if (elements.lastOrNull()?.isEmpty() == true) {
+            // replace empty last element
+            elements.dropLast(1) + listOf(filterElement)
+        } else {
+            elements + listOf(filterElement)
+        }
+    }
+
+    // combine everything
+    val separator = " $RealSystemPathSeparator "
+    return buildString {
+        if (prefix != null) {
+            append(prefix)
+            if (prefix.isEmpty()) {
+                append(styles.path(separator.trimStart()))
+            } else {
+                append(styles.path(separator))
+            }
+        }
+        elements.joinTo(this, styles.path(separator))
+    }
+        // add debug info
+        .let { if (debugMode) "$path  ${path.elements()}\n$it" else it }
 }
 
 context(_: StylesProvider)
@@ -191,10 +257,8 @@ private fun buildFilter(
     filter: String,
     showCursor: Boolean
 ): String {
-    if (filter.isEmpty()) return ""
     val style = styles.filter + TextStyles.bold
     return buildString {
-        append(" ${styles.path("$RealSystemPathSeparator")} ")
         append(style(filter))
         if (showCursor) append(style("_"))
     }
@@ -249,31 +313,6 @@ private fun String.dressUpEntryName(entry: Entry, isSelected: Boolean, showLinkT
         Directory -> "${common("${styles.directory(this)}${styles.nameDecorations("$RealSystemPathSeparator")}")} "
         RegularFile -> "${common(styles.file(this))} "
         Unknown -> "${common(styles.nameDecorations(this))} "
-    }
-}
-
-context(_: StylesProvider)
-private fun buildPath(
-    path: Path,
-    maxVisibleElements: Int,
-    debugMode: Boolean
-): String {
-    val pathString = path.toString().let {
-        val home = UserHome.toString().removeSuffix("$RealSystemPathSeparator")
-        if (it.startsWith(home)) " ~${it.removePrefix(home)}" else it
-    }
-    val elements = pathString.split(RealSystemPathSeparator)
-
-    val shortened = when {
-        elements.size > maxVisibleElements -> {
-            elements.subList(0, 1) + listOf("…") + elements.subList(elements.size - (maxVisibleElements - 2), elements.size)
-        }
-        else -> elements
-    }
-
-    val style = styles.path
-    return style(shortened.joinToString(" $RealSystemPathSeparator ")).let {
-        if (debugMode) "$path\n$it" else it
     }
 }
 
