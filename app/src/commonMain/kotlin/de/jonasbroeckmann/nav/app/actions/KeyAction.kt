@@ -53,5 +53,6 @@ data class KeyAction<Context, Controller>(
     context(context: Context, controller: Controller)
     override fun run(input: KeyboardEvent) = context.action(input)
 
+    // TODO add input mode and use
     data class Trigger(val key: KeyboardEvent)
 }

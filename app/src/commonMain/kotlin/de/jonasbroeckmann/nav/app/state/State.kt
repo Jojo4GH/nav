@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import de.jonasbroeckmann.nav.app.InputModeKey
 import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.MenuAction
 import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemList
@@ -24,7 +25,7 @@ data class State private constructor(
 
     val command: String? = null,
 
-    val inQuickMacroMode: Boolean = false,
+    val inputMode: InputModeKey,
 
     val lastReceivedEvent: KeyboardEvent? = null
 ) : StateProvider, FilterableItemList<State, Entry>, NavigableItemList<State, Entry> {
@@ -83,6 +84,8 @@ data class State private constructor(
     val isMenuOpen get() = menuCursor >= 0
     val currentMenuAction get() = shownMenuActions.getOrNull(coercedMenuCursor)
 
+    val inQuickMacroMode get() = inputMode == InputModeKey.QuickMacro
+
     val isTypingCommand get() = command != null
 
     fun withMenuCursorCoerced(cursor: Int) = copy(
@@ -128,10 +131,9 @@ data class State private constructor(
         return copy(unfilteredItems = directory.entries()).withCursorOnFirst(predicate = preferredEntry)
     }
 
-    fun inQuickMacroMode(enabled: Boolean = true) = when (enabled) {
-        true -> copy(inQuickMacroMode = true).withMenuCursorCoerced(-1)
-        false -> copy(inQuickMacroMode = false)
-    }
+    fun withInputMode(inputMode: InputModeKey) = copy(inputMode = inputMode)
+
+//    fun inQuickMacroMode(enabled: Boolean = true) =
 
     fun withLastReceivedEvent(event: KeyboardEvent?) = copy(lastReceivedEvent = event)
 
@@ -152,7 +154,8 @@ data class State private constructor(
             directory = startingDirectory,
             cursor = 0,
             showHiddenEntries = showHiddenEntries,
-            allMenuActions = allMenuActions
+            allMenuActions = allMenuActions,
+            inputMode = Normal
         )
     }
 }

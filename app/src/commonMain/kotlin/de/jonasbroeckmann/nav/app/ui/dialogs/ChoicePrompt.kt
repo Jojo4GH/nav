@@ -14,15 +14,14 @@ import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemListSemantics
 import de.jonasbroeckmann.nav.app.state.semantics.autocomplete
 import de.jonasbroeckmann.nav.app.ui.buildHints
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
-import de.jonasbroeckmann.nav.app.updateTextField
-import de.jonasbroeckmann.nav.command.PartialContext
+import de.jonasbroeckmann.nav.app.state.semantics.updateTextField
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
-import kotlin.time.Duration
 
 context(context: FullContext)
-fun DialogRenderingScope.defaultChoicePrompt(
+fun DialogScope.defaultChoicePrompt(
     title: String,
     choices: List<String>,
     defaultChoice: Int = 0,
@@ -30,24 +29,22 @@ fun DialogRenderingScope.defaultChoicePrompt(
     title = title,
     choices = choices,
     defaultChoice = defaultChoice,
-    showHints = !context.config.hideHints,
+    showHints = !config.hideHints,
     accessibilityDecorations = context.accessibilityDecorations,
-    keys = context.config.keys,
-    autocomplete = context.config.autocomplete,
-    inputTimeout = context.inputTimeout
+    keys = config.keys,
+    autocomplete = config.autocomplete
 )
 
 @Suppress("detekt:LongMethod", "detekt:CyclomaticComplexMethod")
-context(context: PartialContext, stylesProvider: StylesProvider)
-fun DialogRenderingScope.choicePrompt(
+context(stylesProvider: StylesProvider)
+fun DialogScope.choicePrompt(
     title: String,
     choices: List<String>,
     defaultChoice: Int = 0,
     showHints: Boolean,
     accessibilityDecorations: Boolean,
     keys: Config.Keys,
-    autocomplete: Config.Autocomplete,
-    inputTimeout: Duration
+    autocomplete: Config.Autocomplete
 ): String? {
     val actions: List<DialogKeyAction<ChoicePromptState, String?>> = buildKeyActions {
         register(
@@ -116,8 +113,7 @@ fun DialogRenderingScope.choicePrompt(
             input.updateTextField(state.filter) { newFilter ->
                 updateState { withFilter(newFilter) }
             }
-        },
-        inputTimeout = inputTimeout,
+        }
     ) {
         verticalLayout {
             align = LEFT

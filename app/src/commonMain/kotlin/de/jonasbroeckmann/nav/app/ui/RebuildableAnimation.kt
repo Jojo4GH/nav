@@ -6,6 +6,16 @@ import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.terminal.Terminal
 import kotlin.properties.Delegates
 
+class WidgetAnimation(terminal: Terminal) : StoppableAnimation {
+    private val animation = terminal.animation<Widget> { it }
+
+    fun render(widget: Widget) = animation.update(widget)
+
+    override fun clear() = animation.clear()
+
+    override fun stop() = animation.stop()
+}
+
 class RebuildableAnimation(
     terminal: Terminal,
     private val onBuild: () -> Widget

@@ -1,19 +1,20 @@
 package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.rendering.Widget
+import de.jonasbroeckmann.nav.app.InputMode
 import de.jonasbroeckmann.nav.app.ui.Decorator
 
 interface DialogShowController {
-    fun <R> showDialog(block: DialogRenderingScope.() -> R): R
+    fun <R> showDialog(block: DialogScope.() -> R): R
 }
 
-interface DialogRenderingScope {
+interface DialogScope : InputMode {
     fun render(widget: Widget)
 }
 
-inline fun <R> DialogRenderingScope.decorate(
+inline fun <R> DialogScope.decorate(
     decorator: Decorator,
-    block: DialogRenderingScope.() -> R
-) = object : DialogRenderingScope {
+    block: DialogScope.() -> R
+) = object : DialogScope, InputMode by this {
     override fun render(widget: Widget) = this@decorate.render(decorator(widget))
 }.block()
