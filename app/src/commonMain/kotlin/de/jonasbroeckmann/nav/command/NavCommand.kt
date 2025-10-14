@@ -46,7 +46,10 @@ import kotlinx.io.writeString
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
         context {
-            terminal = Terminal(theme = DefaultTerminalTheme)
+            terminal = when (val terminalInterface = customTerminalInterface()) {
+                null -> Terminal(theme = DefaultTerminalTheme)
+                else -> Terminal(theme = DefaultTerminalTheme, terminalInterface = terminalInterface)
+            }
             helpOptionNames = setOf("-?", "--help")
             helpFormatter = { context -> NavHelpFormatter(context) }
             localization = NavLocalization
@@ -249,7 +252,8 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
                     NONE -> AnsiLevel.ANSI16 // at least ANSI16 if not forced
                     else -> null
                 },
-            theme = commandTerminal.theme
+            theme = commandTerminal.theme,
+            terminalInterface = commandTerminal.terminalInterface,
         )
     }
 
