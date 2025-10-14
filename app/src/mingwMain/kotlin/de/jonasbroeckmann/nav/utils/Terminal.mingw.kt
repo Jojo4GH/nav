@@ -1,3 +1,5 @@
+@file:Suppress("detekt:MagicNumber")
+
 package de.jonasbroeckmann.nav.utils
 
 import com.github.ajalt.mordant.input.InputEvent
@@ -63,13 +65,13 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
             dwMilliseconds = dwMilliseconds.toUInt()
         )
         if (waitResult != 0u) {
-            throw RuntimeException("Timeout reading from console input")
+            throw ConsoleException("Timeout reading from console input")
         }
         val inputEvents = allocArray<INPUT_RECORD>(1)
         val eventsRead = alloc<UIntVar>()
         ReadConsoleInput!!(stdinHandle, inputEvents, 1u, eventsRead.ptr)
         if (eventsRead.value == 0u) {
-            throw RuntimeException("Error reading from console input")
+            throw ConsoleException("Error reading from console input")
         }
         val inputEvent = inputEvents[0]
         return when (inputEvent.EventType.toInt()) {
@@ -110,9 +112,7 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
                 var nextEvent: EventRecord?
                 do {
                     nextEvent = readRawEvent(0)
-                } while (nextEvent != null
-                    && (nextEvent !is EventRecord.Key || !nextEvent.bKeyDown)
-                )
+                } while (nextEvent != null && (nextEvent !is EventRecord.Key || !nextEvent.bKeyDown))
                 if (nextEvent !is EventRecord.Key) {
                     event.uChar.toString()
                 } else {
@@ -161,33 +161,37 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
     ): InputEvent? {
         val eventFlags = event.dwEventFlags
         val buttons = event.dwButtonState.toInt()
-        if (tracking == MouseTracking.Off
-            || tracking == MouseTracking.Normal && eventFlags == MOUSE_MOVED.toUInt()
-            || tracking == MouseTracking.Button && eventFlags == MOUSE_MOVED.toUInt() && buttons == 0
-        ) return null
 
-        return MouseEvent(
-            x = event.dwMousePositionX.toInt(),
-            y = event.dwMousePositionY.toInt(),
-            left = buttons and FROM_LEFT_1ST_BUTTON_PRESSED != 0,
-            right = buttons and RIGHTMOST_BUTTON_PRESSED != 0,
-            middle = buttons and FROM_LEFT_2ND_BUTTON_PRESSED != 0,
-            mouse4 = buttons and FROM_LEFT_3RD_BUTTON_PRESSED != 0,
-            mouse5 = buttons and FROM_LEFT_4TH_BUTTON_PRESSED != 0,
-            // If the high word of the dwButtonState member contains a positive value, the wheel
-            // was rotated forward, away from the user.
-            wheelUp = eventFlags and MOUSE_WHEELED.toUInt() != 0u && buttons shr 16 > 0,
-            wheelDown = eventFlags and MOUSE_WHEELED.toUInt() != 0u && buttons shr 16 <= 0,
-            // If the high word of the dwButtonState member contains a positive value, the wheel
-            // was rotated to the right.
-            wheelLeft = eventFlags and MOUSE_HWHEELED.toUInt() != 0u && buttons shr 16 <= 0,
-            wheelRight = eventFlags and MOUSE_HWHEELED.toUInt() != 0u && buttons shr 16 > 0,
-            ctrl = event.dwControlKeyState and (RIGHT_CTRL_PRESSED or LEFT_CTRL_PRESSED).toUInt() != 0u,
-            alt = event.dwControlKeyState and (RIGHT_ALT_PRESSED or LEFT_ALT_PRESSED).toUInt() != 0u,
-            shift = event.dwControlKeyState and SHIFT_PRESSED.toUInt() != 0u,
-        )
+        // If the high word of the dwButtonState member contains a positive value, the wheel
+        // was rotated forward, away from the user.
+        // If the high word of the dwButtonState member contains a positive value, the wheel
+        // was rotated to the right.
+        return when (tracking) {
+            MouseTracking.Off -> null
+            MouseTracking.Normal if eventFlags == MOUSE_MOVED.toUInt() -> null
+            MouseTracking.Button if eventFlags == MOUSE_MOVED.toUInt() && buttons == 0 -> null
+            else -> MouseEvent(
+                x = event.dwMousePositionX.toInt(),
+                y = event.dwMousePositionY.toInt(),
+                left = buttons and FROM_LEFT_1ST_BUTTON_PRESSED != 0,
+                right = buttons and RIGHTMOST_BUTTON_PRESSED != 0,
+                middle = buttons and FROM_LEFT_2ND_BUTTON_PRESSED != 0,
+                mouse4 = buttons and FROM_LEFT_3RD_BUTTON_PRESSED != 0,
+                mouse5 = buttons and FROM_LEFT_4TH_BUTTON_PRESSED != 0,
+                // If the high word of the dwButtonState member contains a positive value, the wheel
+                // was rotated forward, away from the user.
+                wheelUp = eventFlags and MOUSE_WHEELED.toUInt() != 0u && buttons shr 16 > 0,
+                wheelDown = eventFlags and MOUSE_WHEELED.toUInt() != 0u && buttons shr 16 <= 0,
+                // If the high word of the dwButtonState member contains a positive value, the wheel
+                // was rotated to the right.
+                wheelLeft = eventFlags and MOUSE_HWHEELED.toUInt() != 0u && buttons shr 16 <= 0,
+                wheelRight = eventFlags and MOUSE_HWHEELED.toUInt() != 0u && buttons shr 16 > 0,
+                ctrl = event.dwControlKeyState and (RIGHT_CTRL_PRESSED or LEFT_CTRL_PRESSED).toUInt() != 0u,
+                alt = event.dwControlKeyState and (RIGHT_ALT_PRESSED or LEFT_ALT_PRESSED).toUInt() != 0u,
+                shift = event.dwControlKeyState and SHIFT_PRESSED.toUInt() != 0u,
+            )
+        }
     }
-
 
     // https://docs.microsoft.com/en-us/windows/console/getconsolemode
     override fun stdoutInteractive(): Boolean = memScoped {
@@ -213,12 +217,12 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
     }
 
     private fun getStdinConsoleMode(): UInt {
-        return getConsoleMode(GetStdHandle(STD_INPUT_HANDLE)) ?: throw RuntimeException("Error getting console mode")
+        return getConsoleMode(GetStdHandle(STD_INPUT_HANDLE)) ?: throw ConsoleException("Error getting console mode")
     }
 
     private fun setStdinConsoleMode(dwMode: UInt) {
         if (SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), dwMode) == 0) {
-            throw RuntimeException("Error setting console mode")
+            throw ConsoleException("Error setting console mode")
         }
     }
 
@@ -262,6 +266,8 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
             val dwEventFlags: UInt,
         ) : EventRecord
     }
+
+    private class ConsoleException(message: String) : RuntimeException(message)
 }
 
 private object WindowsVirtualKeyCodeToKeyEvent {
