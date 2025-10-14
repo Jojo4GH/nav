@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.command
 
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.terminal.Terminal
+import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.which
@@ -11,7 +12,6 @@ enum class Shell(
     private val pathSanitizer: (String) -> String,
     private val initScript: (binary: String, navFileInHome: String) -> String,
     private val profileLocation: String,
-    private val profileDescription: String? = null,
     private val profileCommand: String,
     val execCommandArgs: (String) -> List<String>
 ) {
@@ -59,28 +59,6 @@ enum class Shell(
         profileCommand = $$"""eval "$($$BinaryName --init zsh)"""",
         execCommandArgs = { listOf("-c", it) }
     ),
-    POWERSHELL(
-        shell = "powershell",
-        pathSanitizer = WindowsPathSanitizer,
-        initScript = { binary, navFileInHome ->
-            $$"""
-            function nav {
-                & "$$binary" --shell powershell @args
-                $navFile = "$HOME\$$navFileInHome"
-                if (Test-Path $navFile) {
-                    $newDir = Get-Content $navFile
-                    if ($newDir) {
-                        Set-Location $newDir
-                        Remove-Item $navFile
-                    }
-                }
-            }
-            """.trimIndent()
-        },
-        profileLocation = $$"$PROFILE",
-        profileCommand = "Invoke-Expression (& $$BinaryName --init powershell | Out-String)",
-        execCommandArgs = { listOf("-NoProfile", "-c", it) }
-    ),
     PWSH(
         shell = "pwsh",
         pathSanitizer = WindowsPathSanitizer,
@@ -102,6 +80,28 @@ enum class Shell(
         profileLocation = $$"$PROFILE",
         profileCommand = "Invoke-Expression (& $$BinaryName --init pwsh | Out-String)",
         execCommandArgs = { listOf("-NoProfile", "-c", it) }
+    ),
+    POWERSHELL(
+        shell = "powershell",
+        pathSanitizer = WindowsPathSanitizer,
+        initScript = { binary, navFileInHome ->
+            $$"""
+            function nav {
+                & "$$binary" --shell powershell @args
+                $navFile = "$HOME\$$navFileInHome"
+                if (Test-Path $navFile) {
+                    $newDir = Get-Content $navFile
+                    if ($newDir) {
+                        Set-Location $newDir
+                        Remove-Item $navFile
+                    }
+                }
+            }
+            """.trimIndent()
+        },
+        profileLocation = $$"$PROFILE",
+        profileCommand = "Invoke-Expression (& $$BinaryName --init powershell | Out-String)",
+        execCommandArgs = { listOf("-NoProfile", "-c", it) }
     );
 
     fun printInitScript() {
@@ -117,29 +117,32 @@ enum class Shell(
         println(profileCommand)
     }
 
-    fun printInitInfo(terminal: Terminal) {
-        terminal.println(TextStyles.underline(shell))
-        terminal.println(
-            listOfNotNull(
-                "Add the following to the end of $profileLocation:",
-                profileDescription,
-                "",
-                "\t$profileCommand",
-                "",
-            ).joinToString("\n")
+    fun printInitInfo(terminal: Terminal) = with(terminal) {
+        println(
+            """
+            ${theme.style("style1")(shell.padEnd(maxShellNameLength))}
+            ${TextStyles.dim("Add the following to the end of ")}${theme.style("style2")(profileLocation)}${TextStyles.dim(":")}
+            
+                $profileCommand
+            
+            """.trimIndent()
         )
     }
 
     companion object {
         val available: Map<String, Shell> by lazy { entries.associateBy { it.shell } }
 
-        fun printInitInfo(terminal: Terminal) {
+        fun printInitInfo(terminal: Terminal) = with(terminal) {
             entries.forEach { it.printInitInfo(terminal) }
+            println(TextStyles.dim("Other shells may also work with the bash or zsh commands."))
+            println(TextStyles.dim("To request support for other shells, visit ${TextStyles.italic(Constants.IssuesUrl)}."))
         }
 
         operator fun invoke(shellName: String) = entries
             .firstOrNull { it.shell.equals(shellName, ignoreCase = true) }
             ?: error("Unknown shell: $shellName")
+
+        private val maxShellNameLength by lazy { entries.maxOf { it.shell.length } }
     }
 }
 

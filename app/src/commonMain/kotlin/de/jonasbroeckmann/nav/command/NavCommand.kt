@@ -274,7 +274,6 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
                 InitOption.Info -> {
                     terminal.println()
                     Shell.printInitInfo(terminal)
-                    terminal.println()
                     return
                 }
                 is InitOption.Init -> {

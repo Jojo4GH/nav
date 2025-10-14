@@ -4,13 +4,16 @@ set -eu
 printf '\n'
 
 BOLD="$(tput bold 2>/dev/null || printf '')"
-GREY="$(tput setaf 0 2>/dev/null || printf '')"
-UNDERLINE="$(tput smul 2>/dev/null || printf '')"
-RED="$(tput setaf 1 2>/dev/null || printf '')"
-GREEN="$(tput setaf 2 2>/dev/null || printf '')"
-YELLOW="$(tput setaf 3 2>/dev/null || printf '')"
-BLUE="$(tput setaf 4 2>/dev/null || printf '')"
-MAGENTA="$(tput setaf 5 2>/dev/null || printf '')"
+STYLE0="$(tput setaf 6 2>/dev/null || printf '')"
+STYLE1="$(tput setaf 5 2>/dev/null || printf '')"
+STYLE2="$(tput setaf 3 2>/dev/null || printf '')"
+STYLE3="${BOLD}$(tput setaf 4 2>/dev/null || printf '')"
+SUCCESS="$(tput setaf 2 2>/dev/null || printf '')"
+DANGER="$(tput setaf 1 2>/dev/null || printf '')"
+WARNING="$(tput setaf 3 2>/dev/null || printf '')"
+MUTED="${BOLD}$(tput setaf 0 2>/dev/null || printf '')"
+STYLE_URL="${STYLE0}$(tput smul 2>/dev/null || printf '')"
+
 NO_COLOR="$(tput sgr0 2>/dev/null || printf '')"
 
 SUPPORTED_TARGETS="x86_64-unknown-linux-gnu \
@@ -20,23 +23,23 @@ SUPPORTED_TARGETS="x86_64-unknown-linux-gnu \
 NAV_GITHUB="https://github.com/Jojo4GH/nav"
 
 info() {
-  printf '%s\n' "${BOLD}${GREY}>${NO_COLOR} $*"
+  printf '%s\n' "${MUTED}>${NO_COLOR} $*"
 }
 
 warn() {
-  printf '%s\n' "${YELLOW}! $*${NO_COLOR}"
+  printf '%s\n' "${WARNING}! $*${NO_COLOR}"
 }
 
 error() {
-  printf '%s\n' "${RED}x $*${NO_COLOR}" >&2
+  printf '%s\n' "${DANGER}x $*${NO_COLOR}" >&2
 }
 
 completed() {
-  printf '%s\n' "${GREEN}✓${NO_COLOR} $*"
+  printf '%s\n' "${SUCCESS}✓${NO_COLOR} $*"
 }
 
 title() {
-  printf '%s\n' "  ${UNDERLINE}$*${NO_COLOR}"
+  printf '%s\n' "  ${STYLE1}$*${NO_COLOR}"
 }
 
 text() {
@@ -44,7 +47,7 @@ text() {
 }
 
 new_issue() {
-  printf '\n\t%s\n\n' "${BOLD}${UNDERLINE}${NAV_GITHUB}/issues/new/${NO_COLOR}"
+  printf '\n\t%s\n\n' "${STYLE_URL}${NAV_GITHUB}/issues/new/${NO_COLOR}"
 }
 
 has() {
@@ -102,7 +105,7 @@ download() {
 
   if has curl && curl_is_snap; then
     warn "curl installed through snap cannot download nav."
-    warn "Searching for other HTTP download programs..."
+    warn "Searching for other HTTP download programs …"
   fi
 
   if has curl && ! curl_is_snap; then
@@ -112,17 +115,17 @@ download() {
   elif has fetch; then
     cmd="fetch --quiet --output=$file $url"
   else
-    error "No HTTP download program (curl, wget, fetch) found, exiting…"
+    error "No HTTP download program (curl, wget, fetch) found, exiting …"
     return 1
   fi
 
   $cmd && return 0 || rc=$?
 
-  error "Command failed (exit code $rc): ${BLUE}${cmd}${NO_COLOR}"
+  error "Command failed (exit code $rc): ${WARNING}${cmd}${NO_COLOR}"
   printf "\n" >&2
   info "This is likely due to nav not yet supporting your configuration."
   info "If you would like to see a build for your configuration,"
-  info "please create an issue requesting a build for ${MAGENTA}${TARGET}${NO_COLOR}:"
+  info "please create an issue requesting a build for ${STYLE2}${TARGET}${NO_COLOR}:"
   new_issue
   return $rc
 }
@@ -190,12 +193,12 @@ install() {
 
   if test_writeable "${BIN_DIR}"; then
     sudo=""
-    msg="Installing nav, please wait…"
+    msg="Installing nav, please wait …"
   else
     warn "Escalated permissions are required to install to ${BIN_DIR}"
     elevate_priv
     sudo="sudo"
-    msg="Installing nav as root, please wait…"
+    msg="Installing nav as root, please wait …"
   fi
   info "$msg"
 
@@ -260,7 +263,7 @@ detect_target() {
 
 confirm() {
   if [ -z "${FORCE-}" ]; then
-    printf "%s " "${MAGENTA}?${NO_COLOR} $* ${BOLD}[y/N]${NO_COLOR}"
+    printf "%s " "${STYLE2}?${NO_COLOR} $* ${BOLD}[Y/n]${NO_COLOR}"
     set +e
     read -r yn </dev/tty
     rc=$?
@@ -269,7 +272,7 @@ confirm() {
       error "Error reading from prompt (please re-run with the '--yes' option)"
       exit 1
     fi
-    if [ "$yn" != "y" ] && [ "$yn" != "yes" ]; then
+    if [ -n "$yn" ] && [ "$yn" != "y" ] && [ "$yn" != "yes" ]; then
       error 'Aborting (please answer "yes" to continue)'
       exit 1
     fi
@@ -321,7 +324,7 @@ is_build_available() {
     error "${arch} builds for ${platform} are not yet available for nav"
     printf "\n" >&2
     info "If you would like to see a build for your configuration,"
-    info "please create an issue requesting a build for ${MAGENTA}${target}${NO_COLOR}:"
+    info "please create an issue requesting a build for ${STYLE2}${target}${NO_COLOR}:"
     new_issue
     printf "\n"
     exit 1
@@ -430,10 +433,13 @@ TARGET="$(detect_target "${ARCH}" "${PLATFORM}")"
 
 is_build_available "${ARCH}" "${PLATFORM}" "${TARGET}"
 
+printf '%s\n' "  The interactive and ${STYLE2}st${STYLE1}yl${STYLE3}i${STYLE0}sh${NO_COLOR} replacement for ls & cd!"
+printf '\n'
 title "Configuration"
-info "${BOLD}Bin directory${NO_COLOR}: ${GREEN}${BIN_DIR}${NO_COLOR}"
-info "${BOLD}Platform${NO_COLOR}:      ${GREEN}${PLATFORM}${NO_COLOR}"
-info "${BOLD}Arch${NO_COLOR}:          ${GREEN}${ARCH}${NO_COLOR}"
+info "${BOLD}Bin directory${NO_COLOR}: ${STYLE2}${BIN_DIR}${NO_COLOR}"
+info "${BOLD}Platform${NO_COLOR}:      ${STYLE2}${PLATFORM}${NO_COLOR}"
+info "${BOLD}Arch${NO_COLOR}:          ${STYLE2}${ARCH}${NO_COLOR}"
+info "${BOLD}Version${NO_COLOR}:       ${STYLE2}${VERSION}${NO_COLOR}"
 
 # non-empty VERBOSE enables verbose untarring
 if [ -n "${VERBOSE-}" ]; then
@@ -457,8 +463,8 @@ else
   URL="${BASE_URL}/latest/download/nav-${TARGET}.${EXT}"
 fi
 
-info "Tarball URL: ${UNDERLINE}${BLUE}${URL}${NO_COLOR}"
-confirm "Install nav ${GREEN}${VERSION}${NO_COLOR} to ${BOLD}${GREEN}${BIN_DIR}${NO_COLOR}?"
+info "Tarball URL: ${STYLE_URL}${URL}${NO_COLOR}"
+confirm "Install nav to ${STYLE2}${BIN_DIR}${NO_COLOR}?"
 check_bin_dir "${BIN_DIR}"
 
 install "${EXT}"
