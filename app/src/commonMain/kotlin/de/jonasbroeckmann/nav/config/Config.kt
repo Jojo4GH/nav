@@ -354,7 +354,7 @@ data class Config private constructor(
 
         private fun loadFromToml(path: Path) = TomlFileReader(
             inputConfig = TomlInputConfig(
-                ignoreUnknownNames = true
+                ignoreUnknownNames = false
             ),
             outputConfig = TomlOutputConfig()
         ).decodeFromFile(
@@ -364,7 +364,7 @@ data class Config private constructor(
 
         private fun loadFromYaml(path: Path) = Yaml(
             configuration = YamlConfiguration(
-                strictMode = false
+                strictMode = true
             )
         ).decodeFromSource(
             deserializer = serializer(),
@@ -373,7 +373,7 @@ data class Config private constructor(
 
         fun serializeToYaml(config: Config): String = Yaml(
             configuration = YamlConfiguration(
-                strictMode = false
+                strictMode = true
             )
         ).encodeToString(
             serializer = serializer(),
