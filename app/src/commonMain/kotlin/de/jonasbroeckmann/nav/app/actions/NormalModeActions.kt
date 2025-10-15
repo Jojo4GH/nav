@@ -9,12 +9,13 @@ import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyActions
+import de.jonasbroeckmann.nav.framework.input.InputMode
 import de.jonasbroeckmann.nav.framework.semantics.autocomplete
 import de.jonasbroeckmann.nav.framework.semantics.updateTextField
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 
 @Suppress("unused")
-class NormalModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(), FullContext by context {
+class NormalModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(InputMode.Normal), FullContext by context {
     val menuSubmit = registerKeyAction(
         config.keys.submit,
         condition = { isMenuOpen },

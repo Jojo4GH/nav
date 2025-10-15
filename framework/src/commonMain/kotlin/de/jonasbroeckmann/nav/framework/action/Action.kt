@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.framework.action
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle
+import de.jonasbroeckmann.nav.framework.input.InputMode
 
 sealed interface Action<Context, Input : InputEvent?, Controller> {
     context(context: Context)
@@ -14,13 +15,13 @@ sealed interface Action<Context, Input : InputEvent?, Controller> {
     fun isHidden(): Boolean
 
     context(context: Context)
-    infix fun matches(input: Input): Boolean
+    fun matches(input: Input, mode: InputMode?): Boolean
 
     context(context: Context)
-    fun isAvailable(): Boolean
+    fun isAvailable(mode: InputMode?): Boolean
 
     context(context: Context)
-    fun isShown() = !isHidden() && isAvailable()
+    fun isShown(mode: InputMode?) = !isHidden() && isAvailable(mode)
 
     context(context: Context, controller: Controller)
     fun run(input: Input)
@@ -29,10 +30,11 @@ sealed interface Action<Context, Input : InputEvent?, Controller> {
 inline fun <Context, Input : InputEvent?, Controller> Iterable<Action<Context, Input, Controller>>.forEachMatch(
     context: Context,
     input: Input,
+    mode: InputMode?,
     onMatch: context(Context) Action<Context, Input, Controller>.() -> Unit
 ) = context(context) {
     forEach { action ->
-        if (action matches input) {
+        if (action.matches(input, mode)) {
             action.onMatch()
         }
     }
@@ -41,9 +43,10 @@ inline fun <Context, Input : InputEvent?, Controller> Iterable<Action<Context, I
 context(controller: Controller)
 fun <Context, Input : InputEvent?, Controller> Iterable<Action<Context, Input, Controller>>.handle(
     context: Context,
-    input: Input
+    input: Input,
+    mode: InputMode?
 ): Boolean {
-    forEachMatch(context, input) {
+    forEachMatch(context, input, mode) {
         run(input)
         return true
     }

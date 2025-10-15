@@ -14,10 +14,10 @@ import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
-import de.jonasbroeckmann.nav.framework.input.InputMode.Normal
-import de.jonasbroeckmann.nav.framework.input.InputMode.QuickMacro
+import de.jonasbroeckmann.nav.framework.input.InputMode
 import de.jonasbroeckmann.nav.framework.ui.FillLayout
 import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
+import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
 import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
@@ -27,6 +27,7 @@ context(context: FullContext)
 fun buildUI(
     normalModeActions: NormalModeActions,
     quickMacroModeActions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State,
     dialog: Widget?
 ): Widget = FillLayout(
@@ -36,11 +37,11 @@ fun buildUI(
             maxVisiblePathElements = context.config.maxVisiblePathElements,
             debugMode = context.debugMode,
             filterElement = context(state) {
-                val hasFocus = state.inputMode == Normal && normalModeActions.inputFilter.isAvailable()
+                val hasFocus = normalModeActions.inputFilter.isAvailable(inputMode)
                 if (hasFocus || state.filter.isNotEmpty()) {
                     buildFilter(
                         filter = state.filter,
-                        showCursor = hasFocus
+                        hasFocus = hasFocus
                     )
                 } else {
                     null
@@ -63,6 +64,7 @@ fun buildUI(
         buildBottom(
             normalModeActions = normalModeActions,
             quickMacroModeActions = quickMacroModeActions,
+            inputMode = inputMode,
             state = state,
             dialog = dialog,
             showHints = !context.config.hideHints,
@@ -269,14 +271,13 @@ private fun buildPathWithFilter(
 context(_: StylesProvider)
 private fun buildFilter(
     filter: String,
-    showCursor: Boolean
-): String {
-    val style = styles.filter + TextStyles.bold
-    return buildString {
-        append(style(filter))
-        if (showCursor) append(style("_"))
-    }
-}
+    hasFocus: Boolean
+): String = buildString {
+    appendTextFieldContent(
+        text = filter,
+        hasFocus = hasFocus
+    )
+}.let { (styles.filter + TextStyles.bold)(it) }
 
 context(_: StylesProvider)
 private fun buildName(
@@ -333,6 +334,7 @@ context(_: StylesProvider)
 private fun buildBottom(
     normalModeActions: NormalModeActions,
     quickMacroModeActions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State,
     dialog: Widget?,
     showHints: Boolean,
@@ -351,6 +353,7 @@ private fun buildBottom(
             buildNavHints(
                 normalModeActions = normalModeActions,
                 quickMacroModeActions = quickMacroModeActions,
+                inputMode = inputMode,
                 state = state,
                 debugMode = debugMode
             )
@@ -360,7 +363,7 @@ private fun buildBottom(
     if (state.isMenuOpen) {
         cell(buildMenu(normalModeActions, state))
         if (showHints) {
-            cell("${styles.genericElements("•")} ${buildMenuHints(normalModeActions, state)}")
+            cell("${styles.genericElements("•")} ${buildMenuHints(normalModeActions, inputMode, state)}")
         }
     }
 }
@@ -393,18 +396,19 @@ context(_: StylesProvider)
 private fun buildNavHints(
     normalModeActions: NormalModeActions,
     quickMacroModeActions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State,
     debugMode: Boolean
 ) = buildHints(styles.genericElements(" • ")) {
-    if (state.inputMode == QuickMacro) {
-        addQuickMacroModeHints(quickMacroModeActions, state)
+    if (state.inQuickMacroMode) {
+        addQuickMacroModeHints(quickMacroModeActions, inputMode, state)
     } else {
-        addNormalModeHints(normalModeActions, state)
+        addNormalModeHints(normalModeActions, inputMode, state)
     }
 
     if (debugMode) {
         addSpacing(weak = true)
-        state.inputMode?.debugLabel?.let {
+        inputMode?.debugLabel?.let {
             add { styles.debugStyle(it) }
         }
         state.lastReceivedEvent?.let { lastReceivedEvent ->
@@ -416,35 +420,37 @@ private fun buildNavHints(
 context(_: StylesProvider)
 private fun HintsBuilder.addNormalModeHints(
     actions: NormalModeActions,
+    inputMode: InputMode?,
     state: State
 ) {
-    addAction(actions.navigateUp, state) { render() }
+    addAction(actions.navigateUp, state, inputMode) { render() }
 
-    addAction(actions.cursorUp, state, weakSpacing = true) { render() }
-    addAction(actions.cursorDown, state, weakSpacing = true) { render() }
+    addAction(actions.cursorUp, state, inputMode, weakSpacing = true) { render() }
+    addAction(actions.cursorDown, state, inputMode, weakSpacing = true) { render() }
 
-    addAction(actions.navigateInto, state) { render() }
-    addAction(actions.navigateOpen, state) { render() }
+    addAction(actions.navigateInto, state, inputMode) { render() }
+    addAction(actions.navigateOpen, state, inputMode) { render() }
 
-    addAction(actions.autocompleteFilter, state) { render() }
-    addAction(actions.clearFilter, state) { render() }
+    addAction(actions.autocompleteFilter, state, inputMode) { render() }
+    addAction(actions.clearFilter, state, inputMode) { render() }
 
-    addAction(actions.discardCommand, state) { render() }
+    addAction(actions.discardCommand, state, inputMode) { render() }
 
-    addAction(actions.exitCD, state) { render() }
-    addAction(actions.exit, state) { render() }
+    addAction(actions.exitCD, state, inputMode) { render() }
+    addAction(actions.exit, state, inputMode) { render() }
 
-    addAction(actions.openMenu, state) { render() }
-    addAction(actions.exitMenu, state) { render() }
+    addAction(actions.openMenu, state, inputMode) { render() }
+    addAction(actions.exitMenu, state, inputMode) { render() }
 
     actions.normalModeMacroActions.forEach { action ->
-        addAction(action, state) { render() }
+        addAction(action, state, inputMode) { render() }
     }
 }
 
 context(_: StylesProvider)
 private fun HintsBuilder.addQuickMacroModeHints(
     actions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State
 ) {
     val name = when (state.currentItem?.type) {
@@ -456,12 +462,12 @@ private fun HintsBuilder.addQuickMacroModeHints(
     }
     add { state.currentItem.style(name) }
     addSpacing { styles.genericElements(" │ ") }
-    addAction(actions.cancelQuickMacroMode, state) { render() }
+    addAction(actions.cancelQuickMacroMode, state, inputMode) { render() }
     val availableMacros = context(state) {
-        actions.quickMacroModeMacroActions.filter { it.isAvailable() }
+        actions.quickMacroModeMacroActions.filter { it.isAvailable(inputMode) }
     }
     availableMacros.forEach {
-        addAction(it, state) { render() }
+        addAction(it, state, inputMode) { render() }
     }
     when {
         actions.quickMacroModeMacroActions.isEmpty() -> add { styles.keyHintLabels("No macros defined") }
@@ -472,13 +478,14 @@ private fun HintsBuilder.addQuickMacroModeHints(
 context(_: StylesProvider)
 private fun buildMenuHints(
     actions: NormalModeActions,
+    inputMode: InputMode?,
     state: State
 ) = buildHints(styles.genericElements(" • ")) {
-    addAction(actions.closeMenu, state) { render() }
-    addAction(actions.menuUp, state, weakSpacing = true) { render() }
-    addAction(actions.menuDown, state, weakSpacing = true) { render() }
+    addAction(actions.closeMenu, state, inputMode) { render() }
+    addAction(actions.menuUp, state, inputMode, weakSpacing = true) { render() }
+    addAction(actions.menuDown, state, inputMode, weakSpacing = true) { render() }
     val anyNavigationShown = context(state) {
-        listOf(actions.closeMenu, actions.menuUp).any { it.isShown() }
+        listOf(actions.closeMenu, actions.menuUp).any { it.isShown(inputMode) }
     }
     if (anyNavigationShown) {
         add(weakSpacing = true) { styles.keyHintLabels("navigate") }

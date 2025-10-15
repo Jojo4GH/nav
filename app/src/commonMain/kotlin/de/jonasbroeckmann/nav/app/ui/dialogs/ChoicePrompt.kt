@@ -10,11 +10,14 @@ import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.action.DialogKeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyAction
+import de.jonasbroeckmann.nav.framework.action.buildDialogKeyActions
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.*
+import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
 import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
@@ -47,7 +50,8 @@ fun DialogShowScope.choicePrompt(
     keys: Config.Keys,
     autocomplete: Config.Autocomplete
 ): String? {
-    val actions = buildKeyActions<ChoicePromptState, DialogController<ChoicePromptState, String?>> {
+    val inputFilterAction: DialogKeyAction<ChoicePromptState, String?>
+    val actions = buildDialogKeyActions<ChoicePromptState, String?> {
         register(
             keys.cursor.up, keys.menu.up,
             condition = { filteredItems.isNotEmpty() },
@@ -103,7 +107,7 @@ fun DialogShowScope.choicePrompt(
             condition = { filteredItems.isNotEmpty() },
             action = { updateState { withCursorCoerced(filteredItems.lastIndex) } }
         )
-        register(
+        inputFilterAction = register(
             KeyAction(
                 keys = null,
                 description = { "type to filter" },
@@ -122,13 +126,20 @@ fun DialogShowScope.choicePrompt(
             items = choices,
             cursor = defaultChoice
         ),
-        onInput = { input -> actions.handle(state, input) }
+        onInput = { input -> actions.handle(state, input, inputMode) }
     ) {
         verticalLayout {
             align = LEFT
             cell(title)
             if (filter.isNotEmpty()) {
-                cell(styles.filter("❯ $filter"))
+                val filterString = buildString {
+                    append("❯ ")
+                    appendTextFieldContent(
+                        text = filter,
+                        hasFocus = inputFilterAction.isAvailable(inputMode)
+                    )
+                }
+                cell(styles.filter(filterString))
             }
             if (filteredItems.isEmpty()) {
                 cell(styles.genericElements("nothing"))
@@ -154,7 +165,7 @@ fun DialogShowScope.choicePrompt(
             if (showHints) {
                 cell(
                     buildHints(styles.genericElements(" • ")) {
-                        addActions(actions, this@inputDialog) { render() }
+                        addActions(actions, this@inputDialog, inputMode) { render() }
                     }.let {
                         "${styles.genericElements("•")} $it"
                     }

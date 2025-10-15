@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.framework.action
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
+import de.jonasbroeckmann.nav.framework.input.InputMode
 
 data class KeyAction<Context, Controller>(
     /* If null, any key matches */
@@ -9,8 +10,8 @@ data class KeyAction<Context, Controller>(
     private val displayKey: Context.() -> KeyboardEvent? = { keys?.firstOrNull() },
     private val description: Context.() -> String = { "" },
     private val style: Context.() -> TextStyle? = { null },
-    private val hidden: Context.() -> Boolean = { false },
-    private val condition: Context.() -> Boolean,
+    private val hidden: Context.() -> Boolean = { displayKey() == null && description().isEmpty() },
+    private val condition: Context.(InputMode?) -> Boolean,
     private val action: context(Controller) Context.(KeyboardEvent) -> Unit
 ) : Action<Context, KeyboardEvent, Controller> {
     constructor(
@@ -18,8 +19,8 @@ data class KeyAction<Context, Controller>(
         displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
         description: Context.() -> String = { "" },
         style: Context.() -> TextStyle? = { null },
-        hidden: Context.() -> Boolean = { false },
-        condition: Context.() -> Boolean,
+        hidden: Context.() -> Boolean = { displayKey() == null && description().isEmpty() },
+        condition: Context.(InputMode?) -> Boolean,
         action: context(Controller) Context.(KeyboardEvent) -> Unit
     ) : this(
         keys = listOf(*keys),
@@ -44,13 +45,13 @@ data class KeyAction<Context, Controller>(
     override fun isHidden() = context.hidden()
 
     context(context: Context)
-    override fun matches(input: KeyboardEvent): Boolean {
+    override fun matches(input: KeyboardEvent, mode: InputMode?): Boolean {
         if (keys != null && input !in keys) return false
-        return isAvailable()
+        return isAvailable(mode)
     }
 
     context(context: Context)
-    override fun isAvailable() = context.condition()
+    override fun isAvailable(mode: InputMode?) = context.condition(mode)
 
     context(context: Context, controller: Controller)
     override fun run(input: KeyboardEvent) = context.action(input)
