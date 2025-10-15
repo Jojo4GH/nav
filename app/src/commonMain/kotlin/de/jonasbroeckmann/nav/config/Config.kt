@@ -195,6 +195,7 @@ data class Config private constructor(
         val style: Style = Style.CommonPrefixCycle,
         val autoNavigation: AutoNavigation = AutoNavigation.OnSingleAfterCompletion,
     ) {
+        @Suppress("unused")
         @Serializable
         enum class Style(val value: AutocompleteStyle) {
             /** Auto complete the largest common prefix and stop */
@@ -204,6 +205,7 @@ data class Config private constructor(
             CommonPrefixCycle(AutocompleteStyle.CommonPrefixCycle),
         }
 
+        @Suppress("unused")
         @Serializable
         enum class AutoNavigation(val value: AutocompleteAutoNavigation) {
             /** Do not auto navigate */

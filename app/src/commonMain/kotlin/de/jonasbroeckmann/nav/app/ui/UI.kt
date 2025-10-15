@@ -29,50 +29,48 @@ fun buildUI(
     quickMacroModeActions: QuickMacroModeActions,
     state: State,
     dialog: Widget?
-): Widget {
-    return FillLayout(
-        top = {
-            buildTitle(
-                directory = state.directory,
-                maxVisiblePathElements = context.config.maxVisiblePathElements,
-                debugMode = context.debugMode,
-                filterElement = run {
-                    val hasFocus = state.inputMode == Normal && !state.isTypingCommand
-                    if (hasFocus || state.filter.isNotEmpty()) {
-                        buildFilter(
-                            filter = state.filter,
-                            showCursor = hasFocus
-                        )
-                    } else {
-                        null
-                    }
+): Widget = FillLayout(
+    top = {
+        buildTitle(
+            directory = state.directory,
+            maxVisiblePathElements = context.config.maxVisiblePathElements,
+            debugMode = context.debugMode,
+            filterElement = context(state) {
+                val hasFocus = state.inputMode == Normal && normalModeActions.inputFilter.isAvailable()
+                if (hasFocus || state.filter.isNotEmpty()) {
+                    buildFilter(
+                        filter = state.filter,
+                        showCursor = hasFocus
+                    )
+                } else {
+                    null
                 }
-            )
-        },
-        fill = { availableLines ->
-            buildTable(
-                entries = state.filteredItems,
-                cursor = state.cursor,
-                filter = state.filter,
-                availableLines = availableLines,
-                maxVisibleEntries = context.config.maxVisibleEntries.takeIf { it > 0 },
-                accessibilityDecorations = context.accessibilityDecorations,
-                columns = context.config.shownColumns
-            )
-        },
-        bottom = {
-            buildBottom(
-                normalModeActions = normalModeActions,
-                quickMacroModeActions = quickMacroModeActions,
-                state = state,
-                dialog = dialog,
-                showHints = !context.config.hideHints,
-                debugMode = context.debugMode
-            )
-        },
-        limitToTerminalHeight = context.config.limitToTerminalHeight
-    )
-}
+            }
+        )
+    },
+    fill = { availableLines ->
+        buildTable(
+            entries = state.filteredItems,
+            cursor = state.cursor,
+            filter = state.filter,
+            availableLines = availableLines,
+            maxVisibleEntries = context.config.maxVisibleEntries.takeIf { it > 0 },
+            accessibilityDecorations = context.accessibilityDecorations,
+            columns = context.config.shownColumns
+        )
+    },
+    bottom = {
+        buildBottom(
+            normalModeActions = normalModeActions,
+            quickMacroModeActions = quickMacroModeActions,
+            state = state,
+            dialog = dialog,
+            showHints = !context.config.hideHints,
+            debugMode = context.debugMode
+        )
+    },
+    limitToTerminalHeight = context.config.limitToTerminalHeight
+)
 
 context(_: FullContext)
 private fun buildTable(

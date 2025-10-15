@@ -10,6 +10,7 @@ import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
@@ -102,18 +103,26 @@ fun DialogShowScope.choicePrompt(
             condition = { filteredItems.isNotEmpty() },
             action = { updateState { withCursorCoerced(filteredItems.lastIndex) } }
         )
+        register(
+            KeyAction(
+                keys = null,
+                description = { "type to filter" },
+                condition = { true },
+                action = { input ->
+                    input.updateTextField(
+                        current = filter,
+                        onChange = { newFilter -> updateState { withFilter(newFilter) } }
+                    )
+                }
+            )
+        )
     }
     return inputDialog(
         initialState = ChoicePromptState.initial(
             items = choices,
             cursor = defaultChoice
         ),
-        onInput = onInput@{ input ->
-            if (actions.handle(state, input)) return@onInput
-            input.updateTextField(state.filter) { newFilter ->
-                updateState { withFilter(newFilter) }
-            }
-        }
+        onInput = { input -> actions.handle(state, input) }
     ) {
         verticalLayout {
             align = LEFT

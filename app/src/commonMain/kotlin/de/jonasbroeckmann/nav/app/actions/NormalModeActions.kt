@@ -7,10 +7,13 @@ import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.style
+import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyActions
 import de.jonasbroeckmann.nav.framework.semantics.autocomplete
+import de.jonasbroeckmann.nav.framework.semantics.updateTextField
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 
+@Suppress("unused")
 class NormalModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(), FullContext by context {
     val menuSubmit = registerKeyAction(
         config.keys.submit,
@@ -139,6 +142,33 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         description = { "exit" },
         condition = { true },
         action = { exit(null) }
+    )
+
+    val inputCommand = registerKeyAction(
+        KeyAction(
+            keys = null,
+            hidden = { true },
+            condition = { isTypingCommand },
+            action = { input ->
+                input.updateTextField(
+                    current = command ?: "",
+                    onChange = { newCommand -> updateState { withCommand(newCommand) } }
+                )
+            }
+        )
+    )
+    val inputFilter = registerKeyAction(
+        KeyAction(
+            keys = null,
+            hidden = { true },
+            condition = { true },
+            action = { input ->
+                input.updateTextField(
+                    current = filter,
+                    onChange = { newFilter -> updateState { withFilter(newFilter) } }
+                )
+            }
+        )
     )
 
     val all = registered[Unit].orEmpty()

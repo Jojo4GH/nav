@@ -27,7 +27,6 @@ import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.input.*
 import de.jonasbroeckmann.nav.framework.input.InputMode.Normal
 import de.jonasbroeckmann.nav.framework.input.InputMode.QuickMacro
-import de.jonasbroeckmann.nav.framework.semantics.updateTextField
 import de.jonasbroeckmann.nav.framework.ui.WidgetAnimation
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.utils.StateManager
@@ -320,18 +319,6 @@ class App(
                 action.tryRun(input)
                 return
             }
-        }
-        val command = state.command
-        if (command != null) {
-            input.updateTextField(
-                current = command,
-                onChange = { newCommand -> updateState { withCommand(newCommand) } }
-            )
-        } else {
-            input.updateTextField(
-                current = state.filter,
-                onChange = { newFilter -> updateState { withFilter(newFilter) } }
-            )
         }
         return
     }

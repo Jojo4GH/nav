@@ -226,17 +226,6 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
         }
     }
 
-    fun ttySetEcho(echo: Boolean) = memScoped {
-        val stdinHandle = GetStdHandle(STD_INPUT_HANDLE)
-        val lpMode = getConsoleMode(stdinHandle) ?: return@memScoped
-        val newMode = if (echo) {
-            lpMode or ENABLE_ECHO_INPUT.convert()
-        } else {
-            lpMode and ENABLE_ECHO_INPUT.inv().convert()
-        }
-        SetConsoleMode(stdinHandle, newMode)
-    }
-
     // https://docs.microsoft.com/en-us/windows/console/getconsolemode
     private fun getConsoleMode(handle: HANDLE?): UInt? = memScoped {
         if (handle == null || handle == INVALID_HANDLE_VALUE) return null
