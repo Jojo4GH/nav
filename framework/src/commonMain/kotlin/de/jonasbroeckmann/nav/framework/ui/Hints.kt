@@ -79,7 +79,7 @@ class HintsBuilder internal constructor(private val defaultStrongSpacing: String
         add(weakSpacing) { action.render() }
     }
 
-    fun  <Context, A : KeyAction<Context, *>> addActions(
+    fun <Context, A : KeyAction<Context, *>> addActions(
         actions: Iterable<A>,
         context: Context,
         weakSpacing: Boolean = false,

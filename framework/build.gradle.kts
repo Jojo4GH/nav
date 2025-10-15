@@ -1,3 +1,6 @@
+import dev.detekt.gradle.Detekt
+import org.gradle.kotlin.dsl.withType
+
 plugins {
     kotlin("multiplatform")
     id("dev.detekt")
@@ -44,4 +47,10 @@ kotlin {
 
 dependencies {
     detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
+}
+
+tasks.register("detektAll") {
+    group = "verification"
+    description = "Run all detekt checks"
+    dependsOn(tasks.withType<Detekt>().filter { !it.multiPlatformEnabled.get() })
 }

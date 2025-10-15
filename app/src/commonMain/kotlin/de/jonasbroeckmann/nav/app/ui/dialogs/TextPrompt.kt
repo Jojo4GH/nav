@@ -1,18 +1,19 @@
 package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.ui.render
+import de.jonasbroeckmann.nav.config.ConfigProvider
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.config
+import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.updateTextField
 import de.jonasbroeckmann.nav.framework.ui.buildHints
-import de.jonasbroeckmann.nav.config.ConfigProvider
-import de.jonasbroeckmann.nav.config.StylesProvider
-import de.jonasbroeckmann.nav.config.config
-import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog

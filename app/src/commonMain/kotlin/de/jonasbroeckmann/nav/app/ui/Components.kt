@@ -4,19 +4,16 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
+import de.jonasbroeckmann.nav.app.macros.Macro
+import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.StateProvider
+import de.jonasbroeckmann.nav.app.state.state
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.MenuAction
-import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.state.state
-import de.jonasbroeckmann.nav.app.state.Entry
-import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
-import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
-import de.jonasbroeckmann.nav.app.state.Entry.Type.SymbolicLink
-import de.jonasbroeckmann.nav.app.state.Entry.Type.Unknown
-import de.jonasbroeckmann.nav.config.StylesProvider
-import de.jonasbroeckmann.nav.config.styles
 
 context(stylesProvider: StylesProvider)
 fun <Context> Action<Context, *, *>.render(
