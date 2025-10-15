@@ -2,8 +2,7 @@ package de.jonasbroeckmann.nav.app.macros
 
 object DefaultMacros {
     val RunCommand = Macro(
-        id = "navRunCommand",
-        hidden = true,
+        id = "nav:RunCommand",
         actions = MacroActions(
             MacroAction.RunCommand(command = DefaultMacroProperties.Command.property.symbol.placeholder),
             MacroAction.If(

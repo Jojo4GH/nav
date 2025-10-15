@@ -217,7 +217,7 @@ All available keybinds are (by default) also shown at the bottom in nav.
 ## 🔧 Configuration
 
 To create or edit the config file you can use the `--edit-config` command line option.
-Config files can be written in either [YAML](https://yaml.org) or [TOML](https://toml.io) format (but not both).
+Config files can be written in either [YAML](https://yaml.org) (recommended) or [TOML](https://toml.io) format (but not both).
 The default locations for the file are `~/.config/nav.yaml`, `~/.config/nav.yml` or `~/.config/nav.toml`.
 If you intend to define [macros](#macros), please use the YAML format.
 You can change this by setting the `NAV_CONFIG` environment variable:
@@ -529,6 +529,7 @@ decorations = false   # Whether to show decorations (default: auto)
 > For the more limited but stable variant, see [Entry Macros](#entry-macros).
 
 With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
+They can also overwrite existing functionality to customize nav to your workflow.
 
 Macros are available in the menu (default <kbd>PageDown</kbd>) or with their `nonQuickModeKey`.
 They can also quickly be triggered by tapping <kbd>ctrl</kbd> together with or followed by their `quickModeKey`.
@@ -540,6 +541,10 @@ Currently, only the YAML configuration can be used to define macros:
 
 ```yaml
 # Defines a list of macros
+# Macros are shown in the following places, if their conditions are met:
+# - In key hints, if a 'key' is set and not 'hideKey'
+# - In quick macro mode, if a 'quickModeKey' is set and not 'hideQuickModeKey'
+# - In the menu, if a 'menuOrder' is set
 macros:
 
 - # Unique id of the macro used for referencing it (optional, default: null)
@@ -547,24 +552,28 @@ macros:
   
   # Description of the macro shown in nav (supports placeholders, required if not hidden, default: "")
   description: ""
+
+  # Key used to trigger the macro in normal mode (optional, default: null)
+  # For valid key names see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
+  key: null
   
-  # Whether to hide the macro in nav (optional, default: false)
-  hidden: false
+  # Whether to hide the hint for the normal mode key (optional, default: false)
+  hideKey: false
   
   # Key used to trigger the macro in quick macro mode (optional, default: null)
   # For valid key names see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
   quickModeKey: null
   
-  # Key used to trigger the macro in normal mode (optional, default: null)
-  # For valid key names see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
-  nonQuickModeKey: null
+  # Whether to hide the hint for the quick mode key (optional, default: false)
+  hideQuickModeKey: false
+  
+  # The order in which the macro appears in the menu (optional, default: null)
+  # If null, the macro does not appear in the menu.
+  # Lower numbers appear first.
+  menuOrder: null
   
   # The condition that must be met for the macro to be available (optional, default: null, see "Conditions" below)
   # If no condition is specified, the macro is always available.
-  # If their condition is met, macros are shown in the following places:
-  # - In quick macro mode, if a 'quickModeKey' is set and is not 'hidden'
-  # - In key hints, if a 'nonQuickModeKey' is set and is not 'hidden'
-  # - In the menu, if not 'hidden'
   condition:
     # ...
   
@@ -762,17 +771,35 @@ Additionally, macros can define their own mutable variables that can be used in 
 ```yaml
 macros:
 
+# Open the current directory in code (Trigger: ctrl+ArrowUp)
+- description: open in code
+  key: ctrl+ArrowUp
+  hideKey: true
+  run:
+  - command: code "{{directory}}"
+
 # Open the current entry in code (Trigger: ctrl+ArrowRight)
 - description: open {{entryName}} in code
   quickModeKey: ArrowRight
   condition:
-    notEmpty: "{{entryName}}"                       # Only if we have an entry
+    notEmpty: "{{entryName}}"                       # Only if an entry is selected
   run:
-  - command: code "{{entryPath}}"
+  - command: code "{{entryName}}"
+
+# Overwrite the default behavior of ArrowRight to open PDF files in the browser instead of the editor
+- description: open pdf in browser
+  key: ArrowRight
+  condition:
+    all:
+    - equal: [ "{{entryType}}", "file" ]
+    - match: ".*\\.pdf"
+      in: "{{entryName}}"
+  run:
+  - command: chromium "{{entryPath}}"
 
 # Rename the current entry (Trigger: F6)
 - description: rename {{entryName}}
-  nonQuickModeKey: F6
+  key: F6
   condition:
     notEmpty: "{{entryName}}"
   run:
@@ -784,7 +811,7 @@ macros:
 
 # Delete the current entry (non-empty directories only after confirmation) (Trigger: Delete)
 - description: delete {{entryName}}
-  nonQuickModeKey: Delete
+  key: Delete
   condition:
     notEmpty: "{{entryName}}"
   run:
@@ -797,8 +824,8 @@ macros:
         notBlank: "{{directoryContents}}"           
       then:
       - prompt: "Are you sure you want to delete non-empty directory '{{entryName}}'?"
-        choices: [ "No", "Yes" ]                    # Confirm if directory is not empty
-        default: "No"
+        choices: [ "Yes", "No" ]                    # Confirm if directory is not empty
+        default: "Yes"
         resultTo: "confirmation"
       - if:
           notEqual: [ "{{confirmation}}", "Yes" ]   # Check if confirmed
@@ -817,6 +844,7 @@ macros:
 
 # Create a hardlink of the current file (Trigger: Select from menu)
 - description: Create hardlink of {{entryName}}
+  menuOrder: 10
   condition:
     equal: [ "{{entryType}}", "file" ]              # Only for files
   run:

@@ -17,8 +17,8 @@ import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.input.InputMode
 import de.jonasbroeckmann.nav.framework.ui.FillLayout
 import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
-import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
 import de.jonasbroeckmann.nav.framework.ui.buildHints
+import de.jonasbroeckmann.nav.framework.ui.buildTextFieldContent
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
@@ -272,12 +272,10 @@ context(_: StylesProvider)
 private fun buildFilter(
     filter: String,
     hasFocus: Boolean
-): String = buildString {
-    appendTextFieldContent(
-        text = filter,
-        hasFocus = hasFocus
-    )
-}.let { (styles.filter + TextStyles.bold)(it) }
+): String = buildTextFieldContent(
+    text = filter,
+    hasFocus = hasFocus
+).let { (styles.filter + TextStyles.bold)(it) }
 
 context(_: StylesProvider)
 private fun buildName(

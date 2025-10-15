@@ -2,8 +2,8 @@ package de.jonasbroeckmann.nav.app.actions
 
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.MainController
-import de.jonasbroeckmann.nav.app.macros.computeCondition
-import de.jonasbroeckmann.nav.app.macros.computeDescription
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeQuickModeKeyDescription
 import de.jonasbroeckmann.nav.app.runEntryMacro
 import de.jonasbroeckmann.nav.app.runMacro
 import de.jonasbroeckmann.nav.app.state.State
@@ -26,9 +26,9 @@ class QuickMacroModeActions(context: FullContext) : KeyActions<State, MainContro
         registerKeyAction(
             macro.quickModeKey.copy(ctrl = false),
             displayKey = { macro.quickModeKey },
-            description = { macro.computeDescription() },
+            description = { macro.computeQuickModeKeyDescription() },
             style = { macro.style },
-            hidden = { macro.hidden },
+            hidden = { macro.hideQuickModeKey },
             condition = { macro.computeCondition() },
             action = { runMacro(macro) }
         )
