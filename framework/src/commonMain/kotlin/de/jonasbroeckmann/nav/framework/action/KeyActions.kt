@@ -59,11 +59,13 @@ abstract class KeyActions<Context, Controller, Category>(vararg validInputModes:
     )
 
     companion object {
-        /* protected */ fun <Context, Controller> KeyActions<Context, Controller, Unit>.registerKeyAction(
+        // protected
+        fun <Context, Controller> KeyActions<Context, Controller, Unit>.registerKeyAction(
             action: KeyAction<Context, Controller>
         ) = Unit.registerKeyAction(action)
 
-        /* protected */ fun <Context, Controller> KeyActions<Context, Controller, Unit>.registerKeyAction(
+        // protected
+        fun <Context, Controller> KeyActions<Context, Controller, Unit>.registerKeyAction(
             vararg keys: KeyboardEvent,
             displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
             description: Context.() -> String = { "" },
@@ -80,8 +82,6 @@ abstract class KeyActions<Context, Controller, Category>(vararg validInputModes:
             condition = condition,
             action = action
         )
-
-
 
         /*
          * The above two functions should be protected.
