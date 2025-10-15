@@ -7,13 +7,15 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.framework.input.InputMode.QuickMacro
 import de.jonasbroeckmann.nav.app.actions.NormalModeActions
 import de.jonasbroeckmann.nav.app.actions.QuickMacroModeActions
 import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.input.InputMode.Normal
+import de.jonasbroeckmann.nav.framework.input.InputMode.QuickMacro
 import de.jonasbroeckmann.nav.framework.ui.FillLayout
 import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
 import de.jonasbroeckmann.nav.framework.ui.buildHints

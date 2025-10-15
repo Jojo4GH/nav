@@ -36,4 +36,3 @@ data class Styles(
 ) : StylesProvider {
     override val styles get() = this
 }
-

@@ -2,10 +2,10 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
-import de.jonasbroeckmann.nav.framework.utils.StateManager
 import de.jonasbroeckmann.nav.framework.input.captureKeyboardEvents
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
+import de.jonasbroeckmann.nav.framework.utils.StateManager
 
 fun <T, R> DialogShowScope.inputDialog(
     initialState: T,
