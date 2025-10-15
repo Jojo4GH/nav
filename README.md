@@ -622,6 +622,7 @@ macros:
   # True if the entire value matches the given regular expression
 - match: "..."        # A regex pattern (required)
   in: "..."           # (supports placeholders, required)
+  ignoreCase: false   # Whether to ignore case when matching (optional, default: false)
 
   # True if the value is empty
 - empty: "..."        # (supports placeholders, required)
@@ -718,6 +719,7 @@ macros:
   # The first capturing group is stored in the first property/variable, the second in the second, etc.
 - match: "..."                # A regex pattern (required)
   in: "..."                   # (supports placeholders, required)
+  ignoreCase: false           # Whether to ignore case when matching (optional, default: false)
   groupsTo: []                # A list of properties/variables to store the capturing groups in (optional, default: [])
 
   # Explicitly returns from the current macro (but not from nav) if the value is true.
@@ -791,9 +793,10 @@ macros:
   key: ArrowRight
   condition:
     all:
-    - equal: [ "{{entryType}}", "file" ]
-    - match: ".*\\.pdf"
+    - equal: [ "{{entryType}}", "file" ]            # Must be a file
+    - match: ".*\\.pdf"                             # Check if it ends with .pdf
       in: "{{entryName}}"
+      ignoreCase: true
   run:
   - command: chromium "{{entryPath}}"
 
