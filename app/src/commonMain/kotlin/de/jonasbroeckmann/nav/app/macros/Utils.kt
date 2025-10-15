@@ -1,8 +1,8 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import com.charleskorn.kaml.YamlMap
-import de.jonasbroeckmann.nav.app.StateProvider
-import de.jonasbroeckmann.nav.app.state
+import de.jonasbroeckmann.nav.app.state.StateProvider
+import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.div

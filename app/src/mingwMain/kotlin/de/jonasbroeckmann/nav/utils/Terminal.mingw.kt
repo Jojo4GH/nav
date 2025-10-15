@@ -13,7 +13,6 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UIntVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocArray
-import kotlinx.cinterop.convert
 import kotlinx.cinterop.get
 import kotlinx.cinterop.invoke
 import kotlinx.cinterop.memScoped
@@ -224,17 +223,6 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
         if (SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), dwMode) == 0) {
             throw ConsoleException("Error setting console mode")
         }
-    }
-
-    fun ttySetEcho(echo: Boolean) = memScoped {
-        val stdinHandle = GetStdHandle(STD_INPUT_HANDLE)
-        val lpMode = getConsoleMode(stdinHandle) ?: return@memScoped
-        val newMode = if (echo) {
-            lpMode or ENABLE_ECHO_INPUT.convert()
-        } else {
-            lpMode and ENABLE_ECHO_INPUT.inv().convert()
-        }
-        SetConsoleMode(stdinHandle, newMode)
     }
 
     // https://docs.microsoft.com/en-us/windows/console/getconsolemode

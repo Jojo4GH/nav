@@ -3,6 +3,8 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.utils.KeyboardEventAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -65,3 +67,9 @@ data class Macro(
     context(context: MacroRuntimeContext)
     override fun run() = actions.run()
 }
+
+context(_: FullContext, _: StateProvider)
+fun Macro.computeDescription() = MacroSymbolScope.empty { description.evaluate() }
+
+context(_: FullContext, _: StateProvider)
+fun Macro.computeCondition() = MacroSymbolScope.empty { available() }

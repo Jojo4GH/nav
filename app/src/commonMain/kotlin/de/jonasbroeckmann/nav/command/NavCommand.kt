@@ -25,7 +25,6 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.mordant.rendering.AnsiLevel
-import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Theme
 import com.github.ajalt.mordant.terminal.Terminal
@@ -345,10 +344,10 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             styles["style1"] = Themes.Retro.directory
             styles["style2"] = Themes.Retro.file
             styles["style3"] = Themes.Retro.link
-            styles["success"] = TextColors.rgb("#66c322")
-            styles["danger"] = TextColors.rgb("#ff2a00")
-            styles["warning"] = TextColors.rgb("#ffcc00")
-            styles["info"] = TextColors.rgb("#7ecefc")
+            styles["success"] = Themes.Retro.success
+            styles["danger"] = Themes.Retro.danger
+            styles["warning"] = Themes.Retro.warning
+            styles["info"] = Themes.Retro.info
             styles["muted"] = TextStyles.dim.style
         }
     }

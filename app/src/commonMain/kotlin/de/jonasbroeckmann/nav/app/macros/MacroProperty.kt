@@ -2,7 +2,7 @@ package de.jonasbroeckmann.nav.app.macros
 
 import com.github.ajalt.mordant.terminal.danger
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.StateProvider
+import de.jonasbroeckmann.nav.app.state.StateProvider
 
 sealed interface MacroProperty : MacroEvaluable<String>, MacroIdentified {
     context(_: FullContext, _: StateProvider)

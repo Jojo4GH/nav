@@ -19,6 +19,8 @@ import de.jonasbroeckmann.nav.app.ui.EntryColumn
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.framework.semantics.AutocompleteAutoNavigation
+import de.jonasbroeckmann.nav.framework.semantics.AutocompleteStyle
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSource
@@ -193,25 +195,27 @@ data class Config private constructor(
         val style: Style = Style.CommonPrefixCycle,
         val autoNavigation: AutoNavigation = AutoNavigation.OnSingleAfterCompletion,
     ) {
+        @Suppress("unused")
         @Serializable
-        enum class Style {
+        enum class Style(val value: AutocompleteStyle) {
             /** Auto complete the largest common prefix and stop */
-            CommonPrefixStop,
+            CommonPrefixStop(AutocompleteStyle.CommonPrefixStop),
 
             /** Auto complete the largest common prefix and cycle through all entries */
-            CommonPrefixCycle
+            CommonPrefixCycle(AutocompleteStyle.CommonPrefixCycle),
         }
 
+        @Suppress("unused")
         @Serializable
-        enum class AutoNavigation {
+        enum class AutoNavigation(val value: AutocompleteAutoNavigation) {
             /** Do not auto navigate */
-            None,
+            None(AutocompleteAutoNavigation.None),
 
             /** Auto complete the entry and on second action navigate */
-            OnSingleAfterCompletion,
+            OnSingleAfterCompletion(AutocompleteAutoNavigation.OnSingleAfterCompletion),
 
             /** Auto complete the entry and navigate immediately (not recommended) */
-            OnSingle
+            OnSingle(AutocompleteAutoNavigation.OnSingle),
         }
     }
 
@@ -242,6 +246,18 @@ data class Config private constructor(
             state = state,
             currentEntry = currentEntry
         )
+
+        context(state: State)
+        fun computeCondition(): Boolean {
+            val currentEntry = state.currentItem
+            return when (currentEntry?.type) {
+                null -> false
+                SymbolicLink -> onSymbolicLink
+                Directory -> onDirectory
+                RegularFile -> onFile
+                Unknown -> false
+            }
+        }
 
         context(state: State)
         fun computeCommand(
