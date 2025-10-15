@@ -10,14 +10,15 @@ import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.framework.action.KeyActions
+import de.jonasbroeckmann.nav.framework.input.InputMode
 
-class QuickMacroModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(), FullContext by context {
+class QuickMacroModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(InputMode.Normal), FullContext by context {
     val cancelQuickMacroMode = registerKeyAction(
         config.keys.cancel.copy(ctrl = false),
         displayKey = { config.keys.cancel },
         description = { "cancel" },
         condition = { true },
-        action = { updateState { withInputMode(Normal) } }
+        action = { updateState { inQuickMacroMode(false) } }
     )
 
     val quickMacroModeMacroActions = config.macros.mapNotNull { macro ->

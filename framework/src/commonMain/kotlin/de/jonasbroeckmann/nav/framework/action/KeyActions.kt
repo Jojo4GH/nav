@@ -2,16 +2,22 @@ package de.jonasbroeckmann.nav.framework.action
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
+import de.jonasbroeckmann.nav.framework.input.InputMode
 
-abstract class KeyActions<Context, Controller, Category> {
+abstract class KeyActions<Context, Controller, Category>(vararg validInputModes: InputMode) {
+    private val validInputModes = setOf(*validInputModes)
+
     protected val registered = mutableMapOf<Category, MutableList<KeyAction<Context, Controller>>>()
 
     protected fun Category.registerKeyAction(action: KeyAction<Context, Controller>): KeyAction<Context, Controller> {
         val registeredForCategory = registered.getOrPut(this) { mutableListOf() }
         val i = registeredForCategory.size
         return action.copy(
-            condition = condition@{
-                if (!action.isAvailable()) {
+            condition = condition@{inputMode ->
+                if (inputMode !in validInputModes) {
+                    return@condition false
+                }
+                if (!action.isAvailable(inputMode)) {
                     return@condition false
                 }
                 val prioritizedActions = registeredForCategory.asSequence().take(i)
@@ -24,7 +30,7 @@ abstract class KeyActions<Context, Controller, Category> {
                     }
                 }
                 prioritizedActions.none { prioritized ->
-                    hasConflictingKeysWith(prioritized) && prioritized.isAvailable()
+                    hasConflictingKeysWith(prioritized) && prioritized.isAvailable(inputMode)
                 }
             }
         ).also {
@@ -38,7 +44,7 @@ abstract class KeyActions<Context, Controller, Category> {
         description: Context.() -> String = { "" },
         style: Context.() -> TextStyle? = { null },
         hidden: Context.() -> Boolean = { false },
-        condition: Context.() -> Boolean,
+        condition: Context.(InputMode?) -> Boolean,
         action: context(Controller) Context.(KeyboardEvent) -> Unit
     ) = registerKeyAction(
         KeyAction(
@@ -63,7 +69,7 @@ abstract class KeyActions<Context, Controller, Category> {
             description: Context.() -> String = { "" },
             style: Context.() -> TextStyle? = { null },
             hidden: Context.() -> Boolean = { false },
-            condition: Context.() -> Boolean,
+            condition: Context.(InputMode?) -> Boolean,
             action: context(Controller) Context.(KeyboardEvent) -> Unit
         ) = Unit.registerKeyAction(
             keys = keys,

@@ -26,7 +26,6 @@ import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.input.*
 import de.jonasbroeckmann.nav.framework.input.InputMode.Normal
-import de.jonasbroeckmann.nav.framework.input.InputMode.QuickMacro
 import de.jonasbroeckmann.nav.framework.ui.WidgetAnimation
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.utils.StateManager
@@ -163,6 +162,8 @@ internal class StackBasedInputController(
         inputModeStack.add(stackEntry)
         onInputModeChanged(mode)
         return object : InputModeScope {
+            override val inputMode get() = mode
+
             override fun readInput() = this@StackBasedInputController.readInput()
 
             override fun close() {
@@ -203,23 +204,28 @@ class App(
     private data class AppState(
         val normalModeActions: NormalModeActions,
         val quickMacroModeActions: QuickMacroModeActions,
+        val inputMode: InputMode?,
         val state: State,
         val dialog: Widget?
     )
 
     private val stateManager = StateManager(
-        initial = AppState(
-            normalModeActions = NormalModeActions(this),
-            quickMacroModeActions = QuickMacroModeActions(this),
-            state = State.initial(
-                startingDirectory = startingDirectory,
-                showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
-                menuActions = MenuActions(this)
-            ),
-            dialog = null
-        )
+        initial = run {
+            val menuActions = MenuActions(this)
+            AppState(
+                normalModeActions = NormalModeActions(this),
+                quickMacroModeActions = QuickMacroModeActions(this),
+                inputMode = null,
+                state = State.initial(
+                    startingDirectory = startingDirectory,
+                    showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+                    getShownMenuActions = { menuActions.all.filter { it.isShown(appState.inputMode) } }
+                ),
+                dialog = null
+            )
+        }
     )
-    private var appState by stateManager
+    private var appState: AppState by stateManager
 
     override var state
         get() = appState.state
@@ -240,6 +246,7 @@ class App(
             widget = buildUI(
                 normalModeActions = state.normalModeActions,
                 quickMacroModeActions = state.quickMacroModeActions,
+                inputMode = state.inputMode,
                 state = state.state,
                 dialog = state.dialog
             )
@@ -249,7 +256,7 @@ class App(
     private val inputController = StackBasedInputController(
         context = this,
         inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE,
-        onInputModeChanged = { mode -> updateState { withInputMode(mode) } },
+        onInputModeChanged = { mode -> appState = appState.copy(inputMode = mode) },
         onKeyboardEvent = { event -> updateState { withLastReceivedEvent(event) } },
         onCtrlC = { throw ExitEvent() }
     )
@@ -297,13 +304,14 @@ class App(
         if (input !is KeyboardEvent) return
         if (input.ctrl) {
             printlnOnDebug { "Entering quick macro mode ..." }
-            updateState { withInputMode(QuickMacro) }
+            updateState { inQuickMacroMode(true) }
         }
-        if (state.inputMode == QuickMacro) {
+        if (state.inQuickMacroMode) {
+            val inputWithoutCtrl = input.copy(ctrl = false)
             for (action in appState.quickMacroModeActions.all) {
-                if (context(state) { action matches input.copy(ctrl = false) }) {
+                if (context(state) { action.matches(inputWithoutCtrl, appState.inputMode) }) {
                     action.tryRun(input)
-                    updateState { withInputMode(inputController.currentInputMode) }
+                    updateState { inQuickMacroMode(false) }
                     return
                 }
             }
@@ -312,10 +320,10 @@ class App(
             }
             // no action matched, so we continue as normal
             printlnOnDebug { "Exiting quick macro mode ..." }
-            updateState { withInputMode(inputController.currentInputMode) }
+            updateState { inQuickMacroMode(false) }
         }
         for (action in appState.normalModeActions.all) {
-            if (context(state) { action matches input }) {
+            if (context(state) { action.matches(input, appState.inputMode) }) {
                 action.tryRun(input)
                 return
             }

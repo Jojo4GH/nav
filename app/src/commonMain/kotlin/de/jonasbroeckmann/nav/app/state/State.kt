@@ -1,9 +1,9 @@
 package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.app.actions.MenuActions
+import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
-import de.jonasbroeckmann.nav.framework.input.InputMode
+import de.jonasbroeckmann.nav.framework.action.MenuAction
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListSemantics
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
@@ -21,11 +21,11 @@ data class State private constructor(
     val showHiddenEntries: Boolean,
 
     private val menuCursor: Int = -1,
-    private val menuActions: MenuActions,
+    private val getShownMenuActions: context(State) () -> List<MenuAction<State, MainController>>,
 
     val command: String? = null,
 
-    val inputMode: InputMode? = null,
+    val inQuickMacroMode: Boolean = false,
 
     val lastReceivedEvent: KeyboardEvent? = null
 ) : StateProvider, FilterableItemList<State, Entry>, NavigableItemList<State, Entry> {
@@ -79,12 +79,10 @@ data class State private constructor(
 
     override fun withCursorOnNextReverse(predicate: (Entry) -> Boolean) = navigableItemListSemantics.withCursorOnNextReverse(predicate)
 
-    val shownMenuActions get() = menuActions.all.filter { it.isShown() }
+    val shownMenuActions get() = getShownMenuActions()
     val coercedMenuCursor get() = menuCursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
     val isMenuOpen get() = menuCursor >= 0
     val currentMenuAction get() = shownMenuActions.getOrNull(coercedMenuCursor)
-
-    val inQuickMacroMode get() = inputMode == InputMode.QuickMacro
 
     val isTypingCommand get() = command != null
 
@@ -131,9 +129,7 @@ data class State private constructor(
         return copy(unfilteredItems = directory.entries()).withCursorOnFirst(predicate = preferredEntry)
     }
 
-    fun withInputMode(inputMode: InputMode) = copy(inputMode = inputMode)
-
-//    fun inQuickMacroMode(enabled: Boolean = true) =
+    fun inQuickMacroMode(enabled: Boolean = true) = copy(inQuickMacroMode = enabled)
 
     fun withLastReceivedEvent(event: KeyboardEvent?) = copy(lastReceivedEvent = event)
 
@@ -149,12 +145,12 @@ data class State private constructor(
         fun initial(
             startingDirectory: Path,
             showHiddenEntries: Boolean,
-            menuActions: MenuActions
+            getShownMenuActions: context(State) () -> List<MenuAction<State, MainController>>
         ) = State(
             directory = startingDirectory,
             cursor = 0,
             showHiddenEntries = showHiddenEntries,
-            menuActions = menuActions
+            getShownMenuActions = getShownMenuActions
         )
     }
 }

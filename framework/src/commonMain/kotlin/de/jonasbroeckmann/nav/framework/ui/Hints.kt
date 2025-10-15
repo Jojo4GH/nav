@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav.framework.ui
 
 import de.jonasbroeckmann.nav.framework.action.KeyAction
+import de.jonasbroeckmann.nav.framework.input.InputMode
 
 fun buildHints(
     defaultStrongSpacing: String,
@@ -72,16 +73,18 @@ class HintsBuilder internal constructor(private val defaultStrongSpacing: String
     fun <Context, A : KeyAction<Context, *>> addAction(
         action: A,
         context: Context,
+        inputMode: InputMode?,
         weakSpacing: Boolean = false,
         render: context(Context) A.() -> String
     ) = context(context) {
-        if (!action.isShown()) return
+        if (!action.isShown(inputMode)) return
         add(weakSpacing) { action.render() }
     }
 
     fun <Context, A : KeyAction<Context, *>> addActions(
         actions: Iterable<A>,
         context: Context,
+        inputMode: InputMode?,
         weakSpacing: Boolean = false,
         render: context(Context) A.() -> String
     ) {
@@ -89,6 +92,7 @@ class HintsBuilder internal constructor(private val defaultStrongSpacing: String
             addAction(
                 action = it,
                 context = context,
+                inputMode = inputMode,
                 weakSpacing = weakSpacing,
                 render = render
             )

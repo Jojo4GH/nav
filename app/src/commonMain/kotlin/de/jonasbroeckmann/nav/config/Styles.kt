@@ -32,6 +32,10 @@ data class Styles(
     val nameHeader: TextStyle,
     val nameDecorations: TextStyle,
 
+    val success: TextStyle = TextColors.rgb("#66c322"),
+    val danger: TextStyle = TextColors.rgb("#ff2a00"),
+    val warning: TextStyle = TextColors.rgb("#ffcc00"),
+    val info: TextStyle = TextColors.rgb("#7ecefc"),
     val debugStyle: TextStyle = TextColors.magenta
 ) : StylesProvider {
     override val styles get() = this

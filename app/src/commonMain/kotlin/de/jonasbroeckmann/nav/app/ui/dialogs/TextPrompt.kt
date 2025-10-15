@@ -9,11 +9,14 @@ import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.action.DialogKeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyAction
+import de.jonasbroeckmann.nav.framework.action.buildDialogKeyActions
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.updateTextField
+import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
 import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
@@ -48,7 +51,8 @@ fun DialogShowScope.textPrompt(
     cancelKey: KeyboardEvent? = null,
     validate: (String) -> Boolean = { true }
 ): String? {
-    val actions = buildKeyActions<TextPromptState, DialogController<TextPromptState, String?>> {
+    val inputTextAction: DialogKeyAction<TextPromptState, String?>
+    val actions = buildDialogKeyActions<TextPromptState, String?> {
         if (clearKey != null) {
             register(
                 clearKey,
@@ -71,7 +75,7 @@ fun DialogShowScope.textPrompt(
             condition = { validate(text) },
             action = { dismissDialog(text) },
         )
-        register(
+        inputTextAction = register(
             KeyAction(
                 keys = null,
                 condition = { true },
@@ -88,7 +92,7 @@ fun DialogShowScope.textPrompt(
         initialState = TextPromptState(
             text = initialText
         ),
-        onInput = { input -> actions.handle(state, input) }
+        onInput = { input -> actions.handle(state, input, inputMode) }
     ) {
         verticalLayout {
             align = LEFT
@@ -96,20 +100,19 @@ fun DialogShowScope.textPrompt(
             cell(
                 buildString {
                     append("❯ ")
-                    if (text.isEmpty()) {
-                        append(TextStyles.dim(placeholder ?: "type input"))
-                    } else {
-                        append(text)
-                        append("_")
-                    }
+                    appendTextFieldContent(
+                        text = text,
+                        placeholder = placeholder ?: "type input",
+                        hasFocus = inputTextAction.isAvailable(inputMode)
+                    )
                 }
             )
             if (showHints) {
                 cell(
                     buildHints(styles.genericElements(" • ")) {
-                        addActions(actions, this@inputDialog) { render() }
+                        addActions(actions, this@inputDialog, inputMode) { render() }
                         if (!validate(text)) {
-                            add { styles.genericElements("input not valid") }
+                            add { (TextStyles.dim + styles.danger)("input not valid") }
                         }
                     }
                 )

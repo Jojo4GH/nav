@@ -4,6 +4,8 @@ import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 
 interface InputModeScope : AutoCloseable {
+    val inputMode: InputMode
+
     fun readInput(): InputEvent
 }
 
