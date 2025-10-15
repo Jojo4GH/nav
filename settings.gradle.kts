@@ -17,3 +17,5 @@ rootProject.name = "nav"
 include("app")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+include("framework")
