@@ -244,6 +244,18 @@ data class Config private constructor(
         )
 
         context(state: State)
+        fun computeCondition(): Boolean {
+            val currentEntry = state.currentItem
+            return when (currentEntry?.type) {
+                null -> false
+                SymbolicLink -> onSymbolicLink
+                Directory -> onDirectory
+                RegularFile -> onFile
+                Unknown -> false
+            }
+        }
+
+        context(state: State)
         fun computeCommand(
             currentEntry: Entry
         ) = command.replacePlaceholders(

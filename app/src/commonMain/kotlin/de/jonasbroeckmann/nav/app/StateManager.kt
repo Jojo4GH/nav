@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav.app
 
 import kotlin.properties.Delegates
+import kotlin.reflect.KProperty
 
 class StateManager<T>(initial: T) {
     private var isDirty = true
@@ -15,5 +16,11 @@ class StateManager<T>(initial: T) {
             isDirty = false
             onNewState(state)
         }
+    }
+
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): T = state
+
+    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
+        state = value
     }
 }

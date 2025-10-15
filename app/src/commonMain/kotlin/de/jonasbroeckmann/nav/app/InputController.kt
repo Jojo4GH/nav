@@ -4,30 +4,28 @@ import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 
 interface InputController {
-    fun enterInputMode(mode: InputModeKey): InputMode
+    fun enterInputMode(mode: InputMode): InputModeScope
 }
 
-interface InputMode : AutoCloseable {
+abstract class InputMode(val debugLabel: String?) {
+    data object Normal : InputMode("N")
+
+    data object QuickMacro : InputMode("M")
+}
+
+interface InputModeScope : AutoCloseable {
     fun readInput(): InputEvent
 }
 
-sealed interface InputModeKey {
-    data object Normal : InputModeKey
+inline fun <R> InputController.useInputMode(mode: InputMode, block: InputModeScope.() -> R) = enterInputMode(mode).use { it.block() }
 
-    data object QuickMacro : InputModeKey
-
-    data object Dialog : InputModeKey
-}
-
-inline fun <R> InputController.useInputMode(mode: InputModeKey, block: InputMode.() -> R) = enterInputMode(mode).use { it.block() }
-
-inline fun InputMode.captureInputEvents(block: (InputEvent) -> Unit): Nothing {
+inline fun InputModeScope.captureInputEvents(block: (InputEvent) -> Unit): Nothing {
     while (true) {
         block(readInput())
     }
 }
 
-inline fun InputMode.captureKeyboardEvents(block: (KeyboardEvent) -> Unit): Nothing {
+inline fun InputModeScope.captureKeyboardEvents(block: (KeyboardEvent) -> Unit): Nothing {
     captureInputEvents {
         if (it is KeyboardEvent) {
             block(it)

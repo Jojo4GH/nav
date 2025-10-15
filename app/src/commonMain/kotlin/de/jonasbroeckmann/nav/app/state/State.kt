@@ -1,9 +1,10 @@
 package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.app.InputModeKey
+import de.jonasbroeckmann.nav.app.InputMode
 import de.jonasbroeckmann.nav.app.StateProvider
 import de.jonasbroeckmann.nav.app.actions.MenuAction
+import de.jonasbroeckmann.nav.app.actions.MenuActions
 import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemListSemantics
 import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemList
@@ -21,11 +22,11 @@ data class State private constructor(
     val showHiddenEntries: Boolean,
 
     private val menuCursor: Int = -1,
-    private val allMenuActions: () -> List<MenuAction>,
+    private val menuActions: MenuActions,
 
     val command: String? = null,
 
-    val inputMode: InputModeKey,
+    val inputMode: InputMode? = null,
 
     val lastReceivedEvent: KeyboardEvent? = null
 ) : StateProvider, FilterableItemList<State, Entry>, NavigableItemList<State, Entry> {
@@ -79,12 +80,12 @@ data class State private constructor(
 
     override fun withCursorOnNextReverse(predicate: (Entry) -> Boolean) = navigableItemListSemantics.withCursorOnNextReverse(predicate)
 
-    val shownMenuActions get() = allMenuActions().filter { it.isShown() }
+    val shownMenuActions get() = menuActions.all.filter { it.isShown() }
     val coercedMenuCursor get() = menuCursor.coerceAtMost(shownMenuActions.lastIndex).coerceAtLeast(-1)
     val isMenuOpen get() = menuCursor >= 0
     val currentMenuAction get() = shownMenuActions.getOrNull(coercedMenuCursor)
 
-    val inQuickMacroMode get() = inputMode == InputModeKey.QuickMacro
+    val inQuickMacroMode get() = inputMode == InputMode.QuickMacro
 
     val isTypingCommand get() = command != null
 
@@ -131,7 +132,7 @@ data class State private constructor(
         return copy(unfilteredItems = directory.entries()).withCursorOnFirst(predicate = preferredEntry)
     }
 
-    fun withInputMode(inputMode: InputModeKey) = copy(inputMode = inputMode)
+    fun withInputMode(inputMode: InputMode) = copy(inputMode = inputMode)
 
 //    fun inQuickMacroMode(enabled: Boolean = true) =
 
@@ -149,13 +150,12 @@ data class State private constructor(
         fun initial(
             startingDirectory: Path,
             showHiddenEntries: Boolean,
-            allMenuActions: () -> List<MenuAction>
+            menuActions: MenuActions
         ) = State(
             directory = startingDirectory,
             cursor = 0,
             showHiddenEntries = showHiddenEntries,
-            allMenuActions = allMenuActions,
-            inputMode = Normal
+            menuActions = menuActions
         )
     }
 }

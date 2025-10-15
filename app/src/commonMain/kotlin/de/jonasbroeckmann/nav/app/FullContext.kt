@@ -16,8 +16,6 @@ interface FullContext : PartialContext, ConfigProvider, StylesProvider {
     val accessibilityDecorations: Boolean
 
     val identifiedMacros: Map<String, Macro>
-
-    val inputTimeout: Duration
 }
 
 context(context: FullContext)
