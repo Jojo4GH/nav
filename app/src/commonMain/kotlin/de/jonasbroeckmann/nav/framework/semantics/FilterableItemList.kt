@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.state.semantics
+package de.jonasbroeckmann.nav.framework.semantics
 
 interface FilterableItemList<Self : FilterableItemList<Self, Item>, Item> {
     val unfilteredItems: List<Item>

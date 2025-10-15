@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.ui
+package de.jonasbroeckmann.nav.framework.ui
 
 import com.github.ajalt.mordant.rendering.Widget
 

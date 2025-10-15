@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.state.semantics
+package de.jonasbroeckmann.nav.framework.semantics
 
 interface NavigableItemList<Self : NavigableItemList<Self, Item>, Item> {
     val cursor: Int

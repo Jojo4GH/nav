@@ -3,17 +3,26 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
-import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.actions.buildKeyActions
-import de.jonasbroeckmann.nav.app.actions.handle
-import de.jonasbroeckmann.nav.app.actions.register
-import de.jonasbroeckmann.nav.app.state.semantics.*
-import de.jonasbroeckmann.nav.app.ui.buildHints
+import de.jonasbroeckmann.nav.framework.context.FullContext
+import de.jonasbroeckmann.nav.framework.action.buildKeyActions
+import de.jonasbroeckmann.nav.framework.action.handle
+import de.jonasbroeckmann.nav.framework.action.register
+import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
 import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.config.StylesProvider
-import de.jonasbroeckmann.nav.config.config
-import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.context.StylesProvider
+import de.jonasbroeckmann.nav.framework.context.config
+import de.jonasbroeckmann.nav.framework.context.styles
+import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
+import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListSemantics
+import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
+import de.jonasbroeckmann.nav.framework.semantics.NavigableItemListSemantics
+import de.jonasbroeckmann.nav.framework.semantics.autocomplete
+import de.jonasbroeckmann.nav.framework.semantics.updateTextField
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
+import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog
+import de.jonasbroeckmann.nav.framework.ui.dialog.updateState
 
 context(context: FullContext)
 fun DialogShowScope.defaultChoicePrompt(
@@ -41,7 +50,7 @@ fun DialogShowScope.choicePrompt(
     keys: Config.Keys,
     autocomplete: Config.Autocomplete
 ): String? {
-    val actions: List<DialogKeyAction<ChoicePromptState, String?>> = buildKeyActions {
+    val actions = buildKeyActions<ChoicePromptState, DialogController<ChoicePromptState, String?>> {
         register(
             keys.cursor.up, keys.menu.up,
             condition = { filteredItems.isNotEmpty() },

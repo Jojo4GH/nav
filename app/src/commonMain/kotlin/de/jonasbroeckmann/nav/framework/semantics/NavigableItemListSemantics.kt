@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.state.semantics
+package de.jonasbroeckmann.nav.framework.semantics
 
 class NavigableItemListSemantics<Self : NavigableItemList<Self, Item>, Item>(
     private val self: Self,

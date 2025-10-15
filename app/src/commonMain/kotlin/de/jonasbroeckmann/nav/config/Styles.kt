@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.config
 
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
+import de.jonasbroeckmann.nav.framework.context.StylesProvider
 
 data class Styles(
     val path: TextStyle,
@@ -37,9 +38,3 @@ data class Styles(
     override val styles get() = this
 }
 
-interface StylesProvider {
-    val styles: Styles
-}
-
-context(stylesProvider: StylesProvider)
-val styles get() = stylesProvider.styles

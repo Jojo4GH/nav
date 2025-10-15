@@ -1,7 +1,8 @@
-package de.jonasbroeckmann.nav.app.ui
+package de.jonasbroeckmann.nav.framework.ui
 
-import de.jonasbroeckmann.nav.app.actions.KeyAction
-import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.app.ui.renderAction
+import de.jonasbroeckmann.nav.framework.action.KeyAction
+import de.jonasbroeckmann.nav.framework.context.StylesProvider
 
 context(stylesProvider: StylesProvider)
 inline fun <Context> buildHints(

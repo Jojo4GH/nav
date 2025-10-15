@@ -5,7 +5,7 @@ import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.widgets.Text
-import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.framework.context.FullContext
 import de.jonasbroeckmann.nav.app.state.Entry
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
