@@ -10,7 +10,7 @@ private class DialogExitEvent(val toReturn: Any?) : Throwable()
 
 typealias DialogKeyAction<T, R> = KeyAction<T, DialogController<T, R>>
 
-fun <T, R> DialogScope.inputDialog(
+fun <T, R> DialogShowScope.inputDialog(
     initialState: T,
     onInput: DialogController<T, R>.(KeyboardEvent) -> Unit,
     build: T.() -> Widget

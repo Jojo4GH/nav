@@ -14,7 +14,7 @@ import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
 
 context(_: StylesProvider, _: ConfigProvider)
-fun DialogScope.defaultTextPrompt(
+fun DialogShowScope.defaultTextPrompt(
     title: String,
     initialText: String = "",
     placeholder: String? = null,
@@ -31,7 +31,7 @@ fun DialogScope.defaultTextPrompt(
 )
 
 context(stylesProvider: StylesProvider)
-fun DialogScope.textPrompt(
+fun DialogShowScope.textPrompt(
     title: String,
     initialText: String = "",
     placeholder: String? = null,

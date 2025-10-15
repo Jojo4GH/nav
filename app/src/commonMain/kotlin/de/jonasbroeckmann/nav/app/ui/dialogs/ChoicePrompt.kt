@@ -16,7 +16,7 @@ import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
 
 context(context: FullContext)
-fun DialogScope.defaultChoicePrompt(
+fun DialogShowScope.defaultChoicePrompt(
     title: String,
     choices: List<String>,
     defaultChoice: Int = 0,
@@ -32,7 +32,7 @@ fun DialogScope.defaultChoicePrompt(
 
 @Suppress("detekt:LongMethod", "detekt:CyclomaticComplexMethod")
 context(stylesProvider: StylesProvider)
-fun DialogScope.choicePrompt(
+fun DialogShowScope.choicePrompt(
     title: String,
     choices: List<String>,
     defaultChoice: Int = 0,

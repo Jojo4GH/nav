@@ -40,4 +40,28 @@ abstract class KeyActions<Context, Controller, Category> {
             action = action
         )
     )
+
+    companion object {
+        protected fun <Context, Controller> KeyActions<Context, Controller, Unit>.registerKeyAction(
+            action: KeyAction<Context, Controller>
+        ) = Unit.registerKeyAction(action)
+
+        protected fun <Context, Controller> KeyActions<Context, Controller, Unit>.registerKeyAction(
+            vararg keys: KeyboardEvent,
+            displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
+            description: Context.() -> String = { "" },
+            style: Context.() -> TextStyle? = { null },
+            hidden: Context.() -> Boolean = { false },
+            condition: Context.() -> Boolean,
+            action: context(Controller) Context.(KeyboardEvent) -> Unit
+        ) = Unit.registerKeyAction(
+            keys = keys,
+            displayKey = displayKey,
+            description = description,
+            style = style,
+            hidden = hidden,
+            condition = condition,
+            action = action
+        )
+    }
 }

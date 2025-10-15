@@ -14,14 +14,16 @@ import com.kgit2.kommand.process.Stdio.Inherit
 import com.kgit2.kommand.process.Stdio.Pipe
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.app.actions.Action
-import de.jonasbroeckmann.nav.app.actions.MainActions
+import de.jonasbroeckmann.nav.app.actions.MenuActions
+import de.jonasbroeckmann.nav.app.actions.NormalModeActions
+import de.jonasbroeckmann.nav.app.actions.QuickMacroModeActions
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.state.semantics.updateTextField
 import de.jonasbroeckmann.nav.app.ui.WidgetAnimation
 import de.jonasbroeckmann.nav.app.ui.buildUI
-import de.jonasbroeckmann.nav.app.ui.dialogs.DialogScope
+import de.jonasbroeckmann.nav.app.ui.dialogs.DialogShowScope
 import de.jonasbroeckmann.nav.command.*
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.exitProcess
@@ -32,10 +34,7 @@ import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class App(
-    context: PartialContext,
-    override val config: Config
-) : MainController, PartialContext by context {
+abstract class MainControllerBase internal constructor() : MainController {
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
         context.command.configurationOptions.editor
@@ -66,6 +65,7 @@ class App(
                 ANSI16, NONE -> true
             }
     }
+
     override val accessibilityDecorations by lazy {
         command.configurationOptions.renderMode.accessibility.decorations
             ?: config.accessibility.decorations
@@ -81,51 +81,176 @@ class App(
             .toMap()
     }
 
-    private val actions = MainActions(this)
+    companion object {
+        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
+
+        context(context: PartialContext)
+        private fun findDefaultEditorCommand(): String? {
+            context.printlnOnDebug { "Searching for default editor:" }
+
+            fun checkEnvVar(name: String): String? {
+                val value = getEnvironmentVariable(name)?.trim() ?: run {
+                    context.printlnOnDebug { $$"  $$$name not set" }
+                    return null
+                }
+                if (value.isBlank()) {
+                    context.printlnOnDebug { $$"  $$$name is empty" }
+                    return null
+                }
+                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
+                return value
+            }
+
+            fun checkProgram(name: String): String? {
+                val path = which(name) ?: run {
+                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
+                    return null
+                }
+                context.printlnOnDebug { "  Found $name at $path" }
+                return "\"$path\"" // quote path to handle spaces
+            }
+
+            return sequence {
+                yield(checkEnvVar("EDITOR"))
+                yield(checkEnvVar("VISUAL"))
+                DefaultEditorPrograms.forEach { name ->
+                    yield(checkProgram(name))
+                }
+            }.filterNotNull().firstOrNull().also {
+                if (it == null) {
+                    context.terminal.danger("Could not find a default editor")
+                    context.terminal.warning(specifyEditorMessage)
+                }
+            }
+        }
+
+        private val specifyEditorMessage: String get() {
+            return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
+        }
+    }
+}
+
+internal class StackBasedInputController(
+    private val context: PartialContext,
+    private val inputTimeout: Duration,
+    private val onInputModeChanged: (InputMode) -> Unit,
+    private val onKeyboardEvent: (KeyboardEvent) -> Unit,
+    private val onCtrlC: StackBasedInputController.() -> Unit,
+) : InputController {
+    private data class InputModeStackEntry(val mode: InputMode, val id: Int = nextId++) {
+        private companion object {
+            private var nextId = 0
+        }
+    }
+
+    private data object NoInputMode : InputMode(null)
+
+    private val inputModeStack = mutableListOf<InputModeStackEntry>(
+        InputModeStackEntry(NoInputMode)
+    )
+
+    val currentInputMode get() = inputModeStack.last().mode
+
+    operator fun contains(mode: InputMode) = inputModeStack.any { it.mode == mode }
+
+    override fun enterInputMode(mode: InputMode): InputModeScope {
+        context.printlnOnDebug { "Switching input mode $currentInputMode to $mode ..." }
+        val stackEntry = InputModeStackEntry(mode)
+        inputModeStack.add(stackEntry)
+        onInputModeChanged(mode)
+        return object : InputModeScope {
+            override fun readInput() = this@StackBasedInputController.readInput()
+
+            override fun close() {
+                val topEntry = inputModeStack.lastOrNull()
+                require(topEntry == stackEntry) {
+                    "Cannot pop input mode stack. Expected $stackEntry but was $topEntry. Current stack: $inputModeStack"
+                }
+                inputModeStack.removeLast()
+                onInputModeChanged(currentInputMode)
+                context.printlnOnDebug { "Restored input mode from $mode to $currentInputMode" }
+            }
+        }
+    }
+
+    private fun readInput(): InputEvent {
+        context.terminal.enterRawMode().use { rawMode ->
+            while (true) {
+                val input = try {
+                    rawMode.readEvent(inputTimeout)
+                } catch (_: RuntimeException) {
+                    continue // on timeout try again
+                }
+                context.printlnOnDebug { "Received input event: $input" }
+                if (input is KeyboardEvent) {
+                    onKeyboardEvent(input)
+                    if (input.isCtrlC) onCtrlC()
+                }
+                return input
+            }
+        }
+    }
+}
+
+class App(
+    context: PartialContext,
+    override val config: Config
+) : MainControllerBase(), PartialContext by context {
+    private data class AppState(
+        val normalModeActions: NormalModeActions,
+        val quickMacroModeActions: QuickMacroModeActions,
+        val state: State,
+        val dialog: Widget?
+    )
 
     private val stateManager = StateManager(
         initial = AppState(
-            actions = actions,
+            normalModeActions = NormalModeActions(this),
+            quickMacroModeActions = QuickMacroModeActions(this),
             state = State.initial(
                 startingDirectory = startingDirectory,
                 showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
-                allMenuActions = { actions.menuActions }
+                menuActions = MenuActions(this)
             ),
             dialog = null
         )
     )
+    private var appState by stateManager
 
     override var state
-        get() = stateManager.state.state
+        get() = appState.state
         set(value) {
-            stateManager.state = stateManager.state.copy(state = value)
+            appState = appState.copy(state = value)
         }
 
     private var dialog
-        get() = stateManager.state.dialog
+        get() = appState.dialog
         set(value) {
-            stateManager.state = stateManager.state.copy(dialog = value)
+            appState = appState.copy(dialog = value)
         }
-
-    private data class AppState(
-        val actions: MainActions,
-        val state: State,
-        val dialog: Widget?
-    )
 
     private val ui = WidgetAnimation(terminal)
 
     fun WidgetAnimation.tryUpdate() = stateManager.consume { state ->
         render(
             widget = buildUI(
-                actions = state.actions,
+                normalModeActions = state.normalModeActions,
+                quickMacroModeActions = state.quickMacroModeActions,
                 state = state.state,
                 dialog = state.dialog
             )
         )
     }
 
-    override val inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE
+    private val inputController = StackBasedInputController(
+        context = this,
+        inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE,
+        onInputModeChanged = { mode -> updateState { withInputMode(mode) } },
+        onKeyboardEvent = { event -> updateState { withLastReceivedEvent(event) } },
+        onCtrlC = { throw ExitEvent() }
+    )
+
+    override fun enterInputMode(mode: InputMode): InputModeScope = inputController.enterInputMode(mode)
 
     fun main(): Nothing = catchAllFatal(
         cleanupOnError = {
@@ -168,13 +293,13 @@ class App(
         if (input !is KeyboardEvent) return
         if (input.ctrl) {
             printlnOnDebug { "Entering quick macro mode ..." }
-            state = state.withInputMode(QuickMacro)
+            updateState { withInputMode(QuickMacro) }
         }
         if (state.inputMode == QuickMacro) {
-            for (action in actions.quickMacroModeActions) {
+            for (action in appState.quickMacroModeActions.all) {
                 if (context(state) { action matches input.copy(ctrl = false) }) {
                     action.tryRun(input)
-                    state = state.withInputMode(currentInputMode)
+                    updateState { withInputMode(inputController.currentInputMode) }
                     return
                 }
             }
@@ -183,9 +308,9 @@ class App(
             }
             // no action matched, so we continue as normal
             printlnOnDebug { "Exiting quick macro mode ..." }
-            state = state.withInputMode(currentInputMode)
+            updateState { withInputMode(inputController.currentInputMode) }
         }
-        for (action in actions.normalModeActions) {
+        for (action in appState.normalModeActions.all) {
             if (context(state) { action matches input }) {
                 action.tryRun(input)
                 return
@@ -195,12 +320,12 @@ class App(
         if (command != null) {
             input.updateTextField(
                 current = command,
-                onChange = { newCommand -> state = state.withCommand(newCommand) }
+                onChange = { newCommand -> updateState { withCommand(newCommand) } }
             )
         } else {
             input.updateTextField(
                 current = state.filter,
-                onChange = { newFilter -> state = state.withFilter(newFilter) }
+                onChange = { newFilter -> updateState { withFilter(newFilter) } }
             )
         }
         return
@@ -313,11 +438,13 @@ class App(
         throw ExitEvent()
     }
 
-    override fun <R> showDialog(block: DialogScope.() -> R): R {
+    private data object DialogInputMode : InputMode("D")
+
+    override fun <R> showDialog(block: DialogShowScope.() -> R): R {
         val previous = dialog
         try {
-            useInputMode(Dialog) {
-                val scope = object : DialogScope, InputMode by this {
+            useInputMode(DialogInputMode) {
+                val scope = object : DialogShowScope, InputModeScope by this {
                     override fun render(widget: Widget) {
                         dialog = widget
                         ui.tryUpdate()
@@ -385,48 +512,8 @@ class App(
             dangerThrowable(e, "An error occurred while running $exe with args $args: ${e.message}")
             null
         }
-        state = state.updatedEntries() // update in case the command changed something
+        updateState { updatedEntries() } // update in case the command changed something
         return result
-    }
-
-    private fun readInput(): InputEvent {
-        terminal.enterRawMode().use { rawMode ->
-            while (true) {
-                val input = try {
-                    rawMode.readEvent(inputTimeout)
-                } catch (_: RuntimeException) {
-                    continue // on timeout try again
-                }
-                printlnOnDebug { "Received input event: $input" }
-                if (input is KeyboardEvent) {
-                    state = state.withLastReceivedEvent(input)
-                    if (input.isCtrlC) throw ExitEvent()
-                }
-                return input
-            }
-        }
-    }
-
-    private val inputModeStack = ArrayDeque<InputModeKey>()
-    private val currentInputMode: InputModeKey get() = inputModeStack.lastOrNull() ?: InputModeKey.Normal
-
-    override fun enterInputMode(mode: InputModeKey): InputMode {
-        printlnOnDebug { "Switching input mode $currentInputMode to $mode ..." }
-        inputModeStack.addLast(mode)
-        state = state.withInputMode(currentInputMode)
-        return object : InputMode {
-            override fun readInput() = this@App.readInput()
-
-            override fun close() {
-                val top = inputModeStack.lastOrNull()
-                require(top == mode) {
-                    "Input mode stack corrupted. Expected $mode but was $top. Current stack: $inputModeStack"
-                }
-                inputModeStack.removeLast()
-                state = state.withInputMode(currentInputMode)
-                printlnOnDebug { "Restored input mode from $mode to $currentInputMode" }
-            }
-        }
     }
 
     private class ExitEvent : Throwable()
@@ -434,51 +521,5 @@ class App(
     companion object {
         context(context: PartialContext)
         operator fun invoke(config: Config) = App(context, config)
-
-        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
-
-        context(context: PartialContext)
-        private fun findDefaultEditorCommand(): String? {
-            context.printlnOnDebug { "Searching for default editor:" }
-
-            fun checkEnvVar(name: String): String? {
-                val value = getEnvironmentVariable(name)?.trim() ?: run {
-                    context.printlnOnDebug { $$"  $$$name not set" }
-                    return null
-                }
-                if (value.isBlank()) {
-                    context.printlnOnDebug { $$"  $$$name is empty" }
-                    return null
-                }
-                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
-                return value
-            }
-
-            fun checkProgram(name: String): String? {
-                val path = which(name) ?: run {
-                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
-                    return null
-                }
-                context.printlnOnDebug { "  Found $name at $path" }
-                return "\"$path\"" // quote path to handle spaces
-            }
-
-            return sequence {
-                yield(checkEnvVar("EDITOR"))
-                yield(checkEnvVar("VISUAL"))
-                DefaultEditorPrograms.forEach { name ->
-                    yield(checkProgram(name))
-                }
-            }.filterNotNull().firstOrNull().also {
-                if (it == null) {
-                    context.terminal.danger("Could not find a default editor")
-                    context.terminal.warning(specifyEditorMessage)
-                }
-            }
-        }
-
-        private val specifyEditorMessage: String get() {
-            return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
-        }
     }
 }
