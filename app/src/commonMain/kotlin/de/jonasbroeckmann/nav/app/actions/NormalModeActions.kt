@@ -1,8 +1,8 @@
 package de.jonasbroeckmann.nav.app.actions
 
 import de.jonasbroeckmann.nav.app.*
-import de.jonasbroeckmann.nav.app.macros.computeCondition
-import de.jonasbroeckmann.nav.app.macros.computeDescription
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeKeyDescription
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.State
@@ -23,12 +23,12 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
     )
 
     val normalModeMacroActions = config.macros.mapNotNull { macro ->
-        if (macro.nonQuickModeKey == null) return@mapNotNull null
+        if (macro.key == null) return@mapNotNull null
         registerKeyAction(
-            macro.nonQuickModeKey,
-            description = { macro.computeDescription() },
+            macro.key,
+            description = { macro.computeKeyDescription() },
             style = { macro.style },
-            hidden = { macro.hidden },
+            hidden = { macro.hideKey },
             condition = { macro.computeCondition() },
             action = { runMacro(macro) }
         )
