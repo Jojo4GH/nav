@@ -7,13 +7,12 @@ import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
 
 plugins {
-    val kotlinVersion = "2.2.20"
-    kotlin("multiplatform") version kotlinVersion
-    kotlin("plugin.serialization") version kotlinVersion
-    id("dev.detekt") version "2.0.0-alpha.0"
-    id("com.github.gmazzo.buildconfig") version "5.6.8"
-    id("org.gradle.crypto.checksum") version "1.4.0"
-    id("com.netflix.nebula.ospackage") version "12.1.1"
+    kotlin("multiplatform")
+    kotlin("plugin.serialization")
+    id("dev.detekt")
+    id("com.github.gmazzo.buildconfig")
+    id("org.gradle.crypto.checksum")
+    id("com.netflix.nebula.ospackage")
 }
 
 group = "de.jonasbroeckmann.nav"
@@ -42,13 +41,7 @@ kotlin {
 
     linuxX64()
     linuxArm64()
-    mingwX64 {
-        compilerOptions {
-            freeCompilerArgs.addAll(
-                "-Xdisable-phases=EscapeAnalysis" // prevent OutOfMemoryError during escape analysis
-            )
-        }
-    }
+    mingwX64()
 //    macosX64()
 
     targets.withType<KotlinNativeTarget> {
@@ -82,6 +75,8 @@ kotlin {
             implementation("com.github.ajalt.mordant:mordant-coroutines:$mordantVersion")
 
             implementation("com.kgit2:kommand:2.3.0")
+
+            api(projects.framework)
         }
     }
 }
