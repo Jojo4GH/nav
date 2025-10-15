@@ -5,7 +5,7 @@ import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.framework.input.InputMode
 
 data class KeyAction<Context, Controller>(
-    /* If null, any key matches */
+    /** If null, any key matches */
     val keys: List<KeyboardEvent>?,
     private val displayKey: Context.() -> KeyboardEvent? = { keys?.firstOrNull() },
     private val description: Context.() -> String = { "" },
