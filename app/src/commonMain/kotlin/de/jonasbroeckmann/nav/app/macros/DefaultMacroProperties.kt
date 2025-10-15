@@ -1,7 +1,7 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.framework.context.context
-import de.jonasbroeckmann.nav.framework.context.state
+import de.jonasbroeckmann.nav.app.context
+import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.updateState
 

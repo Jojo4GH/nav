@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app.actions
 
-import de.jonasbroeckmann.nav.framework.context.FullContext
+import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.computeCondition
@@ -86,8 +86,8 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         action = {
             autocomplete(
                 autocompleteOn = { path.name },
-                style = config.autocomplete.style,
-                autoNavigation = config.autocomplete.autoNavigation,
+                style = config.autocomplete.style.value,
+                autoNavigation = config.autocomplete.autoNavigation.value,
                 invertDirection = it.shift,
                 onUpdate = { newState -> updateState { newState } },
                 onAutoNavigate = { newState, item -> updateState { newState.navigateTo(item.path) } }

@@ -3,16 +3,17 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
-import de.jonasbroeckmann.nav.framework.context.FullContext
+import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
+import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.framework.context.StylesProvider
-import de.jonasbroeckmann.nav.framework.context.config
-import de.jonasbroeckmann.nav.framework.context.styles
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.config
+import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListSemantics
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
@@ -68,8 +69,8 @@ fun DialogShowScope.choicePrompt(
             action = {
                 autocomplete(
                     autocompleteOn = { this },
-                    style = autocomplete.style,
-                    autoNavigation = autocomplete.autoNavigation,
+                    style = autocomplete.style.value,
+                    autoNavigation = autocomplete.autoNavigation.value,
                     invertDirection = it.shift,
                     onUpdate = { newState -> updateState { newState } },
                     onAutoNavigate = { _, item -> dismissDialog(item) }
@@ -148,8 +149,8 @@ fun DialogShowScope.choicePrompt(
             }
             if (showHints) {
                 cell(
-                    buildHints {
-                        addActions(actions, this@inputDialog)
+                    buildHints(styles.genericElements(" • ")) {
+                        addActions(actions, this@inputDialog) { render() }
                     }.let {
                         "${styles.genericElements("•")} $it"
                     }

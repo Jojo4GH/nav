@@ -1,11 +1,9 @@
-package de.jonasbroeckmann.nav.framework.context
+package de.jonasbroeckmann.nav.command
 
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
-import de.jonasbroeckmann.nav.command.NavCommand
-import de.jonasbroeckmann.nav.command.Shell
 import de.jonasbroeckmann.nav.utils.exitProcess
 import kotlinx.io.files.Path
 

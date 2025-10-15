@@ -15,8 +15,8 @@ import de.jonasbroeckmann.nav.app.openInEditor
 import de.jonasbroeckmann.nav.app.runCommand
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
-import de.jonasbroeckmann.nav.framework.context.dangerOnDebug
-import de.jonasbroeckmann.nav.framework.context.printlnOnDebug
+import de.jonasbroeckmann.nav.command.dangerOnDebug
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.files.Path
 import kotlinx.serialization.SerialName

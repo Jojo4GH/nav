@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.framework.context.printlnOnDebug
+import de.jonasbroeckmann.nav.command.printlnOnDebug
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 

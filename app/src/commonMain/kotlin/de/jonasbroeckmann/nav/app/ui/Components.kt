@@ -4,31 +4,33 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.framework.context.StateProvider
+import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.MenuAction
 import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.framework.context.state
+import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.Entry.Type.SymbolicLink
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Unknown
-import de.jonasbroeckmann.nav.framework.context.StylesProvider
-import de.jonasbroeckmann.nav.framework.context.styles
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.styles
 
 context(stylesProvider: StylesProvider)
-fun <Context> renderAction(
-    action: Action<Context, *, *>,
+fun <Context> Action<Context, *, *>.render(
     context: Context
-): String = context(context) {
-    val keyStr = when (action) {
-        is KeyAction<Context, *> -> action.displayKey()?.let { (styles.keyHints + TextStyles.bold)(it.prettyName) }
+): String = context(context) { render() }
+
+context(_: StylesProvider, _: Context)
+fun <Context> Action<Context, *, *>.render(): String {
+    val keyStr = when (this) {
+        is KeyAction<Context, *> -> displayKey()?.let { (styles.keyHints + TextStyles.bold)(it.prettyName) }
         is MenuAction -> null
     }
-    val desc = action.description().takeUnless { it.isBlank() }
-    val descStr = when (action) {
+    val desc = description().takeUnless { it.isBlank() }
+    val descStr = when (this) {
         is KeyAction<*, *> -> desc?.let { styles.keyHintLabels(it) }
         is MenuAction -> desc
     }
@@ -36,7 +38,7 @@ fun <Context> renderAction(
         keyStr,
         descStr
     ).joinToString(" ")
-    action.style()?.let { return it(str) }
+    style()?.let { return it(str) }
     return str
 }
 

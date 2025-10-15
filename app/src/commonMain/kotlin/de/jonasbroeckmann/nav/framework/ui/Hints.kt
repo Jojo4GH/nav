@@ -1,20 +1,17 @@
 package de.jonasbroeckmann.nav.framework.ui
 
-import de.jonasbroeckmann.nav.app.ui.renderAction
 import de.jonasbroeckmann.nav.framework.action.KeyAction
-import de.jonasbroeckmann.nav.framework.context.StylesProvider
 
-context(stylesProvider: StylesProvider)
-inline fun <Context> buildHints(
-    defaultStrongSpacing: String = stylesProvider.styles.genericElements(" • "),
-    block: HintsBuilder<Context>.() -> Unit
-): String {
-    return HintsBuilder<Context>(defaultStrongSpacing).apply(block).render()
-}
+fun buildHints(
+    defaultStrongSpacing: String,
+    block: HintsBuilder.() -> Unit
+) = HintsBuilder(defaultStrongSpacing).apply(block).build()
 
-class HintsBuilder<Context>(
-    private val defaultStrongSpacing: String
-) {
+@DslMarker
+annotation class HintsBuilderDsl
+
+@HintsBuilderDsl
+class HintsBuilder internal constructor(private val defaultStrongSpacing: String) {
     private enum class ElementType(val isSpacing: Boolean) {
         WithWeakSpacing(false),
         WithStrongSpacing(false),
@@ -24,7 +21,7 @@ class HintsBuilder<Context>(
 
     private val elements = mutableListOf<Pair<ElementType, () -> String>>()
 
-    fun render(): String = buildString {
+    internal fun build(): String = buildString {
         var lastElementType: ElementType? = null
         elements.forEachIndexed { index, (type, element) ->
             when (type) {
@@ -72,14 +69,29 @@ class HintsBuilder<Context>(
         add(if (weakSpacing) ElementType.WithWeakSpacing else ElementType.WithStrongSpacing, render)
     }
 
-    context(stylesProvider: StylesProvider)
-    fun addAction(action: KeyAction<Context, *>, context: Context, weakSpacing: Boolean = false) {
-        if (context(context) { !action.isShown() }) return
-        add(weakSpacing) { renderAction(action, context) }
+    fun <Context, A : KeyAction<Context, *>> addAction(
+        action: A,
+        context: Context,
+        weakSpacing: Boolean = false,
+        render: context(Context) A.() -> String
+    ) = context(context) {
+        if (!action.isShown()) return
+        add(weakSpacing) { action.render() }
     }
 
-    context(stylesProvider: StylesProvider)
-    fun addActions(actions: Iterable<KeyAction<Context, *>>, context: Context, weakSpacing: Boolean = false) {
-        actions.forEach { addAction(it, context, weakSpacing) }
+    fun  <Context, A : KeyAction<Context, *>> addActions(
+        actions: Iterable<A>,
+        context: Context,
+        weakSpacing: Boolean = false,
+        render: context(Context) A.() -> String
+    ) {
+        actions.forEach {
+            addAction(
+                action = it,
+                context = context,
+                weakSpacing = weakSpacing,
+                render = render
+            )
+        }
     }
 }
