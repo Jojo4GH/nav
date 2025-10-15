@@ -3,8 +3,8 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.framework.context.FullContext
-import de.jonasbroeckmann.nav.framework.context.StateProvider
+import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.utils.KeyboardEventAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

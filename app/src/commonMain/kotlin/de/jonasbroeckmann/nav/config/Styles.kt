@@ -2,7 +2,6 @@ package de.jonasbroeckmann.nav.config
 
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
-import de.jonasbroeckmann.nav.framework.context.StylesProvider
 
 data class Styles(
     val path: TextStyle,

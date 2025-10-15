@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app.actions
 
-import de.jonasbroeckmann.nav.framework.context.FullContext
+import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.computeCondition
 import de.jonasbroeckmann.nav.app.macros.computeDescription

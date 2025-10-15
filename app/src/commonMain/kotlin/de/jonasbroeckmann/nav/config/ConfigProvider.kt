@@ -1,6 +1,4 @@
-package de.jonasbroeckmann.nav.framework.context
-
-import de.jonasbroeckmann.nav.config.Config
+package de.jonasbroeckmann.nav.config
 
 interface ConfigProvider {
     val config: Config

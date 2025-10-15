@@ -3,15 +3,16 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
+import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.updateTextField
 import de.jonasbroeckmann.nav.framework.ui.buildHints
-import de.jonasbroeckmann.nav.framework.context.ConfigProvider
-import de.jonasbroeckmann.nav.framework.context.StylesProvider
-import de.jonasbroeckmann.nav.framework.context.config
-import de.jonasbroeckmann.nav.framework.context.styles
+import de.jonasbroeckmann.nav.config.ConfigProvider
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.config
+import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog
@@ -96,8 +97,8 @@ fun DialogShowScope.textPrompt(
             )
             if (showHints) {
                 cell(
-                    buildHints {
-                        addActions(actions, this@inputDialog)
+                    buildHints(styles.genericElements(" • ")) {
+                        addActions(actions, this@inputDialog) { render() }
                         if (!validate(text)) {
                             add { styles.genericElements("input not valid") }
                         }

@@ -1,6 +1,4 @@
-package de.jonasbroeckmann.nav.framework.context
-
-import de.jonasbroeckmann.nav.app.state.State
+package de.jonasbroeckmann.nav.app.state
 
 interface StateProvider {
     val state: State

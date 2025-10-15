@@ -1,7 +1,7 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.framework.context.FullContext
-import de.jonasbroeckmann.nav.framework.context.StateProvider
+import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.StateProvider
 
 interface MacroSymbolScope {
     operator fun get(symbol: MacroSymbol): String

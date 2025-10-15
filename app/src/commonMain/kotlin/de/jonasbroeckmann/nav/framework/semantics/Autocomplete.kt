@@ -1,12 +1,22 @@
 package de.jonasbroeckmann.nav.framework.semantics
 
-import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.utils.commonPrefix
+import de.jonasbroeckmann.nav.framework.utils.commonPrefix
+
+enum class AutocompleteStyle {
+    CommonPrefixStop,
+    CommonPrefixCycle,
+}
+
+enum class AutocompleteAutoNavigation {
+    None,
+    OnSingle,
+    OnSingleAfterCompletion,
+}
 
 fun <T, Item> T.autocomplete(
     autocompleteOn: Item.() -> String,
-    style: Config.Autocomplete.Style,
-    autoNavigation: Config.Autocomplete.AutoNavigation,
+    style: AutocompleteStyle,
+    autoNavigation: AutocompleteAutoNavigation,
     invertDirection: Boolean,
     onUpdate: (T) -> Unit,
     onAutoNavigate: (T, Item) -> Unit,

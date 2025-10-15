@@ -2,7 +2,6 @@ package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import de.jonasbroeckmann.nav.framework.input.InputMode
-import de.jonasbroeckmann.nav.framework.context.StateProvider
 import de.jonasbroeckmann.nav.app.actions.MenuActions
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListSemantics

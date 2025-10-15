@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.framework.utils
 
 import kotlin.properties.Delegates
 import kotlin.properties.ReadWriteProperty
