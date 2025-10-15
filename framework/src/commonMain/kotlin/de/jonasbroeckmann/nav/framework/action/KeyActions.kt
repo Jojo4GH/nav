@@ -13,7 +13,7 @@ abstract class KeyActions<Context, Controller, Category>(vararg validInputModes:
         val registeredForCategory = registered.getOrPut(this) { mutableListOf() }
         val i = registeredForCategory.size
         return action.copy(
-            condition = condition@{inputMode ->
+            condition = condition@{ inputMode ->
                 if (inputMode !in validInputModes) {
                     return@condition false
                 }

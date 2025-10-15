@@ -13,13 +13,11 @@ import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.action.DialogKeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.buildDialogKeyActions
-import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.*
 import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
 import de.jonasbroeckmann.nav.framework.ui.buildHints
-import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog
 import de.jonasbroeckmann.nav.framework.ui.dialog.updateState
