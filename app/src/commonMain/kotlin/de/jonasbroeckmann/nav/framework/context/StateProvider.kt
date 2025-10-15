@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app
+package de.jonasbroeckmann.nav.framework.context
 
 import de.jonasbroeckmann.nav.app.state.State
 

@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.actions
+package de.jonasbroeckmann.nav.framework.action
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.rendering.TextStyle

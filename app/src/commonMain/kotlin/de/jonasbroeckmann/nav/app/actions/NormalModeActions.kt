@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app.actions
 
-import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.framework.context.FullContext
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.computeCondition
@@ -8,9 +8,10 @@ import de.jonasbroeckmann.nav.app.macros.computeDescription
 import de.jonasbroeckmann.nav.app.openInEditor
 import de.jonasbroeckmann.nav.app.runMacro
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.state.semantics.autocomplete
+import de.jonasbroeckmann.nav.framework.semantics.autocomplete
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.app.updateState
+import de.jonasbroeckmann.nav.framework.action.KeyActions
 import de.jonasbroeckmann.nav.utils.WorkingDirectory
 
 class NormalModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(), FullContext by context {

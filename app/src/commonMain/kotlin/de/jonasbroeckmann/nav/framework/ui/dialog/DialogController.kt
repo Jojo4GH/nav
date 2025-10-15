@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.ui.dialogs
+package de.jonasbroeckmann.nav.framework.ui.dialog
 
 interface DialogController<T, in R> {
     val state: T

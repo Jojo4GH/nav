@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.state.semantics
+package de.jonasbroeckmann.nav.framework.semantics
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import kotlin.contracts.ExperimentalContracts

@@ -3,10 +3,10 @@ package de.jonasbroeckmann.nav.app.macros
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
-import de.jonasbroeckmann.nav.app.ui.dialogs.DialogShowScope
-import de.jonasbroeckmann.nav.app.ui.dialogs.decorate
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
+import de.jonasbroeckmann.nav.framework.ui.dialog.decorate
 import de.jonasbroeckmann.nav.app.ui.dialogs.macroDialogDecorator
-import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.framework.context.printlnOnDebug
 import kotlin.collections.emptyMap
 import kotlin.collections.forEach
 

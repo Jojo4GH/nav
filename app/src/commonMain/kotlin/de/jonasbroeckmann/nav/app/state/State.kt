@@ -1,14 +1,13 @@
 package de.jonasbroeckmann.nav.app.state
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.app.InputMode
-import de.jonasbroeckmann.nav.app.StateProvider
-import de.jonasbroeckmann.nav.app.actions.MenuAction
+import de.jonasbroeckmann.nav.framework.input.InputMode
+import de.jonasbroeckmann.nav.framework.context.StateProvider
 import de.jonasbroeckmann.nav.app.actions.MenuActions
-import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemList
-import de.jonasbroeckmann.nav.app.state.semantics.FilterableItemListSemantics
-import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemList
-import de.jonasbroeckmann.nav.app.state.semantics.NavigableItemListSemantics
+import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
+import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListSemantics
+import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
+import de.jonasbroeckmann.nav.framework.semantics.NavigableItemListSemantics
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.isDirectory

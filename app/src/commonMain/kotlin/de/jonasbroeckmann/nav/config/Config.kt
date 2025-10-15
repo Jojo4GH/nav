@@ -16,9 +16,10 @@ import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.EntryColumn
-import de.jonasbroeckmann.nav.command.PartialContext
-import de.jonasbroeckmann.nav.command.dangerThrowable
-import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.framework.context.ConfigProvider
+import de.jonasbroeckmann.nav.framework.context.PartialContext
+import de.jonasbroeckmann.nav.framework.context.dangerThrowable
+import de.jonasbroeckmann.nav.framework.context.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSource

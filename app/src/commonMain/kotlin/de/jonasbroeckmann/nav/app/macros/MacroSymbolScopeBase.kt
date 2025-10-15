@@ -1,7 +1,7 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.StateProvider
+import de.jonasbroeckmann.nav.framework.context.FullContext
+import de.jonasbroeckmann.nav.framework.context.StateProvider
 
 open class MacroSymbolScopeBase(
     private val context: FullContext,

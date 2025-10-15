@@ -1,4 +1,4 @@
-package de.jonasbroeckmann.nav.app.state.semantics
+package de.jonasbroeckmann.nav.framework.semantics
 
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.commonPrefix
