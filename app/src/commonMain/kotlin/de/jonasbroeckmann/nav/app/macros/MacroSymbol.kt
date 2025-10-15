@@ -1,7 +1,7 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.StateProvider
+import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.setEnvironmentVariable
 

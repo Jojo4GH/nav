@@ -2,45 +2,47 @@ package de.jonasbroeckmann.nav.app.ui.dialogs
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
-import de.jonasbroeckmann.nav.app.StateManager
-import de.jonasbroeckmann.nav.app.actions.KeyAction
-import de.jonasbroeckmann.nav.app.captureKeyboardEvents
+import de.jonasbroeckmann.nav.framework.input.captureKeyboardEvents
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogController
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
+import de.jonasbroeckmann.nav.framework.utils.StateManager
 
-private class DialogExitEvent(val toReturn: Any?) : Throwable()
-
-typealias DialogKeyAction<T, R> = KeyAction<T, DialogController<T, R>>
-
-fun <T, R> DialogScope.inputDialog(
+fun <T, R> DialogShowScope.inputDialog(
     initialState: T,
     onInput: DialogController<T, R>.(KeyboardEvent) -> Unit,
     build: T.() -> Widget
-): R {
-    try {
-        val stateManager = StateManager(initialState)
-        var state by stateManager::state
-        stateManager.consume { render(build(it)) }
-        captureKeyboardEvents { input ->
-            DialogControllerImpl<T, R>(
-                get = { state },
-                set = { state = it }
-            ).onInput(input)
-            stateManager.consume { render(build(it)) }
-        }
-    } catch (e: DialogExitEvent) {
-        @Suppress("UNCHECKED_CAST")
-        return e.toReturn as R
+): R = DialogControllerImpl<T, R>(initialState).run {
+    consumeState { render(build(it)) }
+    captureKeyboardEvents { input ->
+        onInput(input)
+        consumeState { render(build(it)) }
     }
 }
 
 private class DialogControllerImpl<T, R>(
-    private val get: () -> T,
-    private val set: (T) -> Unit
+    initialState: T
 ) : DialogController<T, R> {
-    override val state get() = get()
+    private val stateManager = StateManager(initialState)
+
+    override var state by stateManager
+        private set
+
+    fun consumeState(onNewState: (T) -> Unit) = stateManager.consume(onNewState)
 
     override fun updateState(update: T.() -> T) {
-        set(state.update())
+        state = state.update()
     }
 
-    override fun dismissDialog(value: R): Nothing = throw DialogExitEvent(value)
+    override fun dismissDialog(value: R): Nothing = throw DismissEvent(value)
+
+    fun run(block: DialogControllerImpl<T, R>.() -> Nothing): R {
+        try {
+            block()
+        } catch (e: DismissEvent) {
+            @Suppress("UNCHECKED_CAST")
+            return e.toReturn as R
+        }
+    }
+
+    private class DismissEvent(val toReturn: Any?) : Throwable()
 }

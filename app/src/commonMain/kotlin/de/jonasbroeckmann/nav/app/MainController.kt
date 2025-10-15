@@ -2,8 +2,10 @@ package de.jonasbroeckmann.nav.app
 
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.ui.dialogs.DialogShowController
+import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.config.Config
+import de.jonasbroeckmann.nav.framework.input.InputController
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowController
 import kotlinx.io.files.Path
 
 interface MainController : InputController, DialogShowController, FullContext, StateProvider {

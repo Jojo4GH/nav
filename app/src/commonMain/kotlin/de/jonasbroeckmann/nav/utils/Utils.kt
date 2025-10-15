@@ -20,17 +20,6 @@ fun which(command: String): Path? {
         .firstOrNull { it.exists() }
 }
 
-fun Iterable<String>.commonPrefix(): String {
-    val iter = iterator()
-    if (!iter.hasNext()) return ""
-    var prefix = iter.next()
-    while (iter.hasNext()) {
-        val next = iter.next()
-        prefix = prefix.commonPrefixWith(next)
-    }
-    return prefix
-}
-
 infix fun Boolean.implies(other: Boolean) = !this || other
 
 expect fun exitProcess(status: Int): Nothing

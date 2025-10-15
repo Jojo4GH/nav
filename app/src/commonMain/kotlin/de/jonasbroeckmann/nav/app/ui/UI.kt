@@ -7,64 +7,72 @@ import com.github.ajalt.mordant.table.*
 import com.github.ajalt.mordant.widgets.Padding
 import com.github.ajalt.mordant.widgets.Text
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.InputModeKey.QuickMacro
-import de.jonasbroeckmann.nav.app.actions.MainActions
+import de.jonasbroeckmann.nav.app.actions.NormalModeActions
+import de.jonasbroeckmann.nav.app.actions.QuickMacroModeActions
 import de.jonasbroeckmann.nav.app.state.Entry
+import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.input.InputMode
+import de.jonasbroeckmann.nav.framework.ui.FillLayout
+import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
+import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
+import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
 
 context(context: FullContext)
 fun buildUI(
-    actions: MainActions,
+    normalModeActions: NormalModeActions,
+    quickMacroModeActions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State,
     dialog: Widget?
-): Widget {
-    return FillLayout(
-        top = {
-            buildTitle(
-                directory = state.directory,
-                maxVisiblePathElements = context.config.maxVisiblePathElements,
-                debugMode = context.debugMode,
-                filterElement = run {
-                    val hasFocus = state.inputMode == Normal && !state.isTypingCommand
-                    if (hasFocus || state.filter.isNotEmpty()) {
-                        buildFilter(
-                            filter = state.filter,
-                            showCursor = hasFocus
-                        )
-                    } else {
-                        null
-                    }
+): Widget = FillLayout(
+    top = {
+        buildTitle(
+            directory = state.directory,
+            maxVisiblePathElements = context.config.maxVisiblePathElements,
+            debugMode = context.debugMode,
+            filterElement = context(state) {
+                val hasFocus = normalModeActions.inputFilter.isAvailable(inputMode)
+                if (hasFocus || state.filter.isNotEmpty()) {
+                    buildFilter(
+                        filter = state.filter,
+                        hasFocus = hasFocus
+                    )
+                } else {
+                    null
                 }
-            )
-        },
-        fill = { availableLines ->
-            buildTable(
-                entries = state.filteredItems,
-                cursor = state.cursor,
-                filter = state.filter,
-                availableLines = availableLines,
-                maxVisibleEntries = context.config.maxVisibleEntries.takeIf { it > 0 },
-                accessibilityDecorations = context.accessibilityDecorations,
-                columns = context.config.shownColumns
-            )
-        },
-        bottom = {
-            buildBottom(
-                actions = actions,
-                state = state,
-                dialog = dialog,
-                showHints = !context.config.hideHints,
-                debugMode = context.debugMode
-            )
-        },
-        limitToTerminalHeight = context.config.limitToTerminalHeight
-    )
-}
+            }
+        )
+    },
+    fill = { availableLines ->
+        buildTable(
+            entries = state.filteredItems,
+            cursor = state.cursor,
+            filter = state.filter,
+            availableLines = availableLines,
+            maxVisibleEntries = context.config.maxVisibleEntries.takeIf { it > 0 },
+            accessibilityDecorations = context.accessibilityDecorations,
+            columns = context.config.shownColumns
+        )
+    },
+    bottom = {
+        buildBottom(
+            normalModeActions = normalModeActions,
+            quickMacroModeActions = quickMacroModeActions,
+            inputMode = inputMode,
+            state = state,
+            dialog = dialog,
+            showHints = !context.config.hideHints,
+            debugMode = context.debugMode
+        )
+    },
+    limitToTerminalHeight = context.config.limitToTerminalHeight
+)
 
 context(_: FullContext)
 private fun buildTable(
@@ -263,14 +271,13 @@ private fun buildPathWithFilter(
 context(_: StylesProvider)
 private fun buildFilter(
     filter: String,
-    showCursor: Boolean
-): String {
-    val style = styles.filter + TextStyles.bold
-    return buildString {
-        append(style(filter))
-        if (showCursor) append(style("_"))
-    }
-}
+    hasFocus: Boolean
+): String = buildString {
+    appendTextFieldContent(
+        text = filter,
+        hasFocus = hasFocus
+    )
+}.let { (styles.filter + TextStyles.bold)(it) }
 
 context(_: StylesProvider)
 private fun buildName(
@@ -325,7 +332,9 @@ private fun String.dressUpEntryName(entry: Entry, isSelected: Boolean, showLinkT
 
 context(_: StylesProvider)
 private fun buildBottom(
-    actions: MainActions,
+    normalModeActions: NormalModeActions,
+    quickMacroModeActions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State,
     dialog: Widget?,
     showHints: Boolean,
@@ -340,20 +349,28 @@ private fun buildBottom(
     }
 
     if (showHints) {
-        cell(buildNavHints(actions, state, debugMode))
+        cell(
+            buildNavHints(
+                normalModeActions = normalModeActions,
+                quickMacroModeActions = quickMacroModeActions,
+                inputMode = inputMode,
+                state = state,
+                debugMode = debugMode
+            )
+        )
     }
 
     if (state.isMenuOpen) {
-        cell(buildMenu(actions, state))
+        cell(buildMenu(normalModeActions, state))
         if (showHints) {
-            cell("${styles.genericElements("•")} ${buildMenuHints(actions, state)}")
+            cell("${styles.genericElements("•")} ${buildMenuHints(normalModeActions, inputMode, state)}")
         }
     }
 }
 
 context(_: StylesProvider)
 private fun buildMenu(
-    actions: MainActions,
+    actions: NormalModeActions,
     state: State
 ) = grid {
     state.shownMenuActions.forEachIndexed { i, item ->
@@ -361,15 +378,15 @@ private fun buildMenu(
             cell(styles.genericElements("│"))
             val isSelected = i == state.coercedMenuCursor
             if (isSelected) {
-                cell(renderAction(actions.menuSubmit, state))
+                cell(actions.menuSubmit.render(state))
                 cell(
-                    renderAction(item, state).let { rendered ->
+                    item.render(state).let { rendered ->
                         item.selectedStyle?.let { it(rendered) + " " } ?: rendered
                     }
                 )
             } else {
                 cell("")
-                cell(renderAction(item, state))
+                cell(item.render(state))
             }
         }
     }
@@ -377,62 +394,22 @@ private fun buildMenu(
 
 context(_: StylesProvider)
 private fun buildNavHints(
-    actions: MainActions,
+    normalModeActions: NormalModeActions,
+    quickMacroModeActions: QuickMacroModeActions,
+    inputMode: InputMode?,
     state: State,
     debugMode: Boolean
-) = buildHints {
-    if (state.inputMode == QuickMacro) {
-        val name = when (state.currentItem?.type) {
-            Directory -> "dir"
-            RegularFile -> "file"
-            SymbolicLink -> "link"
-            Unknown -> "entry"
-            null -> "macro"
-        }
-        add { state.currentItem.style(name) }
-        addSpacing { styles.genericElements(" │ ") }
-        addAction(actions.cancelQuickMacroMode, state)
-        val availableMacros = context(state) {
-            actions.quickMacroModeMacroActions.filter { it.isAvailable() }
-        }
-        availableMacros.forEach {
-            addAction(it, state)
-        }
-        when {
-            actions.quickMacroModeMacroActions.isEmpty() -> add { styles.keyHintLabels("No macros defined") }
-            availableMacros.isEmpty() -> add { styles.keyHintLabels("No macros available") }
-        }
+) = buildHints(styles.genericElements(" • ")) {
+    if (state.inQuickMacroMode) {
+        addQuickMacroModeHints(quickMacroModeActions, inputMode, state)
     } else {
-        addAction(actions.navigateUp, state)
-
-        addAction(actions.cursorUp, state, weakSpacing = true)
-        addAction(actions.cursorDown, state, weakSpacing = true)
-
-        addAction(actions.navigateInto, state)
-        addAction(actions.navigateOpen, state)
-
-        addAction(actions.autocompleteFilter, state)
-        addAction(actions.clearFilter, state)
-
-        addAction(actions.discardCommand, state)
-
-        addAction(actions.exitCD, state)
-        addAction(actions.exit, state)
-
-        addAction(actions.openMenu, state)
-        addAction(actions.exitMenu, state)
-
-        actions.normalModeMacroActions.forEach { action ->
-            addAction(action, state)
-        }
+        addNormalModeHints(normalModeActions, inputMode, state)
     }
 
     if (debugMode) {
         addSpacing(weak = true)
-        when (state.inputMode) {
-            Normal -> { /* no-op */ }
-            QuickMacro -> add { styles.debugStyle("M") }
-            Dialog -> add { styles.debugStyle("D") }
+        inputMode?.debugLabel?.let {
+            add { styles.debugStyle(it) }
         }
         state.lastReceivedEvent?.let { lastReceivedEvent ->
             add { styles.debugStyle("Key: ${lastReceivedEvent.prettyName}") }
@@ -441,15 +418,74 @@ private fun buildNavHints(
 }
 
 context(_: StylesProvider)
-private fun buildMenuHints(
-    actions: MainActions,
+private fun HintsBuilder.addNormalModeHints(
+    actions: NormalModeActions,
+    inputMode: InputMode?,
     state: State
-) = buildHints {
-    addAction(actions.closeMenu, state)
-    addAction(actions.menuUp, state, weakSpacing = true)
-    addAction(actions.menuDown, state, weakSpacing = true)
+) {
+    addAction(actions.navigateUp, state, inputMode) { render() }
+
+    addAction(actions.cursorUp, state, inputMode, weakSpacing = true) { render() }
+    addAction(actions.cursorDown, state, inputMode, weakSpacing = true) { render() }
+
+    addAction(actions.navigateInto, state, inputMode) { render() }
+    addAction(actions.navigateOpen, state, inputMode) { render() }
+
+    addAction(actions.autocompleteFilter, state, inputMode) { render() }
+    addAction(actions.clearFilter, state, inputMode) { render() }
+
+    addAction(actions.discardCommand, state, inputMode) { render() }
+
+    addAction(actions.exitCD, state, inputMode) { render() }
+    addAction(actions.exit, state, inputMode) { render() }
+
+    addAction(actions.openMenu, state, inputMode) { render() }
+    addAction(actions.exitMenu, state, inputMode) { render() }
+
+    actions.normalModeMacroActions.forEach { action ->
+        addAction(action, state, inputMode) { render() }
+    }
+}
+
+context(_: StylesProvider)
+private fun HintsBuilder.addQuickMacroModeHints(
+    actions: QuickMacroModeActions,
+    inputMode: InputMode?,
+    state: State
+) {
+    val name = when (state.currentItem?.type) {
+        Directory -> "dir"
+        RegularFile -> "file"
+        SymbolicLink -> "link"
+        Unknown -> "entry"
+        null -> "macro"
+    }
+    add { state.currentItem.style(name) }
+    addSpacing { styles.genericElements(" │ ") }
+    addAction(actions.cancelQuickMacroMode, state, inputMode) { render() }
+    val availableMacros = context(state) {
+        actions.quickMacroModeMacroActions.filter { it.isAvailable(inputMode) }
+    }
+    availableMacros.forEach {
+        addAction(it, state, inputMode) { render() }
+    }
+    when {
+        actions.quickMacroModeMacroActions.isEmpty() -> add { styles.keyHintLabels("No macros defined") }
+        availableMacros.isEmpty() -> add { styles.keyHintLabels("No macros available") }
+    }
+}
+
+context(_: StylesProvider)
+private fun buildMenuHints(
+    actions: NormalModeActions,
+    inputMode: InputMode?,
+    state: State
+) = buildHints(styles.genericElements(" • ")) {
+    addAction(actions.closeMenu, state, inputMode) { render() }
+    addAction(actions.menuUp, state, inputMode, weakSpacing = true) { render() }
+    addAction(actions.menuDown, state, inputMode, weakSpacing = true) { render() }
     val anyNavigationShown = context(state) {
-        listOf(actions.closeMenu, actions.menuUp).any { it.isShown() }
+        listOf(actions.closeMenu, actions.menuUp).any { it.isShown(inputMode) }
     }
     if (anyNavigationShown) {
         add(weakSpacing = true) { styles.keyHintLabels("navigate") }

@@ -4,19 +4,26 @@ import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.actions.buildKeyActions
-import de.jonasbroeckmann.nav.app.actions.handle
-import de.jonasbroeckmann.nav.app.actions.register
-import de.jonasbroeckmann.nav.app.state.semantics.*
-import de.jonasbroeckmann.nav.app.ui.buildHints
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
+import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.action.DialogKeyAction
+import de.jonasbroeckmann.nav.framework.action.KeyAction
+import de.jonasbroeckmann.nav.framework.action.buildDialogKeyActions
+import de.jonasbroeckmann.nav.framework.action.handle
+import de.jonasbroeckmann.nav.framework.action.register
+import de.jonasbroeckmann.nav.framework.semantics.*
+import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
+import de.jonasbroeckmann.nav.framework.ui.buildHints
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
+import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog
+import de.jonasbroeckmann.nav.framework.ui.dialog.updateState
 
 context(context: FullContext)
-fun DialogScope.defaultChoicePrompt(
+fun DialogShowScope.defaultChoicePrompt(
     title: String,
     choices: List<String>,
     defaultChoice: Int = 0,
@@ -32,7 +39,7 @@ fun DialogScope.defaultChoicePrompt(
 
 @Suppress("detekt:LongMethod", "detekt:CyclomaticComplexMethod")
 context(stylesProvider: StylesProvider)
-fun DialogScope.choicePrompt(
+fun DialogShowScope.choicePrompt(
     title: String,
     choices: List<String>,
     defaultChoice: Int = 0,
@@ -41,7 +48,8 @@ fun DialogScope.choicePrompt(
     keys: Config.Keys,
     autocomplete: Config.Autocomplete
 ): String? {
-    val actions: List<DialogKeyAction<ChoicePromptState, String?>> = buildKeyActions {
+    val inputFilterAction: DialogKeyAction<ChoicePromptState, String?>
+    val actions = buildDialogKeyActions<ChoicePromptState, String?> {
         register(
             keys.cursor.up, keys.menu.up,
             condition = { filteredItems.isNotEmpty() },
@@ -59,8 +67,8 @@ fun DialogScope.choicePrompt(
             action = {
                 autocomplete(
                     autocompleteOn = { this },
-                    style = autocomplete.style,
-                    autoNavigation = autocomplete.autoNavigation,
+                    style = autocomplete.style.value,
+                    autoNavigation = autocomplete.autoNavigation.value,
                     invertDirection = it.shift,
                     onUpdate = { newState -> updateState { newState } },
                     onAutoNavigate = { _, item -> dismissDialog(item) }
@@ -97,24 +105,39 @@ fun DialogScope.choicePrompt(
             condition = { filteredItems.isNotEmpty() },
             action = { updateState { withCursorCoerced(filteredItems.lastIndex) } }
         )
+        inputFilterAction = register(
+            KeyAction(
+                keys = null,
+                description = { "type to filter" },
+                condition = { true },
+                action = { input ->
+                    input.updateTextField(
+                        current = filter,
+                        onChange = { newFilter -> updateState { withFilter(newFilter) } }
+                    )
+                }
+            )
+        )
     }
     return inputDialog(
         initialState = ChoicePromptState.initial(
             items = choices,
             cursor = defaultChoice
         ),
-        onInput = onInput@{ input ->
-            if (actions.handle(state, input)) return@onInput
-            input.updateTextField(state.filter) { newFilter ->
-                updateState { withFilter(newFilter) }
-            }
-        }
+        onInput = { input -> actions.handle(state, input, inputMode) }
     ) {
         verticalLayout {
             align = LEFT
             cell(title)
             if (filter.isNotEmpty()) {
-                cell(styles.filter("❯ $filter"))
+                val filterString = buildString {
+                    append("❯ ")
+                    appendTextFieldContent(
+                        text = filter,
+                        hasFocus = inputFilterAction.isAvailable(inputMode)
+                    )
+                }
+                cell(styles.filter(filterString))
             }
             if (filteredItems.isEmpty()) {
                 cell(styles.genericElements("nothing"))
@@ -139,8 +162,8 @@ fun DialogScope.choicePrompt(
             }
             if (showHints) {
                 cell(
-                    buildHints {
-                        addActions(actions, this@inputDialog)
+                    buildHints(styles.genericElements(" • ")) {
+                        addActions(actions, this@inputDialog, inputMode) { render() }
                     }.let {
                         "${styles.genericElements("•")} $it"
                     }
