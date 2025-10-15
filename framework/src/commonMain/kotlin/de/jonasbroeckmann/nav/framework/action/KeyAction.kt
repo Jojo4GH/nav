@@ -4,8 +4,9 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 
 data class KeyAction<Context, Controller>(
-    val keys: List<KeyboardEvent>,
-    private val displayKey: Context.() -> KeyboardEvent? = { keys.firstOrNull() },
+    /* If null, any key matches */
+    val keys: List<KeyboardEvent>?,
+    private val displayKey: Context.() -> KeyboardEvent? = { keys?.firstOrNull() },
     private val description: Context.() -> String = { "" },
     private val style: Context.() -> TextStyle? = { null },
     private val hidden: Context.() -> Boolean = { false },
@@ -44,7 +45,8 @@ data class KeyAction<Context, Controller>(
 
     context(context: Context)
     override fun matches(input: KeyboardEvent): Boolean {
-        return input in keys && isAvailable()
+        if (keys != null && input !in keys) return false
+        return isAvailable()
     }
 
     context(context: Context)

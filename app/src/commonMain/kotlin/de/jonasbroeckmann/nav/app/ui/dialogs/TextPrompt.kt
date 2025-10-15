@@ -9,6 +9,7 @@ import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.config
 import de.jonasbroeckmann.nav.config.styles
+import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.buildKeyActions
 import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
@@ -70,17 +71,24 @@ fun DialogShowScope.textPrompt(
             condition = { validate(text) },
             action = { dismissDialog(text) },
         )
+        register(
+            KeyAction(
+                keys = null,
+                condition = { true },
+                action = { input ->
+                    input.updateTextField(
+                        current = text,
+                        onChange = { newText -> updateState { copy(text = newText) } }
+                    )
+                }
+            )
+        )
     }
     return inputDialog(
         initialState = TextPromptState(
             text = initialText
         ),
-        onInput = onInput@{ input ->
-            if (actions.handle(state, input)) return@onInput
-            input.updateTextField(state.text) { newText ->
-                updateState { copy(text = newText) }
-            }
-        }
+        onInput = { input -> actions.handle(state, input) }
     ) {
         verticalLayout {
             align = LEFT

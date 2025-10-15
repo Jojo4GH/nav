@@ -10,11 +10,22 @@ abstract class KeyActions<Context, Controller, Category> {
         val registeredForCategory = registered.getOrPut(this) { mutableListOf() }
         val i = registeredForCategory.size
         return action.copy(
-            condition = {
-                action.isAvailable() &&
-                    registeredForCategory.asSequence().take(i).none { prioritized ->
-                        action.keys.any { it in prioritized.keys } && prioritized.isAvailable()
+            condition = condition@{
+                if (!action.isAvailable()) {
+                    return@condition false
+                }
+                val prioritizedActions = registeredForCategory.asSequence().take(i)
+                val hasConflictingKeysWith: (KeyAction<Context, Controller>) -> Boolean = when {
+                    action.keys != null -> { other ->
+                        other.keys == null || action.keys.any { it in other.keys }
                     }
+                    else -> { other ->
+                        other.keys == null
+                    }
+                }
+                prioritizedActions.none { prioritized ->
+                    hasConflictingKeysWith(prioritized) && prioritized.isAvailable()
+                }
             }
         ).also {
             registeredForCategory += it
