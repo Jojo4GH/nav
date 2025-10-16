@@ -72,12 +72,17 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     data class Match(
         val match: Regex,
         @SerialName("in")
-        val value: StringWithPlaceholders
+        val value: StringWithPlaceholders,
+        val ignoreCase: Boolean = false
     ) : MacroCondition {
         override val usedSymbols by lazy { value.symbols.toSet() }
 
+        private val regex by lazy {
+            if (ignoreCase) Regex(match.pattern, match.options + RegexOption.IGNORE_CASE) else match
+        }
+
         context(scope: MacroSymbolScope)
-        override fun evaluate() = match.matches(value.evaluate())
+        override fun evaluate() = regex.matches(value.evaluate())
     }
 
     @Serializable

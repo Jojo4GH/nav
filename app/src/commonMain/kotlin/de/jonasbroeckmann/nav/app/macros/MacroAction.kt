@@ -145,12 +145,17 @@ sealed interface MacroAction : MacroRunnable {
         val match: Regex,
         @SerialName("in")
         val value: StringWithPlaceholders,
+        val ignoreCase: Boolean = false,
         val groupsTo: List<String> = emptyList()
     ) : MacroAction {
+        private val regex by lazy {
+            if (ignoreCase) Regex(match.pattern, match.options + RegexOption.IGNORE_CASE) else match
+        }
+
         context(context: MacroRuntimeContext)
         override fun run() {
             val toMatch = value.evaluate()
-            val result = match.matchEntire(toMatch)
+            val result = regex.matchEntire(toMatch)
             result?.groupValues?.forEachIndexed { index, string ->
                 val destination = groupsTo.getOrNull(index - 1) ?: return@forEachIndexed
                 context[destination] = string

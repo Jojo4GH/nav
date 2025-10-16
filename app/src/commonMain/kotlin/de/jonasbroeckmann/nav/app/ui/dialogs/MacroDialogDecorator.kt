@@ -15,7 +15,10 @@ fun macroDialogDecorator(macro: Macro) = Decorator { dialog ->
         val style = macro.style + TextStyles.dim
         cell(
             HorizontalRule(
-                title = style(macro.description.evaluate()),
+                title = macro.description.evaluate()
+                    .takeUnless { it.isEmpty() }
+                    ?.let { style(it) }
+                    .orEmpty(),
                 titleAlign = TextAlign.LEFT,
                 ruleStyle = style
             )

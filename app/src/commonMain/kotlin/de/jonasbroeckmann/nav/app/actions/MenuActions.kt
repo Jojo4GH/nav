@@ -1,32 +1,33 @@
 package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextColors
-import com.github.ajalt.mordant.rendering.TextStyles
 import de.jonasbroeckmann.nav.app.*
 import de.jonasbroeckmann.nav.app.macros.DefaultMacros
-import de.jonasbroeckmann.nav.app.macros.computeCondition
-import de.jonasbroeckmann.nav.app.macros.computeDescription
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeMenuDescription
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.prettyName
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.framework.action.MenuAction
+import de.jonasbroeckmann.nav.framework.ui.buildTextFieldContent
 import de.jonasbroeckmann.nav.utils.div
 import kotlinx.io.files.SystemFileSystem
 
 class MenuActions(context: FullContext) : FullContext by context {
+    @Suppress("detekt:MagicNumber")
     val all = listOf(
-        *config.macros.map { macro ->
-            MenuAction<State, MainController>(
-                description = { macro.computeDescription() },
+        *config.macros.mapNotNull { macro ->
+            if (macro.menuOrder == null) return@mapNotNull null
+            macro.menuOrder to MenuAction<State, MainController>(
+                description = { macro.computeMenuDescription() },
                 style = { macro.style },
-                hidden = { macro.hidden },
                 condition = { macro.computeCondition() },
                 action = { runMacro(macro) }
             )
         }.toTypedArray(),
         *config.entryMacros.map { macro ->
-            MenuAction<State, MainController>(
+            100 to MenuAction<State, MainController>(
                 description = { currentItem?.let { macro.computeDescription(it) }.orEmpty() },
                 style = { currentItem.style },
                 hidden = { currentItem == null },
@@ -34,7 +35,7 @@ class MenuActions(context: FullContext) : FullContext by context {
                 action = { runEntryMacro(macro) }
             )
         }.toTypedArray(),
-        MenuAction(
+        200 to MenuAction(
             description = { "New file: \"${filter}\"" },
             style = { styles.file },
             condition = { filter.isNotEmpty() && !unfilteredItems.any { it.path.name == filter } },
@@ -43,7 +44,7 @@ class MenuActions(context: FullContext) : FullContext by context {
                 updateState { withFilter("").updatedEntries { it.path.name == filter } }
             }
         ),
-        MenuAction(
+        200 to MenuAction(
             description = { "New directory: \"${filter}\"" },
             style = { styles.directory },
             condition = { filter.isNotEmpty() && !unfilteredItems.any { it.path.name == filter } },
@@ -52,21 +53,21 @@ class MenuActions(context: FullContext) : FullContext by context {
                 updateState { withFilter("").updatedEntries { it.path.name == filter } }
             }
         ),
-        MenuAction(
+        300 to MenuAction(
             description = { "Run command here" },
             style = { styles.path },
             condition = { !isTypingCommand },
             action = { updateState { withCommand("") } }
         ),
-        MenuAction(
+        300 to MenuAction(
             description = {
-                val cmdStr = if (command.isNullOrEmpty()) {
-                    if (config.hideHints) ""
-                    else TextStyles.dim("type command or press ${config.keys.cancel.prettyName} to cancel")
-                } else {
-                    TextColors.rgb("FFFFFF")("${command}_")
-                }
-                "${styles.path("❯")} $cmdStr"
+                val commandString = buildTextFieldContent(
+                    text = command.orEmpty(),
+                    hasFocus = true,
+                    placeholder = if (config.hideHints) null else "type command or press ${config.keys.cancel.prettyName} to cancel"
+                )
+                TextColors.rgb("FFFFFF")("${command}_")
+                "${styles.path("❯")} $commandString"
             },
             selectedStyle = null,
             condition = { isTypingCommand },
@@ -80,7 +81,7 @@ class MenuActions(context: FullContext) : FullContext by context {
                 }
             }
         ),
-        MenuAction(
+        400 to MenuAction(
             description = {
                 val currentEntry = currentItem
                 requireNotNull(currentEntry)
@@ -105,4 +106,6 @@ class MenuActions(context: FullContext) : FullContext by context {
             }
         ),
     )
+        .sortedBy { (order, _) -> order }
+        .map { (_, action) -> action }
 }
