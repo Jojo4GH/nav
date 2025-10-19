@@ -24,7 +24,6 @@ import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
-import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Theme
@@ -32,10 +31,6 @@ import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.success
-import com.github.ajalt.mordant.widgets.Spinner
-import com.github.ajalt.mordant.widgets.progress.progressBarLayout
-import com.github.ajalt.mordant.widgets.progress.spinner
-import com.github.ajalt.mordant.widgets.progress.text
 import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
@@ -45,7 +40,11 @@ import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
+import de.jonasbroeckmann.nav.update.checkForUpdatesAnimated
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -275,62 +274,35 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     override val shell get() = configurationOptions.shell
 
     override fun run() = catchAllFatal {
-        runInternal()
+        runBlocking(Dispatchers.Default) {
+            runInternal()
+        }
     }
 
-    private fun runInternal() {
+    private suspend fun CoroutineScope.runInternal() {
+        printlnOnDebug { "${terminal.terminalInfo}" }
+
         if (version) {
             terminal.println("$BinaryName ${Constants.Version}")
             return
         }
 
-        printlnOnDebug { "${terminal.terminalInfo}" }
-
         if (checkUpdate) {
-            val result = runBlocking {
-                progressBarLayout(spacing = 1) {
-                    spinner(Spinner.Dots())
-                    text { "Checking for updates ..." }
-                }.animateInCoroutine(
-                    terminal,
-                    clearWhenFinished = true
-                ).executeWhile {
-                    checkForUpdates()
-                }
-            }
-            when (result) {
-                is CheckForUpdatesResult.NoUpdates -> {
-                    terminal.success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
-                }
-                is CheckForUpdatesResult.UpdateAvailable -> result.print()
-                is CheckForUpdatesResult.Error -> {
-                    terminal.danger("✗ Failed to check for updates: ${result.message}")
-                }
-            }
+            doCheckForUpdates()
             return
         }
 
-        initOption?.let { initOption ->
-            when (initOption) {
-                InitOption.Info -> {
-                    terminal.println()
-                    Shell.printInitInfo(terminal)
-                }
-                is InitOption.Init -> initOption.shell.printInitScript()
-                is InitOption.ProfileLocation -> initOption.shell.printProfileLocation()
-                is InitOption.ProfileCommand -> initOption.shell.printProfileCommand()
-            }
+        initOption?.let {
+            doInitOption(it)
             return
         }
 
         val config = Config.load()
 
         printlnOnDebug { "Using config: $config" }
-        printlnOnDebug { "Serialized:\n${Config.serializeToYaml(config)}" }
 
         if (configurationOptions.shell == null && !config.suppressInitCheck) {
-            terminal.danger("The installation is not complete and some feature will not work.")
-            terminal.info("Use --init-help to get more information.")
+            warnIncompleteInit()
         }
 
         val app = App(config)
@@ -339,7 +311,40 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             doEditConfig(app)
         }
 
+        if (config.autoCheckForUpdates) launch {
+            doAutoCheckForUpdates()
+        }
+
         app.main()
+    }
+
+    private suspend fun doCheckForUpdates() {
+        when (val result = checkForUpdatesAnimated()) {
+            is CheckForUpdatesResult.NoUpdates -> {
+                terminal.success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
+            }
+            is CheckForUpdatesResult.UpdateAvailable -> result.print()
+            is CheckForUpdatesResult.Error -> {
+                terminal.danger("✗ Failed to check for updates: ${result.message}")
+            }
+        }
+    }
+
+    private fun doInitOption(option: InitOption) {
+        when (option) {
+            InitOption.Info -> {
+                terminal.println()
+                Shell.printInitInfo(terminal)
+            }
+            is InitOption.Init -> option.shell.printInitScript()
+            is InitOption.ProfileLocation -> option.shell.printProfileLocation()
+            is InitOption.ProfileCommand -> option.shell.printProfileCommand()
+        }
+    }
+
+    private fun warnIncompleteInit() {
+        terminal.danger("The installation is not complete and some feature will not work.")
+        terminal.info("Use --init-help to get more information.")
     }
 
     private fun doEditConfig(app: App): Nothing {
@@ -359,6 +364,20 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         terminal.info("""Opening config file at "$configPath" ...""")
         val exitCode = app.openInEditor(configPath)
         exitProcess(exitCode ?: 1)
+    }
+
+    private suspend fun doAutoCheckForUpdates() = catchAllDebug {
+        printlnOnDebug { "Checking for updates ..." }
+        when (val result = checkForUpdates()) {
+            is CheckForUpdatesResult.NoUpdates -> printlnOnDebug { "No updates available." }
+            is CheckForUpdatesResult.UpdateAvailable -> {
+                result.print(includeReleaseNotes = false)
+                terminal.println(
+                    TextStyles.dim("To disable checking for updates, set 'autoCheckForUpdates' to false in the config file.")
+                )
+            }
+            is CheckForUpdatesResult.Error -> dangerOnDebug { "Failed to check for updates: ${result.message}" }
+        }
     }
 
     companion object {
