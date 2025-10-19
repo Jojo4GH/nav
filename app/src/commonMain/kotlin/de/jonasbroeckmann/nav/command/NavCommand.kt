@@ -24,23 +24,41 @@ import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
+import com.github.ajalt.mordant.animation.coroutines.CoroutineAnimator
+import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Theme
 import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
+import com.github.ajalt.mordant.terminal.success
+import com.github.ajalt.mordant.widgets.Spinner
+import com.github.ajalt.mordant.widgets.progress.progressBarLayout
+import com.github.ajalt.mordant.widgets.progress.spinner
+import com.github.ajalt.mordant.widgets.progress.text
+import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
 import de.jonasbroeckmann.nav.app.App
-import de.jonasbroeckmann.nav.app.BuildConfig
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
+import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.writeString
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
@@ -223,6 +241,10 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         help = "Print version and exit."
     ).flag()
 
+    private val checkUpdate by option(
+        "--check-update"
+    ).flag()
+
     val directory by argument(
         directoryArgumentName,
         help = "Start $BinaryName in this directory.",
@@ -236,7 +258,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         }
 
     override fun helpEpilog(context: Context) = context.theme.muted(
-        "Version: ${BuildConfig.VERSION} • Report issues at: $IssuesUrl"
+        "Version: ${Constants.Version} • Report issues at: $IssuesUrl"
     )
 
     override val command get() = this
@@ -266,32 +288,47 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     private fun runInternal() {
         if (version) {
-            terminal.println("$BinaryName ${BuildConfig.VERSION}")
+            terminal.println("$BinaryName ${Constants.Version}")
             return
         }
 
         printlnOnDebug { "${terminal.terminalInfo}" }
+
+        if (checkUpdate) {
+            val result = runBlocking {
+                progressBarLayout(spacing = 1) {
+                    spinner(Spinner.Dots())
+                    text { "Checking for updates ..." }
+                }.animateInCoroutine(
+                    terminal,
+                    clearWhenFinished = true
+                ).executeWhile {
+                    checkForUpdates()
+                }
+            }
+            when (result) {
+                is CheckForUpdatesResult.NoUpdates -> {
+                    terminal.success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
+                }
+                is CheckForUpdatesResult.UpdateAvailable -> result.print()
+                is CheckForUpdatesResult.Error -> {
+                    terminal.danger("✗ Failed to check for updates: ${result.message}")
+                }
+            }
+            return
+        }
 
         initOption?.let { initOption ->
             when (initOption) {
                 InitOption.Info -> {
                     terminal.println()
                     Shell.printInitInfo(terminal)
-                    return
                 }
-                is InitOption.Init -> {
-                    initOption.shell.printInitScript()
-                    return
-                }
-                is InitOption.ProfileLocation -> {
-                    initOption.shell.printProfileLocation()
-                    return
-                }
-                is InitOption.ProfileCommand -> {
-                    initOption.shell.printProfileCommand()
-                    return
-                }
+                is InitOption.Init -> initOption.shell.printInitScript()
+                is InitOption.ProfileLocation -> initOption.shell.printProfileLocation()
+                is InitOption.ProfileCommand -> initOption.shell.printProfileCommand()
             }
+            return
         }
 
         val config = Config.load()
