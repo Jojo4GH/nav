@@ -5,7 +5,6 @@ import de.jonasbroeckmann.nav.app.BuildConfig
 import kotlin.jvm.JvmInline
 import kotlin.text.get
 
-@JvmInline
 data class Version(
     val major: Int,
     val minor: Int,
