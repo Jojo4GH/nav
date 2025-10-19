@@ -54,6 +54,8 @@ kotlin {
     }
 
     sourceSets {
+        val ktorVersion = "3.3.1"
+
         commonMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
@@ -73,10 +75,23 @@ kotlin {
             val mordantVersion = "3.0.2"
             implementation("com.github.ajalt.mordant:mordant:$mordantVersion")
             implementation("com.github.ajalt.mordant:mordant-coroutines:$mordantVersion")
+            implementation("com.github.ajalt.mordant:mordant-markdown:$mordantVersion")
 
             implementation("com.kgit2:kommand:2.3.0")
 
+            implementation("io.ktor:ktor-client-core:$ktorVersion")
+            implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+
             api(projects.framework)
+        }
+
+        linuxMain.dependencies {
+            implementation("io.ktor:ktor-client-curl:$ktorVersion")
+        }
+
+        mingwMain.dependencies {
+            implementation("io.ktor:ktor-client-winhttp:$ktorVersion")
         }
     }
 }

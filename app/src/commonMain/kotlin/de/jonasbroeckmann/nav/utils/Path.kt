@@ -1,8 +1,11 @@
 package de.jonasbroeckmann.nav.utils
 
+import de.jonasbroeckmann.nav.Constants
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemPathSeparator
+import kotlinx.io.files.SystemTemporaryDirectory
+import kotlin.random.Random
 
 val WorkingDirectory: Path by lazy { Path(".").absolute() }
 
@@ -29,6 +32,27 @@ fun Path.children() = SystemFileSystem.list(this)
 fun Path.createDirectories(mustCreate: Boolean = false) = SystemFileSystem.createDirectories(this, mustCreate = mustCreate)
 
 fun Path.delete(mustExist: Boolean = true) = SystemFileSystem.delete(this, mustExist = mustExist)
+
+fun Path.deleteRecursively(mustExist: Boolean = true): Unit = when {
+    isDirectory -> {
+        children().forEach { it.deleteRecursively(mustExist = mustExist) }
+        delete(mustExist = mustExist)
+    }
+    else -> delete(mustExist = mustExist)
+}
+
+inline fun <R> withTemporaryDirectory(label: String = Constants.BinaryName, block: (Path) -> R): R {
+    var path: Path
+    do {
+        path = SystemTemporaryDirectory / "$label-${Random.nextLong().toHexString()}"
+    } while (path.exists())
+    path.createDirectories()
+    try {
+        return block(path)
+    } finally {
+        path.deleteRecursively(mustExist = false)
+    }
+}
 
 fun Path.rawSink(append: Boolean = false) = SystemFileSystem.sink(this, append = append)
 

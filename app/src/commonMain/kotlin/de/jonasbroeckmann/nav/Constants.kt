@@ -4,6 +4,7 @@ import de.jonasbroeckmann.nav.app.BuildConfig
 
 object Constants {
     val BinaryName get() = BuildConfig.BINARY_NAME
+    val Version get() = BuildConfig.VERSION
 
     val RepositoryUrl get() = "https://github.com/Jojo4GH/nav"
     val IssuesUrl get() = "$RepositoryUrl/issues"
