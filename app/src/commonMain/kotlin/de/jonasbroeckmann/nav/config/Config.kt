@@ -338,8 +338,8 @@ data class Config private constructor(
                     }
                 val (_, extension) = path.nameAndExtension
                 when (extension?.lowercase()) {
-                    "toml" -> return loadFromToml(path)
                     "yaml", "yml" -> return loadFromYaml(path)
+                    "toml" -> return loadFromToml(path)
                     else -> {
                         context.terminal.danger("Could not determine type of config file for: $path")
                         context.terminal.warning("Using default config")
@@ -353,33 +353,32 @@ data class Config private constructor(
             }
         }
 
-        private fun loadFromToml(path: Path) = TomlFileReader(
-            inputConfig = TomlInputConfig(
-                ignoreUnknownNames = false
-            ),
-            outputConfig = TomlOutputConfig()
-        ).decodeFromFile(
-            deserializer = serializer(),
-            tomlFilePath = path.toString()
-        )
-
-        private fun loadFromYaml(path: Path) = Yaml(
-            configuration = YamlConfiguration(
-                strictMode = true
-            )
-        ).decodeFromSource(
+        private fun loadFromYaml(path: Path) = yaml.decodeFromSource(
             deserializer = serializer(),
             source = path.rawSource().asOkioSource()
         )
 
-        fun serializeToYaml(config: Config): String = Yaml(
-            configuration = YamlConfiguration(
-                strictMode = true
-            )
-        ).encodeToString(
-            serializer = serializer(),
-            value = config
+        private fun loadFromToml(path: Path) = toml.decodeFromFile(
+            deserializer = serializer(),
+            tomlFilePath = path.toString()
         )
+
+        private val yaml by lazy {
+            Yaml(
+                configuration = YamlConfiguration(
+                    strictMode = true
+                )
+            )
+        }
+
+        private val toml by lazy {
+            TomlFileReader(
+                inputConfig = TomlInputConfig(
+                    ignoreUnknownNames = false
+                ),
+                outputConfig = TomlOutputConfig()
+            )
+        }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")
     }
