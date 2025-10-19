@@ -36,7 +36,7 @@ fun PartialContext.dangerOnDebug(lazyMessage: () -> Any?) {
     if (debugMode) terminal.danger(lazyMessage())
 }
 
-fun <R> PartialContext.catchAllFatal(
+inline fun <R> PartialContext.catchAllFatal(
     cleanupOnError: (Throwable) -> Unit = { },
     block: () -> R
 ): R = try {
@@ -46,4 +46,13 @@ fun <R> PartialContext.catchAllFatal(
     dangerThrowable(e, "An unexpected error occurred: ${e.message}", includeStackTrace = true)
     terminal.info("Please report this issue at: $IssuesUrl")
     exitProcess(1)
+}
+
+inline fun PartialContext.catchAllDebug(
+    block: () -> Unit
+) = try {
+    block()
+} catch (e: Throwable) {
+    if (debugMode) dangerThrowable(e, "An unexpected error occurred: ${e.message}", includeStackTrace = true)
+    infoOnDebug { "Please report this issue at: $IssuesUrl" }
 }

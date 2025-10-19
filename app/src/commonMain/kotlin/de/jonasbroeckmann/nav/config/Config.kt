@@ -41,6 +41,7 @@ data class Config private constructor(
     val showHiddenEntries: Boolean = true,
     val inputTimeoutMillis: Int = 4,
     val suppressInitCheck: Boolean = false,
+    val autoCheckForUpdates: Boolean = true,
 
     val shownColumns: List<EntryColumn> = listOf(
         Permissions,
