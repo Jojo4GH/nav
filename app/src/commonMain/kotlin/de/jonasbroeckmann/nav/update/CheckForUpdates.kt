@@ -1,3 +1,5 @@
+@file:Suppress("detekt:Filename")
+
 package de.jonasbroeckmann.nav.update
 
 import com.github.ajalt.mordant.markdown.Markdown
@@ -124,6 +126,7 @@ sealed interface CheckForUpdatesResult {
 private tailrec fun Duration.ago(suffix: String = "ago"): String {
     if (isNegative()) return (-this).ago(suffix = "from now")
     return toComponents { days, hours, minutes, seconds, nanoseconds ->
+        @Suppress("detekt:MagicNumber")
         val milliseconds = nanoseconds / 1_000_000
         when {
             days == 1L -> "1 day $suffix"

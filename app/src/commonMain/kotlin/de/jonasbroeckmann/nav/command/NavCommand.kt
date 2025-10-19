@@ -24,7 +24,6 @@ import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.transform.theme
 import com.github.ajalt.clikt.parameters.types.choice
-import com.github.ajalt.mordant.animation.coroutines.CoroutineAnimator
 import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextStyles
@@ -47,18 +46,10 @@ import de.jonasbroeckmann.nav.config.Themes
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.utils.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.writeString
-import kotlin.time.Clock
-import kotlin.time.Duration
-import kotlin.time.Instant
 
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
@@ -242,7 +233,8 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     ).flag()
 
     private val checkUpdate by option(
-        "--check-update"
+        "--check-update",
+        help = "Check for updates and exit."
     ).flag()
 
     val directory by argument(
