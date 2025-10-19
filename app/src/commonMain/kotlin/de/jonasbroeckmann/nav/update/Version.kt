@@ -2,7 +2,6 @@ package de.jonasbroeckmann.nav.update
 
 import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.app.BuildConfig
-import kotlin.jvm.JvmInline
 import kotlin.text.get
 
 data class Version(
