@@ -2,14 +2,13 @@ package de.jonasbroeckmann.nav.utils
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 object KeyboardEventAsStringSerializer : KSerializer<KeyboardEvent> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(KeyboardEventAsStringSerializer::class.qualifiedName!!, PrimitiveKind.STRING)
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(KeyboardEventAsStringSerializer::class.qualifiedName!!, STRING)
 
     override fun serialize(encoder: Encoder, value: KeyboardEvent) = encoder.encodeString(
         buildList {
