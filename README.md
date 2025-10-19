@@ -257,6 +257,7 @@ editor: null
 
 suppressInitCheck: false
 clearOnExit: true
+autoCheckForUpdates: true
 
 limitToTerminalHeight: true
 maxVisibleEntries: 40 # Set to 0 for unlimited entries
@@ -290,6 +291,7 @@ editor = "" # Default: null
 
 suppressInitCheck = false
 clearOnExit = true
+autoCheckForUpdates = true
 
 limitToTerminalHeight = true
 maxVisibleEntries = 20 # Set to 0 for unlimited entries
