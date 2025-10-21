@@ -64,15 +64,17 @@ fun DialogShowScope.choicePrompt(
             keys.filter.autocomplete, keys.filter.autocomplete.copy(shift = true),
             description = { "autocomplete" },
             condition = { unfilteredItems.isNotEmpty() },
-            action = {
-                autocomplete(
-                    autocompleteOn = { this },
-                    style = autocomplete.style.value,
-                    autoNavigation = autocomplete.autoNavigation.value,
-                    invertDirection = it.shift,
-                    onUpdate = { newState -> updateState { newState } },
-                    onAutoNavigate = { _, item -> dismissDialog(item) }
-                )
+            action = { input ->
+                updateState {
+                    val action = autocomplete(
+                        autocompleteOn = { this },
+                        style = autocomplete.style.value,
+                        autoNavigation = autocomplete.autoNavigation.value,
+                        invertDirection = input.shift
+                    )
+                    action.autoNavigate?.let { item -> dismissDialog(item) }
+                    action.newState
+                }
             }
         )
         register(
@@ -97,13 +99,13 @@ fun DialogShowScope.choicePrompt(
             keys.cursor.home,
             hidden = { true },
             condition = { filteredItems.isNotEmpty() },
-            action = { updateState { withCursorCoerced(0) } }
+            action = { updateState { withCursor(0) } }
         )
         register(
             keys.cursor.end,
             hidden = { true },
             condition = { filteredItems.isNotEmpty() },
-            action = { updateState { withCursorCoerced(filteredItems.lastIndex) } }
+            action = { updateState { withCursor(filteredItems.lastIndex) } }
         )
         inputFilterAction = register(
             KeyAction(
@@ -182,7 +184,7 @@ private data class ChoicePromptState private constructor(
         self = this,
         lazyItems = { unfilteredItems },
         filter = filter,
-        copyWithFilter = { copy(filter = it) },
+        newWithFilter = { copy(filter = it) },
         filterOn = { this }
     )
 
@@ -194,12 +196,12 @@ private data class ChoicePromptState private constructor(
         self = this,
         lazyItems = { filteredItems },
         cursor = cursor,
-        copyWithCursor = { copy(cursor = it) }
+        newWithCursor = { copy(cursor = it) }
     )
 
     override val currentItem get() = navigableItemListSemantics.currentItem
 
-    override fun withCursorCoerced(cursor: Int) = navigableItemListSemantics.withCursorCoerced(cursor)
+    override fun withCursor(cursor: Int) = navigableItemListSemantics.withCursor(cursor)
 
     override fun withCursorShifted(offset: Int) = navigableItemListSemantics.withCursorShifted(offset)
 

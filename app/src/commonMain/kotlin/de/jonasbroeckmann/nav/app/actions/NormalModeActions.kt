@@ -47,12 +47,12 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
     val cursorHome = registerKeyAction(
         config.keys.cursor.home,
         condition = { filteredItems.isNotEmpty() },
-        action = { updateState { withCursorCoerced(0) } }
+        action = { updateState { withCursor(0) } }
     )
     val cursorEnd = registerKeyAction(
         config.keys.cursor.end,
         condition = { filteredItems.isNotEmpty() },
-        action = { updateState { withCursorCoerced(filteredItems.lastIndex) } }
+        action = { updateState { withCursor(filteredItems.lastIndex) } }
     )
 
     val navigateUp = registerKeyAction(
@@ -63,7 +63,7 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
     val navigateInto = registerKeyAction(
         config.keys.nav.into,
         condition = { currentItem?.type == Directory || currentItem?.linkTarget?.targetEntry?.type == Directory },
-        action = { updateState { navigateTo(currentItem?.path) } }
+        action = { updateState { navigatedTo(currentItem?.path) } }
     )
     val navigateOpen = registerKeyAction(
         config.keys.nav.open,
@@ -84,15 +84,21 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         config.keys.filter.autocomplete, config.keys.filter.autocomplete.copy(shift = true),
         description = { "autocomplete" },
         condition = { unfilteredItems.isNotEmpty() },
-        action = {
-            autocomplete(
-                autocompleteOn = { path.name },
-                style = config.autocomplete.style.value,
-                autoNavigation = config.autocomplete.autoNavigation.value,
-                invertDirection = it.shift,
-                onUpdate = { newState -> updateState { newState } },
-                onAutoNavigate = { newState, item -> updateState { newState.navigateTo(item.path) } }
-            )
+        action = { input ->
+            updateState {
+                val action = autocomplete(
+                    autocompleteOn = { path.name },
+                    style = config.autocomplete.style.value,
+                    autoNavigation = config.autocomplete.autoNavigation.value,
+                    invertDirection = input.shift
+                )
+                val autoNavigate = action.autoNavigate
+                if (autoNavigate != null) {
+                    action.newState.navigatedTo(autoNavigate.path)
+                } else {
+                    action.newState
+                }
+            }
         }
     )
     val clearFilter = registerKeyAction(
@@ -106,29 +112,29 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         config.keys.cancel,
         description = { "close menu" },
         condition = { isMenuOpen },
-        action = { updateState { withMenuCursorCoerced(-1) } }
+        action = { updateState { withMenuCursor(-1) } }
     )
     val closeMenu = registerKeyAction(
         config.keys.menu.up,
         description = { "close menu" },
-        condition = { isMenuOpen && coercedMenuCursor == 0 },
-        action = { updateState { withMenuCursorCoerced(-1) } }
+        condition = { isMenuOpen && menuCursor == 0 },
+        action = { updateState { withMenuCursor(-1) } }
     )
     val openMenu = registerKeyAction(
         config.keys.menu.down,
         description = { "more" },
         condition = { !isMenuOpen },
-        action = { updateState { withMenuCursorCoerced(0) } }
+        action = { updateState { withMenuCursor(0) } }
     )
     val menuDown = registerKeyAction(
         config.keys.menu.down,
-        condition = { isMenuOpen && coercedMenuCursor < shownMenuActions.lastIndex },
-        action = { updateState { withMenuCursorCoerced(coercedMenuCursor + 1) } }
+        condition = { isMenuOpen && menuCursor < shownMenuActions.lastIndex },
+        action = { updateState { withMenuCursor(menuCursor + 1) } }
     )
     val menuUp = registerKeyAction(
         config.keys.menu.up,
-        condition = { isMenuOpen && coercedMenuCursor > 0 },
-        action = { updateState { withMenuCursorCoerced(coercedMenuCursor - 1) } }
+        condition = { isMenuOpen && menuCursor > 0 },
+        action = { updateState { withMenuCursor(menuCursor - 1) } }
     )
 
     val exitCD = registerKeyAction(

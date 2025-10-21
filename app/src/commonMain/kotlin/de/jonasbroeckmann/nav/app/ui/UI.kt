@@ -374,7 +374,7 @@ private fun buildMenu(
     state.shownMenuActions.forEachIndexed { i, item ->
         row {
             cell(styles.genericElements("│"))
-            val isSelected = i == state.coercedMenuCursor
+            val isSelected = i == state.menuCursor
             if (isSelected) {
                 cell(actions.menuSubmit.render(state))
                 cell(

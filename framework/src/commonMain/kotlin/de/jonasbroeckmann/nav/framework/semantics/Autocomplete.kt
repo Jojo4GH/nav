@@ -17,14 +17,12 @@ fun <T, Item> T.autocomplete(
     autocompleteOn: Item.() -> String,
     style: AutocompleteStyle,
     autoNavigation: AutocompleteAutoNavigation,
-    invertDirection: Boolean,
-    onUpdate: (T) -> Unit,
-    onAutoNavigate: (T, Item) -> Unit,
-) where T : FilterableItemList<T, Item>, T : NavigableItemList<T, Item> {
+    invertDirection: Boolean
+): AutocompleteAction<T, Item> where T : FilterableItemList<T, Item>, T : NavigableItemList<T, Item> {
     val commonPrefix = unfilteredItems
         .map { it.autocompleteOn().lowercase() }
         .filter { it.startsWith(filter.lowercase()) }
-        .ifEmpty { return }
+        .ifEmpty { return AutocompleteAction(this) }
         .commonPrefix()
 
     val filteredState = withFilter(commonPrefix)
@@ -53,23 +51,25 @@ fun <T, Item> T.autocomplete(
 
     // Handle auto-navigation
     if (autoNavigation == None) {
-        onUpdate(completedState)
-        return
+        return AutocompleteAction(completedState)
     }
     completedState.filteredItems
         .singleOrNull { it.autocompleteOn().startsWith(commonPrefix, ignoreCase = true) }
         ?.let { singleEntry ->
             if (autoNavigation == OnSingleAfterCompletion) {
                 if (!hasFilterChanged) {
-                    onAutoNavigate(completedState, singleEntry)
-                    return
+                    return AutocompleteAction(completedState, singleEntry)
                 }
             }
             if (autoNavigation == OnSingle) {
-                onAutoNavigate(completedState, singleEntry)
-                return
+                return AutocompleteAction(completedState, singleEntry)
             }
         }
 
-    onUpdate(completedState)
+    return AutocompleteAction(completedState)
 }
+
+data class AutocompleteAction<T, Item>(
+    val newState: T,
+    val autoNavigate: Item? = null
+)

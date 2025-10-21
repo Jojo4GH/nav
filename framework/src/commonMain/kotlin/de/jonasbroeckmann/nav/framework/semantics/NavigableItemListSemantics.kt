@@ -4,25 +4,25 @@ class NavigableItemListSemantics<Self : NavigableItemList<Self, Item>, Item>(
     private val self: Self,
     lazyItems: () -> List<Item>,
     override val cursor: Int,
-    private val copyWithCursor: Self.(Int) -> Self
+    private val newWithCursor: Self.(Int) -> Self
 ) : NavigableItemList<Self, Item> {
     private val items by lazy(lazyItems)
 
     override val currentItem get() = items.getOrNull(cursor)
 
-    override fun withCursorCoerced(cursor: Int): Self {
+    override fun withCursor(cursor: Int): Self {
         val cursorCoerced = cursor.coerceAtMost(items.lastIndex).coerceAtLeast(0)
-        return if (cursorCoerced != this.cursor) self.copyWithCursor(cursorCoerced) else self
+        return if (cursorCoerced != this.cursor) self.newWithCursor(cursorCoerced) else self
     }
 
-    override fun withCursorShifted(offset: Int) = withCursorCoerced(
+    override fun withCursorShifted(offset: Int) = withCursor(
         cursor = when {
             items.isEmpty() -> 0
             else -> (cursor + offset).mod(items.size)
         }
     )
 
-    override fun withCursorOnFirst(default: Int, predicate: (Item) -> Boolean) = withCursorCoerced(
+    override fun withCursorOnFirst(default: Int, predicate: (Item) -> Boolean) = withCursor(
         cursor = items.indexOfFirst { predicate(it) }.takeIf { it >= 0 } ?: default
     )
 
@@ -43,9 +43,9 @@ class NavigableItemListSemantics<Self : NavigableItemList<Self, Item>, Item>(
         for (offset in offsets) {
             val i = (cursor + offset).mod(items.size)
             if (predicate(items[i])) {
-                return withCursorCoerced(i)
+                return withCursor(i)
             }
         }
-        return self
+        return withCursor(cursor)
     }
 }

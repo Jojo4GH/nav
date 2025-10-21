@@ -33,7 +33,8 @@ kotlin {
             "-Xcontext-parameters",
             "-Xcontext-sensitive-resolution",
             "-Xnested-type-aliases",
-            "-Xconsistent-data-class-copy-visibility"
+            "-Xconsistent-data-class-copy-visibility",
+            "-Xallow-holdsin-contract",
         )
     }
 
