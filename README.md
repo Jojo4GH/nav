@@ -228,7 +228,8 @@ The default keybinds are:
 | <kbd>Tab</kbd>                        | Autocomplete                         | `keys.filter.autocomplete`, `autocomplete` (see [below](#controls)) |
 | <kbd>Esc</kbd>                        | Clear filter or input                | `keys.filter.clear`                                                 |
 | `...`                                 | Type filter or input                 | -                                                                   |
-| <kbd>ctrl</kbd> + `...`               | Quick macro mode                     | See [macros](#-macros-experimental)                                 |
+| `...`                                 | Any macro key                        | See [macros](#-macros-experimental)                                 |
+| <kbd>ctrl</kbd> + `...`               | Any quick macro mode key             | See [macros](#-macros-experimental)                                 |
 
 All available keybinds are (by default) also shown at the bottom in nav.
 
@@ -554,6 +555,104 @@ They can also overwrite existing functionality to customize nav to your workflow
 Macros are available in the menu (default <kbd>PageDown</kbd>) or with their `nonQuickModeKey`.
 They can also quickly be triggered by tapping <kbd>ctrl</kbd> together with or followed by their `quickModeKey`.
 
+### Examples
+
+<details open>
+<summary>YAML</summary>
+
+```yaml
+macros:
+
+# Open the current directory in code (Trigger: ctrl+ArrowUp)
+- description: open in code
+  key: ctrl+ArrowUp
+  hideKey: true
+  run:
+  - command: code "{{directory}}"
+
+# Open the current entry in code (Trigger: ctrl+ArrowRight)
+- description: open {{entryName}} in code
+  quickModeKey: ArrowRight
+  condition:
+    notEmpty: "{{entryName}}"                       # Only if an entry is selected
+  run:
+  - command: code "{{entryName}}"
+
+# Overwrite the default behavior of ArrowRight to open PDF files in the browser instead of the editor
+- description: open pdf in browser
+  key: ArrowRight
+  condition:
+    all:
+    - equal: [ "{{entryType}}", "file" ]            # Must be a file
+    - match: ".*\\.pdf"                             # Check if it ends with .pdf
+      in: "{{entryName}}"
+      ignoreCase: true
+  run:
+  - command: chromium "{{entryPath}}"
+
+# Rename the current entry (Trigger: F6)
+- description: rename {{entryName}}
+  key: F6
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - prompt: "New name:"
+    format: "[^\\/:*?\"<>|]+"                       # Valid filename characters on most systems
+    default: "{{entryName}}"
+    resultTo: newName
+  - command: mv "{{entryName}}" "{{newName}}"
+
+# Delete the current entry (non-empty directories only after confirmation) (Trigger: Delete)
+- description: delete {{entryName}}
+  key: Delete
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - if:                                             # Perform special checks for directories
+      equal: [ "{{entryType}}", "directory" ]       
+    then:
+    - command: ls -A "{{entryPath}}"                # Get directory contents
+      outputTo: "directoryContents"
+    - if:
+        notBlank: "{{directoryContents}}"           
+      then:
+      - prompt: "Are you sure you want to delete non-empty directory '{{entryName}}'?"
+        choices: [ "Yes", "No" ]                    # Confirm if directory is not empty
+        default: "Yes"
+        resultTo: "confirmation"
+      - if:
+          notEqual: [ "{{confirmation}}", "Yes" ]   # Check if confirmed
+        then:
+        - return: true                              # Return from macro if not confirmed
+  - command: rm -rf "{{entryPath}}"                 # Delete
+
+# Navigate to the home directory if not already there (Trigger: ctrl+Home)
+- description: home
+  quickModeKey: Home
+  condition:
+    notEqual: [ "{{directory}}", "{{env:HOME}}" ]   # or "{{env:USERPROFILE}}" on Windows
+  run:
+  - set:
+      directory: "{{env:HOME}}"                     # or "{{env:USERPROFILE}}" on Windows
+
+# Create a hardlink of the current file (Trigger: Select from menu)
+- description: Create hardlink of {{entryName}}
+  menuOrder: 10
+  condition:
+    equal: [ "{{entryType}}", "file" ]              # Only for files
+  run:
+  - prompt: "Link path:"
+    format: ".+"                                    # Not empty
+    default: "/data/temp/"                          # Pre-fill with /data/temp/
+    resultTo: linkPath
+  - command: mkdir -p "$(dirname '{{linkPath}}')"   # Create parent directories
+  - command: ln "{{entryPath}}" "{{linkPath}}"      # Create the hardlink
+```
+
+</details>
+
+### Definition
+
 Currently, only the YAML configuration can be used to define macros:
 
 <details open>
@@ -784,102 +883,6 @@ There are several built-in properties, some of which can be modified to affect n
 Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
 
 Additionally, macros can define their own mutable variables that can be used in placeholders.
-
-### Examples
-
-<details open>
-<summary>YAML</summary>
-
-```yaml
-macros:
-
-# Open the current directory in code (Trigger: ctrl+ArrowUp)
-- description: open in code
-  key: ctrl+ArrowUp
-  hideKey: true
-  run:
-  - command: code "{{directory}}"
-
-# Open the current entry in code (Trigger: ctrl+ArrowRight)
-- description: open {{entryName}} in code
-  quickModeKey: ArrowRight
-  condition:
-    notEmpty: "{{entryName}}"                       # Only if an entry is selected
-  run:
-  - command: code "{{entryName}}"
-
-# Overwrite the default behavior of ArrowRight to open PDF files in the browser instead of the editor
-- description: open pdf in browser
-  key: ArrowRight
-  condition:
-    all:
-    - equal: [ "{{entryType}}", "file" ]            # Must be a file
-    - match: ".*\\.pdf"                             # Check if it ends with .pdf
-      in: "{{entryName}}"
-      ignoreCase: true
-  run:
-  - command: chromium "{{entryPath}}"
-
-# Rename the current entry (Trigger: F6)
-- description: rename {{entryName}}
-  key: F6
-  condition:
-    notEmpty: "{{entryName}}"
-  run:
-  - prompt: "New name:"
-    format: "[^\\/:*?\"<>|]+"                       # Valid filename characters on most systems
-    default: "{{entryName}}"
-    resultTo: newName
-  - command: mv "{{entryName}}" "{{newName}}"
-
-# Delete the current entry (non-empty directories only after confirmation) (Trigger: Delete)
-- description: delete {{entryName}}
-  key: Delete
-  condition:
-    notEmpty: "{{entryName}}"
-  run:
-  - if:                                             # Perform special checks for directories
-      equal: [ "{{entryType}}", "directory" ]       
-    then:
-    - command: ls -A "{{entryPath}}"                # Get directory contents
-      outputTo: "directoryContents"
-    - if:
-        notBlank: "{{directoryContents}}"           
-      then:
-      - prompt: "Are you sure you want to delete non-empty directory '{{entryName}}'?"
-        choices: [ "Yes", "No" ]                    # Confirm if directory is not empty
-        default: "Yes"
-        resultTo: "confirmation"
-      - if:
-          notEqual: [ "{{confirmation}}", "Yes" ]   # Check if confirmed
-        then:
-        - return: true                              # Return from macro if not confirmed
-  - command: rm -rf "{{entryPath}}"                 # Delete
-
-# Navigate to the home directory if not already there (Trigger: ctrl+Home)
-- description: home
-  quickModeKey: Home
-  condition:
-    notEqual: [ "{{directory}}", "{{env:HOME}}" ]   # or "{{env:USERPROFILE}}" on Windows
-  run:
-  - set:
-      directory: "{{env:HOME}}"                     # or "{{env:USERPROFILE}}" on Windows
-
-# Create a hardlink of the current file (Trigger: Select from menu)
-- description: Create hardlink of {{entryName}}
-  menuOrder: 10
-  condition:
-    equal: [ "{{entryType}}", "file" ]              # Only for files
-  run:
-  - prompt: "Link path:"
-    format: ".+"                                    # Not empty
-    default: "/data/temp/"                          # Pre-fill with /data/temp/
-    resultTo: linkPath
-  - command: mkdir -p "$(dirname '{{linkPath}}')"   # Create parent directories
-  - command: ln "{{entryPath}}" "{{linkPath}}"      # Create the hardlink
-```
-
-</details>
 
 ## Entry Macros
 
