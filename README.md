@@ -82,11 +82,11 @@ Select your operating system
 
 Install with any of the following package managers:
 
-| Distribution         | Repository                                                  | Instructions                               |
-|----------------------|-------------------------------------------------------------|--------------------------------------------|
-| Arch Linux           | [AUR]                                                       | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
-| NixOS                | [Nixpkgs]                                                   | `nix-shell -p nav`                         |
-| Debian, Ubuntu, etc. | [nav_amd64.deb][Deb_amd64] <br/> [nav_arm64.deb][Deb_arm64] | `dpkg -i ...`                              |
+| Distribution         | Repository                                                 | Instructions                              |
+|----------------------|------------------------------------------------------------|-------------------------------------------|
+| Arch Linux           | [AUR]                                                      | `pacman -S nav-cli` <br> `yay -S nav-cli` |
+| NixOS                | [Nixpkgs]                                                  | `nix-shell -p nav`                        |
+| Debian, Ubuntu, etc. | [nav_amd64.deb][Deb_amd64] <br> [nav_arm64.deb][Deb_arm64] | `dpkg -i ...`                             |
 
 [AUR]: https://aur.archlinux.org/packages/nav-cli
 [Nixpkgs]: https://search.nixos.org/packages?show=nav
@@ -189,6 +189,24 @@ home-manager.users.user.programs = {
         initExtra = "eval \"$(nav --init zsh)\"";
     };
 };
+```
+
+</details>
+
+<br>
+
+<details>
+<summary>Shell completion</summary>
+
+Basic support for shell completion is currently available for Bash and Zsh through the `--completion` option.
+It can also be used in combination with `--init`:
+
+```sh
+eval "$(nav --init bash --completion bash)"
+```
+
+```sh
+eval "$(nav --init zsh --completion zsh)"
 ```
 
 </details>
