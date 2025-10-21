@@ -71,11 +71,11 @@ private fun buildTable(
     accessibilityDecorations: Boolean,
     columns: List<EntryColumn>
 ) = table {
-    overflowWrap = OverflowWrap.ELLIPSES
     cellBorders = Borders.LEFT_RIGHT
     tableBorders = Borders.NONE
     borderType = BorderType.BLANK
     padding = Padding(0)
+    overflowWrap = OverflowWrap.NORMAL
 
     if (entries.isEmpty()) {
         body {
@@ -88,15 +88,30 @@ private fun buildTable(
         return@table
     }
 
+    columns.forEachIndexed { i, _ ->
+        column(i) {
+            width = Auto
+            overflowWrap = NORMAL
+        }
+    }
+    column(columns.size) {
+        width = ColumnWidth.Expand()
+        overflowWrap = ELLIPSES
+    }
+
     val selectedNamePrefix = if (accessibilityDecorations) "▊" else ""
     val unselectedNamePrefix = if (accessibilityDecorations) " " else ""
 
     header {
         row {
             columns.forEach { column ->
-                cell(column.title)
+                cell(column.title) {
+                    overflowWrap = NORMAL
+                }
             }
-            cell(styles.nameHeader("${unselectedNamePrefix}Name"))
+            cell(styles.nameHeader("${unselectedNamePrefix}Name")) {
+                overflowWrap = NORMAL
+            }
         }
     }
 
@@ -125,9 +140,10 @@ private fun buildTable(
                     ?.joinToString(" ")
                     ?.trim { it.isWhitespace() }
                 if (error != null) {
-                    cell(TextColors.red(error)) {
+                    cell(styles.danger(error)) {
                         columnSpan = columns.size
-                        align = TextAlign.CENTER
+                        align = CENTER
+                        overflowWrap = ELLIPSES
                     }
                 } else {
                     columns.forEach { column ->
@@ -135,14 +151,12 @@ private fun buildTable(
                     }
                 }
                 cell(
-                    Text(
-                        text = buildName(
-                            entry = entry,
-                            isSelected = isSelected,
-                            filter = filter,
-                            selectedNamePrefix = selectedNamePrefix,
-                            unselectedNamePrefix = unselectedNamePrefix
-                        )
+                    buildName(
+                        entry = entry,
+                        isSelected = isSelected,
+                        filter = filter,
+                        selectedNamePrefix = selectedNamePrefix,
+                        unselectedNamePrefix = unselectedNamePrefix
                     )
                 )
             }
@@ -188,7 +202,12 @@ private fun buildTitle(
     maxVisiblePathElements: Int,
     debugMode: Boolean,
     filterElement: String?
-): Widget = Text(buildPathWithFilter(directory, maxVisiblePathElements, debugMode, filterElement))
+): Widget = verticalLayout {
+    align = TextAlign.LEFT
+    width = ColumnWidth.Expand()
+    overflowWrap = ELLIPSES
+    cell(buildPathWithFilter(directory, maxVisiblePathElements, debugMode, filterElement),)
+}
 
 context(_: StylesProvider)
 private fun buildPathWithFilter(
@@ -323,6 +342,7 @@ private fun buildBottom(
 ): Widget = verticalLayout {
     align = TextAlign.LEFT
     width = ColumnWidth.Expand()
+    overflowWrap = ELLIPSES
 
     if (state.dialog != null) {
         cell(state.dialog)
@@ -348,6 +368,18 @@ private fun buildBottom(
 
 context(_: StylesProvider)
 private fun buildMenu(state: State) = grid {
+    column(0) {
+        width = Auto
+        overflowWrap = NORMAL
+    }
+    column(1) {
+        width = Auto
+        overflowWrap = NORMAL
+    }
+    column(2) {
+        width = ColumnWidth.Expand()
+        overflowWrap = ELLIPSES
+    }
     state.shownMenuActions.forEachIndexed { i, item ->
         row {
             cell(styles.genericElements("│"))

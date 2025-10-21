@@ -141,7 +141,8 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         config.keys.submit,
         description = { "exit here" },
         style = { styles.path },
-        condition = { directory != WorkingDirectory },
+        hidden = { directory == WorkingDirectory },
+        condition = { true },
         action = { exit(directory) }
     )
     val exit = registerKeyAction(
