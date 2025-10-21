@@ -52,15 +52,7 @@ class App(
     private val ui = WidgetAnimation(terminal)
 
     fun WidgetAnimation.tryUpdate() = stateManager.consume { state ->
-        render(
-            widget = buildUI(
-                normalModeActions = state.normalModeActions,
-                quickMacroModeActions = state.quickMacroModeActions,
-                inputMode = state.inputMode,
-                state = state.state,
-                dialog = state.dialog
-            )
-        )
+        render(buildUI(state))
     }
 
     private val inputController = StackBasedInputController(
