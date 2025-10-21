@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav.command
 
 import com.github.ajalt.clikt.completion.CompletionCandidates
+import com.github.ajalt.clikt.completion.CompletionGenerator
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.context
@@ -169,7 +170,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         ).choice(Shell.available).help {
             helpLines(
                 "Uses this shell for command execution. Also signals that the initialization script is being used correctly.",
-                theme.muted(shellHelpValues)
+                theme.muted(shellHelpValues())
             )
         }
     }
@@ -181,7 +182,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         ).choice(Shell.available).convert { InitOption.Init(it) }.help {
             helpLines(
                 "Prints the initialization script for the specified shell.",
-                theme.muted(shellHelpValues)
+                theme.muted(shellHelpValues())
             )
         },
         option(
@@ -195,7 +196,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         ).choice(Shell.available).convert { InitOption.ProfileCommand(it) }.help {
             helpLines(
                 "Prints the command that should be added to the profile file for the specified shell.",
-                theme.muted(shellHelpValues)
+                theme.muted(shellHelpValues())
             )
         },
         option(
@@ -204,7 +205,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         ).choice(Shell.available).convert { InitOption.ProfileLocation(it) }.help {
             helpLines(
                 "Prints the typical location of the profile file for the specified shell.",
-                theme.muted(shellHelpValues)
+                theme.muted(shellHelpValues())
             )
         },
         name = "Initialization",
@@ -221,11 +222,6 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         data class ProfileCommand(val shell: Shell) : InitOption
     }
 
-    override val debugMode by option(
-        "--debug",
-        help = "Enables debug mode."
-    ).flag()
-
     private val version by option(
         "--version",
         help = "Print version and exit."
@@ -234,6 +230,21 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     private val checkUpdate by option(
         "--check-update",
         help = "Check for updates and exit."
+    ).flag()
+
+    private val completion by option(
+        "--completion",
+        metavar = "shell",
+    ).choice(listOf(Shell.BASH, Shell.ZSH).associateBy { it.shell }).help {
+        helpLines(
+            "Prints the completion script for the specified shell. Can be used at the same time as --init.",
+            theme.muted(shellHelpValues(listOf(Shell.BASH, Shell.ZSH).map { it.shell }))
+        )
+    }
+
+    override val debugMode by option(
+        "--debug",
+        help = "Enables debug mode."
     ).flag()
 
     val directory by argument(
@@ -297,6 +308,11 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             return
         }
 
+        completion?.let { shell ->
+            printCompletion(shell)
+            return
+        }
+
         val config = Config.load()
 
         printlnOnDebug { "Using config: $config" }
@@ -336,10 +352,20 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
                 terminal.println()
                 Shell.printInitInfo(terminal)
             }
-            is InitOption.Init -> option.shell.printInitScript()
+            is InitOption.Init -> {
+                if (completion == option.shell) {
+                    printCompletion(option.shell)
+                    println()
+                }
+                option.shell.printInitScript()
+            }
             is InitOption.ProfileLocation -> option.shell.printProfileLocation()
             is InitOption.ProfileCommand -> option.shell.printProfileCommand()
         }
+    }
+
+    private fun printCompletion(shell: Shell) {
+        println(CompletionGenerator.generateCompletionForCommand(this, shell = shell.shell))
     }
 
     private fun warnIncompleteInit() {
@@ -385,7 +411,9 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
         private fun helpLines(vararg lines: String) = lines.joinToString("\u0085")
 
-        private val shellHelpValues get() = "Supported shells: ${Shell.available.keys.joinToString(", ")}"
+        private fun shellHelpValues(
+            shells: Collection<String> = Shell.available.keys
+        ) = "Supported shells: ${shells.joinToString(", ")}"
 
         private val DefaultTerminalTheme get() = Theme(from = Default) {
             styles["main"] = Themes.Retro.path
