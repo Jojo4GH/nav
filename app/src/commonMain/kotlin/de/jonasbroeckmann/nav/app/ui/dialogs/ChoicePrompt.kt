@@ -4,8 +4,6 @@ import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.state.FilterableItemListState
-import de.jonasbroeckmann.nav.app.state.NavigableItemListState
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
 import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.config.Config
