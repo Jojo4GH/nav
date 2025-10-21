@@ -6,8 +6,7 @@ class FilterableItemListSemantics<Self, Item>(
     override val filter: String,
     private val newWithFilter: Self.(String) -> Self,
     private val filterOn: Item.() -> String,
-    private val preSort: List<Pair<Item, Double>>.() -> List<Pair<Item, Double>> = { this },
-    private val onNoFilter: List<Item>.() -> List<Item> = { this }
+    private val hiddenOn: (Item.() -> Boolean?)? = null
 ) : FilterableItemList<Self, Item> where Self : FilterableItemList<Self, Item>, Self : NavigableItemList<Self, Item> {
     override val unfilteredItems: List<Item> by lazy(lazyItems)
 
@@ -21,11 +20,23 @@ class FilterableItemListSemantics<Self, Item>(
                             .takeIf { it > 0.0 }
                             ?.let { item to it }
                     }
-                    .preSort()
+                    .let { items ->
+                        if (hiddenOn != null) {
+                            items.sortedByDescending { (item, _) -> item.hiddenOn() != true }
+                        } else {
+                            items
+                        }
+                    }
                     .sortedByDescending { (_, score) -> score }
                     .map { (item, _) -> item }
             }
-            else -> unfilteredItems.onNoFilter()
+            else -> {
+                if (hiddenOn != null) {
+                    unfilteredItems.filter { it.hiddenOn() != true } // only remove hidden items if filter is empty
+                } else {
+                    unfilteredItems
+                }
+            }
         }
     }
 

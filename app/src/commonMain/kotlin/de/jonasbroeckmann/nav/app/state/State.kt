@@ -11,22 +11,21 @@ import de.jonasbroeckmann.nav.framework.action.MenuAction
 import de.jonasbroeckmann.nav.framework.input.InputMode
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
-import de.jonasbroeckmann.nav.framework.semantics.scoreFor
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.isDirectory
 import kotlinx.io.files.Path
 import kotlin.text.isNotEmpty
 
-data class FilterableNavigableItemListState<Item> private constructor(
+data class FilterableItemListState<Item> private constructor(
     override val unfilteredItems: List<Item>,
     override val filter: String,
-    val filterOn: Item.() -> String,
-    val hiddenOn: (Item.() -> Boolean?)?,
+    private val filterOn: Item.() -> String,
+    private val hiddenOn: (Item.() -> Boolean?)?,
     override val filteredItems: List<Item>
-) : FilterableItemList<FilterableNavigableItemListState<Item>, Item> {
+) : FilterableItemList<FilterableItemListState<Item>, Item> {
 
-    fun with(unfilteredItems: List<Item>, filter: String): FilterableNavigableItemListState<Item> {
+    fun with(unfilteredItems: List<Item>, filter: String): FilterableItemListState<Item> {
         val filteredItems = computeFiltered(
             items = unfilteredItems,
             filter = filter,
@@ -40,7 +39,7 @@ data class FilterableNavigableItemListState<Item> private constructor(
         )
     }
 
-    override fun withFilter(filter: String): FilterableNavigableItemListState<Item> {
+    override fun withFilter(filter: String): FilterableItemListState<Item> {
         if (filter == this.filter) return this
         val filteredItems = computeFiltered(
             items = if (filter.startsWith(this.filter)) {
@@ -64,14 +63,14 @@ data class FilterableNavigableItemListState<Item> private constructor(
             filter: String,
             filterOn: Item.() -> String,
             hiddenOn: (Item.() -> Boolean?)?
-        ): FilterableNavigableItemListState<Item> {
+        ): FilterableItemListState<Item> {
             val filteredItems = computeFiltered(
                 items = unfilteredItems,
                 filter = filter,
                 filterOn = filterOn,
                 hiddenOn = hiddenOn
             )
-            return FilterableNavigableItemListState(
+            return FilterableItemListState(
                 unfilteredItems = unfilteredItems,
                 filter = filter,
                 filterOn = filterOn,
@@ -112,13 +111,26 @@ data class FilterableNavigableItemListState<Item> private constructor(
                 }
             }
         }
+
+        private fun String.scoreFor(query: String): Double {
+            if (length < query.length) return 0.0
+            fun lengthRatio(): Double = query.length.toDouble() / length.toDouble()
+            val indexWithoutCase = indexOf(query, ignoreCase = true)
+            if (indexWithoutCase == 0) {
+                return 2.0 + lengthRatio()
+            }
+            if (indexWithoutCase >= 0) {
+                return 0.0 + lengthRatio()
+            }
+            return 0.0
+        }
     }
 }
 
 data class NavigableItemListState<Item> private constructor(
-    val items: List<Item>,
+    private val items: List<Item>,
     override val cursor: Int,
-    val filterOn: Item.() -> String,
+    private val filterOn: Item.() -> String,
 ) : NavigableItemList<NavigableItemListState<Item>, Item> {
     override val currentItem by lazy { items.getOrNull(cursor) }
 
@@ -187,7 +199,7 @@ data class NavigableItemListState<Item> private constructor(
             filterOn: Item.() -> String
         ) = NavigableItemListState(
             items = items,
-            cursor = cursor,
+            cursor = cursor.coerceAtMost(items.lastIndex).coerceAtLeast(0),
             filterOn = filterOn
         )
     }
@@ -197,7 +209,7 @@ data class NavigableItemListState<Item> private constructor(
 data class State private constructor(
     val directory: Path,
 
-    private val filterableNavigableItems: FilterableNavigableItemListState<Entry>,
+    private val filterableItems: FilterableItemListState<Entry>,
     private val navigableItems: NavigableItemListState<Entry>,
 
     private val rawMenuCursor: Int,
@@ -220,7 +232,7 @@ data class State private constructor(
 
     private fun withDirectory(directory: Path) = copy(directory = directory)
         .withFilterableItems(
-            filterableNavigableItems.with(
+            filterableItems.with(
                 unfilteredItems = directory.entries(),
                 filter = if (directory == this.directory) filter else ""
             )
@@ -236,14 +248,14 @@ data class State private constructor(
             return this.parent?.nearestChildToOrNull(parent)
         }
 
-        return withDirectory(path).run {
+        return withDirectory(path).let { tmp ->
             val nearestChild = directory.nearestChildToOrNull(parent = path)
             if (nearestChild != null) {
                 // navigating to a parent directory, try to stay on the same entry
-                withCursorOnFirst { it.path.name == nearestChild.name }
+                tmp.withCursorOnFirst { it.path.name == nearestChild.name }
             } else {
                 // navigating to an unrelated directory, go to the top
-                withCursor(0)
+                tmp.withCursor(0)
             }
         }
     }
@@ -254,17 +266,17 @@ data class State private constructor(
         return withDirectory(directory).withCursorOnFirst(predicate = preferredEntry)
     }
 
-    private fun withFilterableItems(filterableNavigableItems: FilterableNavigableItemListState<Entry>) = copy(
-        filterableNavigableItems = filterableNavigableItems,
-        navigableItems = navigableItems.withItems(filterableNavigableItems.filteredItems)
+    private fun withFilterableItems(filterableItems: FilterableItemListState<Entry>) = copy(
+        filterableItems = filterableItems,
+        navigableItems = navigableItems.withItems(filterableItems.filteredItems)
     )
 
-    override val unfilteredItems get() = filterableNavigableItems.unfilteredItems
-    override val filter get() = filterableNavigableItems.filter
-    override val filteredItems get() = filterableNavigableItems.filteredItems
+    override val unfilteredItems get() = filterableItems.unfilteredItems
+    override val filter get() = filterableItems.filter
+    override val filteredItems get() = filterableItems.filteredItems
 
     override fun withFilter(filter: String) = withFilterableItems(
-        filterableNavigableItems.withFilter(filter)
+        filterableItems.withFilter(filter)
     )
 
     private fun withNavigableItems(navigableItems: NavigableItemListState<Entry>) = copy(navigableItems = navigableItems)
@@ -325,7 +337,7 @@ data class State private constructor(
             quickMacroModeActions: QuickMacroModeActions,
             menuActions: MenuActions,
         ): State {
-            val filterableNavigableItems = FilterableNavigableItemListState.initial(
+            val filterableItems = FilterableItemListState.initial(
                 unfilteredItems = startingDirectory.entries(),
                 filter = "",
                 filterOn = { path.name },
@@ -337,9 +349,9 @@ data class State private constructor(
             )
             return State(
                 directory = startingDirectory,
-                filterableNavigableItems = filterableNavigableItems,
+                filterableItems = filterableItems,
                 navigableItems = NavigableItemListState.initial(
-                    items = filterableNavigableItems.filteredItems,
+                    items = filterableItems.filteredItems,
                     cursor = 0,
                     filterOn = { path.name }
                 ),
