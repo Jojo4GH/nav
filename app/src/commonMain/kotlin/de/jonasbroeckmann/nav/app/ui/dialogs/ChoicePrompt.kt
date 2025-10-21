@@ -4,6 +4,8 @@ import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.state.FilterableItemListState
+import de.jonasbroeckmann.nav.app.state.NavigableItemListState
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
 import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.config.Config
@@ -176,52 +178,68 @@ fun DialogShowScope.choicePrompt(
 }
 
 private data class ChoicePromptState private constructor(
-    override val unfilteredItems: List<String>,
-    override val filter: String,
-    override val cursor: Int,
+    private val filterableItems: FilterableItemListState<String>,
+    private val navigableItems: NavigableItemListState<String>
 ) : FilterableItemList<ChoicePromptState, String>, NavigableItemList<ChoicePromptState, String> {
-    private val filterableItemListSemantics = FilterableItemListSemantics(
-        self = this,
-        lazyItems = { unfilteredItems },
-        filter = filter,
-        newWithFilter = { copy(filter = it) },
-        filterOn = { this }
+    private fun withFilterableItems(filterableItems: FilterableItemListState<String>) = copy(
+        filterableItems = filterableItems,
+        navigableItems = navigableItems.withItems(filterableItems.filteredItems)
     )
 
-    override val filteredItems get() = filterableItemListSemantics.filteredItems
+    override val unfilteredItems get() = filterableItems.unfilteredItems
+    override val filter get() = filterableItems.filter
+    override val filteredItems get() = filterableItems.filteredItems
 
-    override fun withFilter(filter: String) = filterableItemListSemantics.withFilter(filter)
-
-    private val navigableItemListSemantics = NavigableItemListSemantics(
-        self = this,
-        lazyItems = { filteredItems },
-        cursor = cursor,
-        newWithCursor = { copy(cursor = it) }
+    override fun withFilter(filter: String) = withFilterableItems(
+        filterableItems.withFilter(filter)
     )
 
-    override val currentItem get() = navigableItemListSemantics.currentItem
+    private fun withNavigableItems(navigableItems: NavigableItemListState<String>) = copy(
+        navigableItems = navigableItems
+    )
 
-    override fun withCursor(cursor: Int) = navigableItemListSemantics.withCursor(cursor)
+    override val cursor get() = navigableItems.cursor
+    override val currentItem get() = navigableItems.currentItem
 
-    override fun withCursorShifted(offset: Int) = navigableItemListSemantics.withCursorShifted(offset)
+    override fun withCursor(cursor: Int) = withNavigableItems(
+        navigableItems.withCursor(cursor)
+    )
 
-    override fun withCursorOnFirst(
-        default: Int,
-        predicate: (String) -> Boolean
-    ) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
+    override fun withCursorShifted(offset: Int) = withNavigableItems(
+        navigableItems.withCursorShifted(offset)
+    )
 
-    override fun withCursorOnNext(predicate: (String) -> Boolean) = navigableItemListSemantics.withCursorOnNext(predicate)
+    override fun withCursorOnFirst(default: Int, predicate: (String) -> Boolean) = withNavigableItems(
+        navigableItems.withCursorOnFirst(default, predicate)
+    )
 
-    override fun withCursorOnNextReverse(predicate: (String) -> Boolean) = navigableItemListSemantics.withCursorOnNextReverse(predicate)
+    override fun withCursorOnNext(predicate: (String) -> Boolean) = withNavigableItems(
+        navigableItems.withCursorOnNext(predicate)
+    )
+
+    override fun withCursorOnNextReverse(predicate: (String) -> Boolean) = withNavigableItems(
+        navigableItems.withCursorOnNextReverse(predicate)
+    )
 
     companion object {
         fun initial(
             items: List<String>,
             cursor: Int
-        ) = ChoicePromptState(
-            unfilteredItems = items,
-            filter = "",
-            cursor = cursor.coerceIn(items.indices)
-        )
+        ): ChoicePromptState {
+            val filterableItems = FilterableItemListState.initial(
+                unfilteredItems = items,
+                filter = "",
+                filterOn = { this },
+                hiddenOn = null
+            )
+            return ChoicePromptState(
+                filterableItems = filterableItems,
+                navigableItems = NavigableItemListState.initial(
+                    items = filterableItems.filteredItems,
+                    cursor = cursor,
+                    filterOn = { this }
+                )
+            )
+        }
     }
 }
