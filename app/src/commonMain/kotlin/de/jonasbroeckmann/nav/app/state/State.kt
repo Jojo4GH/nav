@@ -18,6 +18,7 @@ import de.jonasbroeckmann.nav.utils.cleaned
 import de.jonasbroeckmann.nav.utils.isDirectory
 import kotlinx.io.files.Path
 
+@Suppress("detekt:TooManyFunctions")
 data class State private constructor(
     val directory: Path,
 

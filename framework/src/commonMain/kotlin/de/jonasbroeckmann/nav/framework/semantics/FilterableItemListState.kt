@@ -7,7 +7,6 @@ data class FilterableItemListState<Item> private constructor(
     private val hiddenOn: (Item.() -> Boolean?)?,
     override val filteredItems: List<Item>
 ) : FilterableItemList<FilterableItemListState<Item>, Item> {
-
     fun with(unfilteredItems: List<Item>, filter: String) = copy(
         unfilteredItems = unfilteredItems,
         filter = filter,
@@ -93,15 +92,12 @@ data class FilterableItemListState<Item> private constructor(
 
         private fun String.scoreFor(query: String): Double {
             if (length < query.length) return 0.0
-            fun lengthRatio(): Double = query.length.toDouble() / length.toDouble()
             val indexWithoutCase = indexOf(query, ignoreCase = true)
-            if (indexWithoutCase == 0) {
-                return 2.0 + lengthRatio()
+            return when {
+                indexWithoutCase == 0 -> 1.0 + (query.length.toDouble() / length.toDouble())
+                indexWithoutCase >= 0 -> 0.0 + (query.length.toDouble() / length.toDouble())
+                else -> 0.0
             }
-            if (indexWithoutCase >= 0) {
-                return 0.0 + lengthRatio()
-            }
-            return 0.0
         }
     }
 }
