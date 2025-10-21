@@ -64,15 +64,17 @@ fun DialogShowScope.choicePrompt(
             keys.filter.autocomplete, keys.filter.autocomplete.copy(shift = true),
             description = { "autocomplete" },
             condition = { unfilteredItems.isNotEmpty() },
-            action = {
-                autocomplete(
-                    autocompleteOn = { this },
-                    style = autocomplete.style.value,
-                    autoNavigation = autocomplete.autoNavigation.value,
-                    invertDirection = it.shift,
-                    onUpdate = { newState -> updateState { newState } },
-                    onAutoNavigate = { _, item -> dismissDialog(item) }
-                )
+            action = { input ->
+                updateState {
+                    val action = autocomplete(
+                        autocompleteOn = { this },
+                        style = autocomplete.style.value,
+                        autoNavigation = autocomplete.autoNavigation.value,
+                        invertDirection = input.shift
+                    )
+                    action.autoNavigate?.let { item -> dismissDialog(item) }
+                    action.newState
+                }
             }
         )
         register(
@@ -97,13 +99,13 @@ fun DialogShowScope.choicePrompt(
             keys.cursor.home,
             hidden = { true },
             condition = { filteredItems.isNotEmpty() },
-            action = { updateState { withCursorCoerced(0) } }
+            action = { updateState { withCursor(0) } }
         )
         register(
             keys.cursor.end,
             hidden = { true },
             condition = { filteredItems.isNotEmpty() },
-            action = { updateState { withCursorCoerced(filteredItems.lastIndex) } }
+            action = { updateState { withCursor(filteredItems.lastIndex) } }
         )
         inputFilterAction = register(
             KeyAction(
@@ -174,52 +176,68 @@ fun DialogShowScope.choicePrompt(
 }
 
 private data class ChoicePromptState private constructor(
-    override val unfilteredItems: List<String>,
-    override val filter: String,
-    override val cursor: Int,
+    private val filterableItems: FilterableItemListState<String>,
+    private val navigableItems: NavigableItemListState<String>
 ) : FilterableItemList<ChoicePromptState, String>, NavigableItemList<ChoicePromptState, String> {
-    private val filterableItemListSemantics = FilterableItemListSemantics(
-        self = this,
-        lazyItems = { unfilteredItems },
-        filter = filter,
-        copyWithFilter = { copy(filter = it) },
-        filterOn = { this }
+    private fun withFilterableItems(filterableItems: FilterableItemListState<String>) = copy(
+        filterableItems = filterableItems,
+        navigableItems = navigableItems.withItems(filterableItems.filteredItems)
     )
 
-    override val filteredItems get() = filterableItemListSemantics.filteredItems
+    override val unfilteredItems get() = filterableItems.unfilteredItems
+    override val filter get() = filterableItems.filter
+    override val filteredItems get() = filterableItems.filteredItems
 
-    override fun withFilter(filter: String) = filterableItemListSemantics.withFilter(filter)
-
-    private val navigableItemListSemantics = NavigableItemListSemantics(
-        self = this,
-        lazyItems = { filteredItems },
-        cursor = cursor,
-        copyWithCursor = { copy(cursor = it) }
+    override fun withFilter(filter: String) = withFilterableItems(
+        filterableItems.withFilter(filter)
     )
 
-    override val currentItem get() = navigableItemListSemantics.currentItem
+    private fun withNavigableItems(navigableItems: NavigableItemListState<String>) = copy(
+        navigableItems = navigableItems
+    )
 
-    override fun withCursorCoerced(cursor: Int) = navigableItemListSemantics.withCursorCoerced(cursor)
+    override val cursor get() = navigableItems.cursor
+    override val currentItem get() = navigableItems.currentItem
 
-    override fun withCursorShifted(offset: Int) = navigableItemListSemantics.withCursorShifted(offset)
+    override fun withCursor(cursor: Int) = withNavigableItems(
+        navigableItems.withCursor(cursor)
+    )
 
-    override fun withCursorOnFirst(
-        default: Int,
-        predicate: (String) -> Boolean
-    ) = navigableItemListSemantics.withCursorOnFirst(default, predicate)
+    override fun withCursorShifted(offset: Int) = withNavigableItems(
+        navigableItems.withCursorShifted(offset)
+    )
 
-    override fun withCursorOnNext(predicate: (String) -> Boolean) = navigableItemListSemantics.withCursorOnNext(predicate)
+    override fun withCursorOnFirst(default: Int, predicate: (String) -> Boolean) = withNavigableItems(
+        navigableItems.withCursorOnFirst(default, predicate)
+    )
 
-    override fun withCursorOnNextReverse(predicate: (String) -> Boolean) = navigableItemListSemantics.withCursorOnNextReverse(predicate)
+    override fun withCursorOnNext(predicate: (String) -> Boolean) = withNavigableItems(
+        navigableItems.withCursorOnNext(predicate)
+    )
+
+    override fun withCursorOnNextReverse(predicate: (String) -> Boolean) = withNavigableItems(
+        navigableItems.withCursorOnNextReverse(predicate)
+    )
 
     companion object {
         fun initial(
             items: List<String>,
             cursor: Int
-        ) = ChoicePromptState(
-            unfilteredItems = items,
-            filter = "",
-            cursor = cursor.coerceIn(items.indices)
-        )
+        ): ChoicePromptState {
+            val filterableItems = FilterableItemListState.initial(
+                unfilteredItems = items,
+                filter = "",
+                filterOn = { this },
+                hiddenOn = null
+            )
+            return ChoicePromptState(
+                filterableItems = filterableItems,
+                navigableItems = NavigableItemListState.initial(
+                    items = filterableItems.filteredItems,
+                    cursor = cursor,
+                    filterOn = { this }
+                )
+            )
+        }
     }
 }

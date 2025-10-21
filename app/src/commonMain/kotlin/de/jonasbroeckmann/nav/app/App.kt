@@ -2,13 +2,9 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.input.enterRawMode
-import com.github.ajalt.mordant.input.isCtrlC
-import com.github.ajalt.mordant.rendering.AnsiLevel.*
 import com.github.ajalt.mordant.rendering.Widget
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
-import com.github.ajalt.mordant.terminal.warning
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio.Inherit
@@ -30,233 +26,39 @@ import de.jonasbroeckmann.nav.framework.ui.WidgetAnimation
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.utils.StateManager
 import de.jonasbroeckmann.nav.utils.exitProcess
-import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.io.IOException
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-abstract class MainControllerBase internal constructor() : MainController {
-    override val editorCommand by lazy {
-        // override editor from command line argument or config or fill in default editor
-        context.command.configurationOptions.editor
-            ?.also { context.printlnOnDebug { "Using editor from command line argument: $it" } }
-            ?: config.editor
-            ?: findDefaultEditorCommand()
-    }
-
-    override val styles by lazy {
-        // override from command line argument or config or fill in based on terminal capabilities
-        val useSimpleColors = command.configurationOptions.renderMode.accessibility.simpleColors
-            ?: config.accessibility.simpleColors
-            ?: when (terminal.terminalInfo.ansiLevel) {
-                TRUECOLOR, ANSI256 -> false
-                ANSI16, NONE -> true
-            }
-        config.partialColors filledWith when (useSimpleColors) {
-            true -> config.partialColors.simpleTheme.styles
-            false -> config.partialColors.theme.styles
-        }
-    }
-
-    override val accessibilitySimpleColors by lazy {
-        command.configurationOptions.renderMode.accessibility.simpleColors
-            ?: config.accessibility.simpleColors
-            ?: when (terminal.terminalInfo.ansiLevel) {
-                TRUECOLOR, ANSI256 -> false
-                ANSI16, NONE -> true
-            }
-    }
-
-    override val accessibilityDecorations by lazy {
-        command.configurationOptions.renderMode.accessibility.decorations
-            ?: config.accessibility.decorations
-            ?: when (terminal.terminalInfo.ansiLevel) {
-                TRUECOLOR, ANSI256, ANSI16 -> false
-                NONE -> true
-            }
-    }
-
-    override val identifiedMacros by lazy {
-        config.macros
-            .mapNotNull { macro -> macro.id?.let { it to macro } }
-            .toMap()
-    }
-
-    companion object {
-        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
-
-        context(context: PartialContext)
-        private fun findDefaultEditorCommand(): String? {
-            context.printlnOnDebug { "Searching for default editor:" }
-
-            fun checkEnvVar(name: String): String? {
-                val value = getEnvironmentVariable(name)?.trim() ?: run {
-                    context.printlnOnDebug { $$"  $$$name not set" }
-                    return null
-                }
-                if (value.isBlank()) {
-                    context.printlnOnDebug { $$"  $$$name is empty" }
-                    return null
-                }
-                context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
-                return value
-            }
-
-            fun checkProgram(name: String): String? {
-                val path = which(name) ?: run {
-                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
-                    return null
-                }
-                context.printlnOnDebug { "  Found $name at $path" }
-                return "\"$path\"" // quote path to handle spaces
-            }
-
-            return sequence {
-                yield(checkEnvVar("EDITOR"))
-                yield(checkEnvVar("VISUAL"))
-                DefaultEditorPrograms.forEach { name ->
-                    yield(checkProgram(name))
-                }
-            }.filterNotNull().firstOrNull().also {
-                if (it == null) {
-                    context.terminal.danger("Could not find a default editor")
-                    context.terminal.warning(specifyEditorMessage)
-                }
-            }
-        }
-
-        private val specifyEditorMessage: String get() {
-            return $$"""Please specify an editor via the --editor CLI option, the config file or the $EDITOR environment variable"""
-        }
-    }
-}
-
-internal class StackBasedInputController(
-    private val context: PartialContext,
-    private val inputTimeout: Duration,
-    private val onInputModeChanged: (InputMode) -> Unit,
-    private val onKeyboardEvent: (KeyboardEvent) -> Unit,
-    private val onCtrlC: StackBasedInputController.() -> Unit,
-) : InputController {
-    private data class InputModeStackEntry(val mode: InputMode, val id: Int = nextId++) {
-        private companion object {
-            private var nextId = 0
-        }
-    }
-
-    private data object NoInputMode : InputMode(null)
-
-    private val inputModeStack = mutableListOf<InputModeStackEntry>(
-        InputModeStackEntry(NoInputMode)
-    )
-
-    val currentInputMode get() = inputModeStack.last().mode
-
-    operator fun contains(mode: InputMode) = inputModeStack.any { it.mode == mode }
-
-    override fun enterInputMode(mode: InputMode): InputModeScope {
-        context.printlnOnDebug { "Switching input mode $currentInputMode to $mode ..." }
-        val stackEntry = InputModeStackEntry(mode)
-        inputModeStack.add(stackEntry)
-        onInputModeChanged(mode)
-        return object : InputModeScope {
-            override val inputMode get() = mode
-
-            override fun readInput() = this@StackBasedInputController.readInput()
-
-            override fun close() {
-                val topEntry = inputModeStack.lastOrNull()
-                require(topEntry == stackEntry) {
-                    "Cannot pop input mode stack. Expected $stackEntry but was $topEntry. Current stack: $inputModeStack"
-                }
-                inputModeStack.removeLast()
-                onInputModeChanged(currentInputMode)
-                context.printlnOnDebug { "Restored input mode from $mode to $currentInputMode" }
-            }
-        }
-    }
-
-    private fun readInput(): InputEvent {
-        context.terminal.enterRawMode().use { rawMode ->
-            while (true) {
-                val input = try {
-                    rawMode.readEvent(inputTimeout)
-                } catch (_: RuntimeException) {
-                    continue // on timeout try again
-                }
-                context.printlnOnDebug { "Received input event: $input" }
-                if (input is KeyboardEvent) {
-                    onKeyboardEvent(input)
-                    if (input.isCtrlC) onCtrlC()
-                }
-                return input
-            }
-        }
-    }
-}
-
 class App(
     context: PartialContext,
     override val config: Config
 ) : MainControllerBase(), PartialContext by context {
-    private data class AppState(
-        val normalModeActions: NormalModeActions,
-        val quickMacroModeActions: QuickMacroModeActions,
-        val inputMode: InputMode?,
-        val state: State,
-        val dialog: Widget?
-    )
-
     private val stateManager = StateManager(
-        initial = run {
-            val menuActions = MenuActions(this)
-            AppState(
-                normalModeActions = NormalModeActions(this),
-                quickMacroModeActions = QuickMacroModeActions(this),
-                inputMode = null,
-                state = State.initial(
-                    startingDirectory = startingDirectory,
-                    showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
-                    getShownMenuActions = { menuActions.all.filter { it.isShown(appState.inputMode) } }
-                ),
-                dialog = null
-            )
-        }
+        initial = State.initial(
+            startingDirectory = startingDirectory,
+            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+            normalModeActions = NormalModeActions(this),
+            quickMacroModeActions = QuickMacroModeActions(this),
+            menuActions = MenuActions(this)
+        )
     )
-    private var appState: AppState by stateManager
 
-    override var state
-        get() = appState.state
-        set(value) {
-            appState = appState.copy(state = value)
-        }
-
-    private var dialog
-        get() = appState.dialog
-        set(value) {
-            appState = appState.copy(dialog = value)
-        }
+    override var state by stateManager
+        private set
 
     private val ui = WidgetAnimation(terminal)
 
     fun WidgetAnimation.tryUpdate() = stateManager.consume { state ->
-        render(
-            widget = buildUI(
-                normalModeActions = state.normalModeActions,
-                quickMacroModeActions = state.quickMacroModeActions,
-                inputMode = state.inputMode,
-                state = state.state,
-                dialog = state.dialog
-            )
-        )
+        render(buildUI(state))
     }
 
     private val inputController = StackBasedInputController(
         context = this,
         inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE,
-        onInputModeChanged = { mode -> appState = appState.copy(inputMode = mode) },
+        onInputModeChanged = { mode -> state = state.withInputMode(mode) },
         onKeyboardEvent = { event -> updateState { withLastReceivedEvent(event) } },
         onCtrlC = { throw ExitEvent() }
     )
@@ -308,8 +110,8 @@ class App(
         }
         if (state.inQuickMacroMode) {
             val inputWithoutCtrl = input.copy(ctrl = false)
-            for (action in appState.quickMacroModeActions.all) {
-                if (context(state) { action.matches(inputWithoutCtrl, appState.inputMode) }) {
+            for (action in state.quickMacroModeActions.all) {
+                if (context(state) { action.matches(inputWithoutCtrl, state.inputMode) }) {
                     action.tryRun(input)
                     updateState { inQuickMacroMode(false) }
                     return
@@ -322,8 +124,8 @@ class App(
             printlnOnDebug { "Exiting quick macro mode ..." }
             updateState { inQuickMacroMode(false) }
         }
-        for (action in appState.normalModeActions.all) {
-            if (context(state) { action.matches(input, appState.inputMode) }) {
+        for (action in state.normalModeActions.all) {
+            if (context(state) { action.matches(input, state.inputMode) }) {
                 action.tryRun(input)
                 return
             }
@@ -441,19 +243,20 @@ class App(
     private data object DialogInputMode : InputMode("D")
 
     override fun <R> showDialog(block: DialogShowScope.() -> R): R {
-        val previous = dialog
+        val previous = state.dialog
         try {
             useInputMode(DialogInputMode) {
                 val scope = object : DialogShowScope, InputModeScope by this {
                     override fun render(widget: Widget) {
-                        dialog = widget
+                        state = state.withDialog(widget)
                         ui.tryUpdate()
                     }
                 }
                 return scope.block()
             }
         } finally {
-            dialog = previous
+            state = state.withDialog(previous)
+            // delay updating UI
         }
     }
 

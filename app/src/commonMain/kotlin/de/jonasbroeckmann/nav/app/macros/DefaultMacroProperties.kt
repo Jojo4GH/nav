@@ -39,7 +39,7 @@ enum class DefaultMacroProperties(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("directory"),
             onGet = { state.directory.toString() },
-            onSet = { newValue -> newValue.parseAbsolutePathToDirectoryOrNull()?.let { updateState { navigateTo(it) } } }
+            onSet = { newValue -> newValue.parseAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
         )
     ),
     EntryPath(
@@ -92,14 +92,14 @@ enum class DefaultMacroProperties(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("entryCursorPosition"),
             onGet = { state.cursor.toString() },
-            onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withCursorCoerced(it) } } }
+            onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withCursor(it) } } }
         )
     ),
     MenuCursorPosition(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("menuCursorPosition"),
-            onGet = { state.coercedMenuCursor.toString() },
-            onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withMenuCursorCoerced(it) } } }
+            onGet = { state.menuCursor.toString() },
+            onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withMenuCursor(it) } } }
         )
     );
 

@@ -5,7 +5,7 @@ interface NavigableItemList<Self : NavigableItemList<Self, Item>, Item> {
 
     val currentItem: Item?
 
-    fun withCursorCoerced(cursor: Int): Self
+    fun withCursor(cursor: Int): Self
 
     fun withCursorShifted(offset: Int): Self
 
