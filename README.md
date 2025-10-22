@@ -2,7 +2,7 @@
 
 # 📂 nav 📂
 
-The interactive and stylish replacement for ls & cd!
+❯&nbsp;&nbsp;&nbsp;The interactive and stylish replacement for ls & cd!
 
 ![nav demo](media/demo1.gif)
 
