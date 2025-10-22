@@ -143,13 +143,13 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         style = { styles.path },
         hidden = { directory == WorkingDirectory },
         condition = { true },
-        action = { exit(directory) }
+        action = { exit(atDirectory = directory) }
     )
     val exit = registerKeyAction(
         config.keys.cancel,
         description = { "exit" },
         condition = { true },
-        action = { exit(null) }
+        action = { exit() }
     )
 
     val inputCommand = registerKeyAction(
