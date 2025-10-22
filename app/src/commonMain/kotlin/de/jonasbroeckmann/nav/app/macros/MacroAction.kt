@@ -280,7 +280,7 @@ sealed interface MacroAction : MacroRunnable {
         context(context: MacroRuntimeContext)
         override fun run() {
             if (exit) {
-                exit(at?.evaluate()?.parseAbsolutePathToDirectoryOrNull())
+                exit(atDirectory = at?.evaluate()?.parseAbsolutePathToDirectoryOrNull())
             }
         }
     }

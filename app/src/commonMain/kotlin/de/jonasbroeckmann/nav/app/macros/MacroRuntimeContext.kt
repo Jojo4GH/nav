@@ -1,6 +1,5 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
 import de.jonasbroeckmann.nav.app.ui.dialogs.macroDialogDecorator
@@ -74,9 +73,9 @@ class MacroRuntimeContext private constructor(
     private class MacroReturnEvent : Throwable()
 
     companion object {
-        context(app: App)
+        context(controller: MainController)
         fun run(macro: Macro) {
-            MacroRuntimeContext(app, rootMacro = macro).call(
+            MacroRuntimeContext(controller, rootMacro = macro).call(
                 parameters = emptyMap(),
                 runnable = macro
             )
