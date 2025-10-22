@@ -49,10 +49,10 @@ Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to nav
 - ➡️ Use arrow keys to navigate everywhere
 - ⌨️ Type to filter entries, press <kbd>Tab</kbd> to autocomplete
 - ✏️ Instantly edit files with your favorite editor on the fly
-- 📈 Create files and directories or run commands everywhere
 - ✅ Press <kbd>Enter</kbd> to move your shell to the current directory
 - 🔧 [Configure](#-configuration) everything to your liking
 - ⭐ Define [custom macros](#-macros-experimental) for even more powerful workflows
+- 📈 Create files and directories or run commands everywhere
 
 ### Contents
 
@@ -62,10 +62,11 @@ Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to nav
   - [Controls](#controls)
   - [Appearance](#appearance)
 - [Macros (experimental)](#-macros-experimental)
+  - [Examples](#examples)
+  - [Definition](#definition)
   - [Conditions](#conditions)
   - [Actions](#actions)
   - [Properties, Variables & Placeholders](#properties-variables--placeholders)
-  - [Examples](#examples)
 - [Entry Macros](#entry-macros)
 - [Known Issues](#known-issues)
 
