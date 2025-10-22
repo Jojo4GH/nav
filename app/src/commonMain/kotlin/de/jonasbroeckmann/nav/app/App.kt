@@ -32,7 +32,7 @@ import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class App(
+class App private constructor(
     context: PartialContext,
     override val config: Config
 ) : MainControllerBase(), PartialContext by context {
@@ -60,12 +60,12 @@ class App(
         inputTimeout = config.inputTimeoutMillis.takeIf { it > 0 }?.milliseconds ?: Duration.INFINITE,
         onInputModeChanged = { mode -> state = state.withInputMode(mode) },
         onKeyboardEvent = { event -> updateState { withLastReceivedEvent(event) } },
-        onCtrlC = { throw ExitEvent() }
+        onCtrlC = { exit() }
     )
 
     override fun enterInputMode(mode: InputMode): InputModeScope = inputController.enterInputMode(mode)
 
-    fun main(): Nothing = catchAllFatal(
+    private fun execute(block: App.() -> Unit): Nothing = catchAllFatal(
         cleanupOnError = {
             ui.stop()
             terminal.cursor.show()
@@ -78,16 +78,12 @@ class App(
 
         terminal.cursor.hide(showOnExit = false)
 
-        try {
-            useInputMode(Normal) {
-                ui.tryUpdate()
-                captureInputEvents { input ->
-                    processInput(input)
-                    ui.tryUpdate()
-                }
-            }
-        } catch (_: ExitEvent) {
+        val exitCode = try {
+            block()
+            0
+        } catch (e: ExitEvent) {
             printlnOnDebug { "Exiting ..." }
+            e.exitCode
         }
 
         if (!config.clearOnExit) {
@@ -98,7 +94,15 @@ class App(
 
         terminal.cursor.show()
 
-        exitProcess(0)
+        exitProcess(exitCode)
+    }
+
+    fun main(): Nothing = useInputMode(Normal) {
+        ui.tryUpdate()
+        captureInputEvents { input ->
+            processInput(input)
+            ui.tryUpdate()
+        }
     }
 
     @Suppress("detekt:CyclomaticComplexMethod", "detekt:ReturnCount")
@@ -216,13 +220,13 @@ class App(
         if (result.isSuccess) {
             when (entryMacro.afterSuccessfulCommand) {
                 Config.AfterMacroCommand.DoNothing -> { /* no-op */ }
-                Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(state.directory)
+                Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(atDirectory = state.directory)
                 Config.AfterMacroCommand.ExitAtInitialDirectory -> exit()
             }
         } else {
             when (entryMacro.afterFailedCommand) {
                 Config.AfterMacroCommand.DoNothing -> terminal.danger("Received exit code ${result.exitCode}")
-                Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(state.directory)
+                Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(atDirectory = state.directory)
                 Config.AfterMacroCommand.ExitAtInitialDirectory -> exit()
             }
         }
@@ -232,12 +236,12 @@ class App(
         MacroRuntimeContext.run(macro)
     }
 
-    override fun exit(atDirectory: Path?): Nothing {
+    override fun exit(exitCode: Int, atDirectory: Path?): Nothing {
         atDirectory?.let {
             printlnOnDebug { "Broadcasting \"$it\" to parent shell ..." }
             CDFile.broadcastChangeDirectory(it)
         }
-        throw ExitEvent()
+        throw ExitEvent(exitCode)
     }
 
     private data object DialogInputMode : InputMode("D")
@@ -316,13 +320,14 @@ class App(
             null
         }
         updateState { updatedEntries() } // update in case the command changed something
+        terminal.cursor.hide(showOnExit = false) // hide cursor in case the command unhid it
         return result
     }
 
-    private class ExitEvent : Throwable()
+    private class ExitEvent(val exitCode: Int) : Throwable()
 
     companion object {
         context(context: PartialContext)
-        operator fun invoke(config: Config) = App(context, config)
+        operator fun invoke(config: Config, block: App.() -> Unit): Nothing = App(context, config).execute(block)
     }
 }

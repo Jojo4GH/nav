@@ -27,7 +27,7 @@ interface MainController : InputController, DialogShowController, FullContext, S
 
     fun runEntryMacro(entryMacro: Config.EntryMacro)
 
-    fun exit(atDirectory: Path? = null): Nothing
+    fun exit(exitCode: Int = 0, atDirectory: Path? = null): Nothing
 }
 
 context(controller: MainController)
@@ -54,4 +54,4 @@ context(controller: MainController)
 fun runEntryMacro(entryMacro: Config.EntryMacro) = controller.runEntryMacro(entryMacro)
 
 context(controller: MainController)
-fun exit(atDirectory: Path? = null): Nothing = controller.exit(atDirectory)
+fun exit(exitCode: Int = 0, atDirectory: Path? = null): Nothing = controller.exit(exitCode, atDirectory)
