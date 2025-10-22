@@ -321,17 +321,17 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             warnIncompleteInit()
         }
 
-        val app = App(config)
+        App(config) {
+            if (configurationOptions.editConfig) {
+                doEditConfig()
+            }
 
-        if (configurationOptions.editConfig) {
-            doEditConfig(app)
+            if (config.autoCheckForUpdates) launch {
+                doAutoCheckForUpdates()
+            }
+
+            main()
         }
-
-        if (config.autoCheckForUpdates) launch {
-            doAutoCheckForUpdates()
-        }
-
-        app.main()
     }
 
     private suspend fun doCheckForUpdates() {
@@ -373,12 +373,12 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         terminal.info("Use --init-help to get more information.")
     }
 
-    private fun doEditConfig(app: App): Nothing {
+    private fun App.doEditConfig(): Nothing {
         val configPath = Config.findExplicitPath()
             ?: Config.findDefaultPath(mustExist = false)
             ?: run {
                 terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
-                exitProcess(1)
+                exit(1)
             }
         if (!configPath.exists()) {
             terminal.info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
@@ -388,8 +388,8 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             }
         }
         terminal.info("""Opening config file at "$configPath" ...""")
-        val exitCode = app.openInEditor(configPath)
-        exitProcess(exitCode ?: 1)
+        val exitCode = openInEditor(configPath)
+        exit(exitCode ?: 1)
     }
 
     private suspend fun doAutoCheckForUpdates() = catchAllDebug {
