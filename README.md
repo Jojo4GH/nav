@@ -4,9 +4,7 @@
 
 The interactive and stylish replacement for ls & cd!
 
-![nav demo](media/screenshot2.png)
-
-![nav demo filter](media/screenshot3.png)
+![nav demo](media/demo1.gif)
 
 </div>
 
