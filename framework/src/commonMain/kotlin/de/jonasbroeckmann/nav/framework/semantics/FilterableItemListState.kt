@@ -21,7 +21,7 @@ data class FilterableItemListState<Item> private constructor(
     override fun withFilter(filter: String): FilterableItemListState<Item> {
         if (filter == this.filter) return this
         val filteredItems = computeFiltered(
-            items = if (filter.startsWith(this.filter)) {
+            items = if (this.filter.isNotEmpty() && filter.startsWith(this.filter)) {
                 filteredItems // incremental filtering for better performance
             } else {
                 unfilteredItems
