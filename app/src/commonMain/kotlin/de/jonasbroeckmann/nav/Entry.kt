@@ -12,6 +12,9 @@ expect fun Path.entry(): Entry
 
 @OptIn(ExperimentalTime::class)
 interface Entry {
+    /**
+     * This must always be an absolute path
+     */
     val path: Path
 
     val error: String?
@@ -31,6 +34,8 @@ interface Entry {
 
     val lastModificationTime: Instant?
 
+    val linkTarget: Link?
+
     data class Permissions(
         val canRead: Boolean = false,
         val canWrite: Boolean = false,
@@ -42,6 +47,14 @@ interface Entry {
         RegularFile,
         SymbolicLink,
         Unknown
+    }
+
+    interface Link {
+        /**
+         * This might be relative or absolute
+         */
+        val path: Path
+        val targetEntry: Entry
     }
 }
 
@@ -71,6 +84,8 @@ internal abstract class EntryBase(override val path: Path) : Entry {
     override val size get() = stat?.size?.takeIf { it >= 0 && type != Directory }
 
     override val lastModificationTime get() = stat?.lastModificationTime
+
+    override val linkTarget: Entry.Link? get() = null
 }
 
 internal fun Stat.Mode.Permissions.toEntryPermissions() = Entry.Permissions(
