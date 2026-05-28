@@ -33,19 +33,23 @@ Select your operating system
 <details>
 <summary>Linux</summary>
 
-Install (or update) nav with the [installer script](install/install.sh):
-```sh
-curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
-```
-Or install with any of the following package managers:
+Install with any of the following package managers:
 
-| Distribution | Repository | Instructions                               |
-|--------------|------------|--------------------------------------------|
-| Arch Linux   | [AUR]      | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
-| NixOS        | [Nixpkgs]  | `nix-shell -p nav`                         |
+| Distribution         | Repository                                                  | Instructions                               |
+|----------------------|-------------------------------------------------------------|--------------------------------------------|
+| Arch Linux           | [AUR]                                                       | `pacman -S nav-cli` <br/> `yay -S nav-cli` |
+| NixOS                | [Nixpkgs]                                                   | `nix-shell -p nav`                         |
+| Debian, Ubuntu, etc. | [nav_amd64.deb][Deb_amd64] <br/> [nav_arm64.deb][Deb_arm64] | `dpkg -i ...`                              |
 
 [AUR]: https://aur.archlinux.org/packages/nav-cli
 [Nixpkgs]: https://search.nixos.org/packages?show=nav
+[Deb_amd64]: https://github.com/Jojo4GH/nav/releases/latest/download/nav_amd64.deb
+[Deb_arm64]: https://github.com/Jojo4GH/nav/releases/latest/download/nav_arm64.deb
+
+Or install (or update) nav with the [installer script](install/install.sh):
+```sh
+curl -sS https://raw.githubusercontent.com/Jojo4GH/nav/master/install/install.sh | sh
+```
 
 Or manually download the [latest release](https://github.com/Jojo4GH/nav/releases/latest).
 
@@ -144,7 +148,8 @@ home-manager.users.user.programs = {
 
 ## 🔧 Configuration
 
-The default location for the configuration file is `~/.config/nav.toml`.
+To create or edit the config file you can use the `--edit-config` command line option.
+The default location for the file is `~/.config/nav.toml`.
 You can change this by setting the `NAV_CONFIG` environment variable:
 
 <details>
@@ -165,12 +170,15 @@ $ENV:NAV_CONFIG = "$HOME\some\other\path\nav.toml"
 
 </details>
 
+You can also use the `--config` command line option to explicitly specify a config file.
+
 The default configuration looks as follows:
 
 ```toml
 # If not specified, uses the first that exists of the following:
 # $EDITOR, $VISUAL, nano, nvim, vim, vi, code, notepad
-editor = "nano"
+# You can also use the --editor command line option to override this
+editor = ""
 
 hideHints = false
 clearOnExit = true
@@ -181,6 +189,16 @@ maxVisiblePathElements = 6
 # Used to distinguish escape sequences on Linux terminals
 inputTimeoutMillis = 4 # Set to 0 for no timeout
 suppressInitCheck = false
+
+# Which columns to show for each entry and how to order them
+shownColumns = [
+    "Permissions",      # Permissions of the entry in unix style
+    # "HardLinkCount",  # Number of hard links to the entry (not shown by default)
+    # "UserName",       # Name of the user owning the entry (not shown by default)
+    # "GroupName",      # Name of the group owning the entry (not shown by default)
+    "EntrySize",        # Size of the file
+    "LastModified",     # Time of last modification
+]
 
 [keys]
 

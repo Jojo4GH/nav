@@ -5,17 +5,20 @@ import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.terminal.Terminal
 import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
+import com.github.ajalt.mordant.terminal.warning
+import de.jonasbroeckmann.nav.app.EntryColumn
 import de.jonasbroeckmann.nav.app.State
 import de.jonasbroeckmann.nav.utils.*
+import kotlinx.io.files.Path
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
 @Serializable
-data class Config(
-    val editor: String = DefaultEditor,
+data class Config private constructor(
+    @SerialName("editor")
+    val editorCommand: String? = null,
     val hideHints: Boolean = false,
     val clearOnExit: Boolean = true,
 
@@ -24,6 +27,15 @@ data class Config(
     val maxVisiblePathElements: Int = 6,
     val inputTimeoutMillis: Int = 4,
     val suppressInitCheck: Boolean = false,
+
+    val shownColumns: List<EntryColumn> = listOf(
+        Permissions,
+        // HardLinkCount,
+        // UserName,
+        // GroupName,
+        EntrySize,
+        LastModified,
+    ),
 
     val keys: Keys = Keys(),
 
@@ -78,6 +90,9 @@ data class Config(
         val permissionRead: String = Retro.permissionRead,
         val permissionWrite: String = Retro.permissionWrite,
         val permissionExecute: String = Retro.permissionExecute,
+        val hardlinkCount: String = Retro.hardlinkCount,
+        val user: String = Retro.user,
+        val group: String = Retro.group,
         val entrySize: String = Retro.entrySize,
         val modificationTime: String = Retro.modificationTime,
 
@@ -96,6 +111,9 @@ data class Config(
                 permissionRead = "C50F1F",
                 permissionWrite = "13A10E",
                 permissionExecute = "3B78FF",
+                hardlinkCount = "13A10E",
+                user = "C50F1F",
+                group = "C50F1F",
                 entrySize = "FFFF00",
                 modificationTime = "00FF00",
 
@@ -123,6 +141,9 @@ data class Config(
                 permissionRead = color1,
                 permissionWrite = color2,
                 permissionExecute = color3,
+                hardlinkCount = color2,
+                user = color1,
+                group = color1,
                 entrySize = color2,
                 modificationTime = color3,
                 directory = color1,
@@ -220,11 +241,39 @@ data class Config(
         val DefaultPath by lazy { UserHome / ".config" / "nav.toml" }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        fun load(terminal: Terminal): Config {
-            val path = getenv(ENV_VAR_NAME) // if specified explicitly don't check for existence
-                ?: DefaultPath.takeIf { it.exists() }?.toString()
-                ?: return Config()
+        context(context: RunContext)
+        fun findExplicitPath(): Path? {
+            return context.command.configurationOptions.configPath?.let { Path(it) }
+                ?: getenv(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+        }
+
+        context(context: RunContext)
+        fun load() = loadInternal()
+            .let {
+                // override editor from command line argument
+                val editorCommandFromCLI = context.command.configurationOptions.editor
+                if (editorCommandFromCLI != null) {
+                    context.printlnOnDebug { "Using editor from command line argument: $editorCommandFromCLI" }
+                    return it.copy(editorCommand = editorCommandFromCLI)
+                }
+                // fill in default editor
+                if (it.editorCommand == null) {
+                    it.copy(editorCommand = findDefaultEditorCommand())
+                } else it
+            }
+
+        context(context: RunContext)
+        private fun loadInternal(): Config {
             try {
+                val explicitPath = findExplicitPath()?.also {
+                    require(it.exists()) { "The specified config does not exist: $it" }
+                    require(it.isRegularFile) { "The specified config is not a file: $it" }
+                }
+                val path = when {
+                    explicitPath != null -> explicitPath
+                    DefaultPath.exists() && DefaultPath.isRegularFile -> DefaultPath
+                    else -> return Config()
+                }
                 return TomlFileReader(
                     inputConfig = TomlInputConfig(
                         ignoreUnknownNames = true
@@ -232,25 +281,59 @@ data class Config(
                     outputConfig = TomlOutputConfig()
                 ).decodeFromFile(
                     deserializer = serializer(),
-                    tomlFilePath = path
+                    tomlFilePath = path.toString()
                 )
             } catch (e: Exception) {
-                terminal.danger("Could not load config: ${e.message}")
-                terminal.info("Using default config")
+                context.dangerThrowable(e, "Could not load config: ${e.message}")
+                context.terminal.warning("Using default config")
                 return Config()
             }
         }
 
-        private val DefaultEditor by lazy {
-            getenv("EDITOR")?.trim()?.takeUnless { it.isBlank() }
-                ?: getenv("VISUAL")?.trim()?.takeUnless { it.isBlank() }
-                ?: which("nano")?.toString()
-                ?: which("nvim")?.toString()
-                ?: which("vim")?.toString()
-                ?: which("vi")?.toString()
-                ?: which("code")?.toString()
-                ?: which("notepad")?.toString()
-                ?: "nano"
+        private val DefaultEditorPrograms = listOf("nano", "nvim", "vim", "vi", "code", "notepad")
+
+        context(context: RunContext)
+        private fun findDefaultEditorCommand(): String? {
+            context.printlnOnDebug { "Searching for default editor:" }
+
+            fun checkEnvVar(name: String): String? {
+                val value = getenv(name)?.trim() ?: run {
+                    context.printlnOnDebug { $$"  $$$name not set" }
+                    return null
+                }
+                if (value.isBlank()) {
+                    context.printlnOnDebug { $$"  $$$name is empty" }
+                    return null
+                }
+                    context.printlnOnDebug { $$"  Using value of $$$name: $$value" }
+                return value
+            }
+
+            fun checkProgram(name: String): String? {
+                val path = which(name) ?: run {
+                    context.printlnOnDebug { $$"  $$name not found in $PATH" }
+                    return null
+                }
+                    context.printlnOnDebug { "  Found $name at $path" }
+                return "\"$path\"" // quote path to handle spaces
+            }
+
+            return sequence {
+                yield(checkEnvVar("EDITOR"))
+                yield(checkEnvVar("VISUAL"))
+                DefaultEditorPrograms.forEach { name ->
+                    yield(checkProgram(name))
+                }
+            }.filterNotNull().firstOrNull().also {
+                if (it == null) {
+                    context.terminal.danger("Could not find a default editor")
+                    context.terminal.warning(specifyEditorMessage)
+                }
+            }
+        }
+
+        val specifyEditorMessage: String get() {
+            return $$"""Please specify an editor via the --editor CLI option, the editor config option or the $EDITOR environment variable"""
         }
 
         private val EscapeOrDelete get() = KeyboardEvent("Escape")

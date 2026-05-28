@@ -334,7 +334,7 @@ if [ -z "${PLATFORM-}" ]; then
 fi
 
 if [ -z "${BIN_DIR-}" ]; then
-  BIN_DIR=/usr/local/bin
+  BIN_DIR=/usr/bin
 fi
 
 if [ -z "${ARCH-}" ]; then
@@ -467,4 +467,4 @@ completed "nav ${VERSION} installed"
 printf '\n'
 info "Please follow the steps for your shell to complete the installation:"
 
-nav --init-info
+nav --init-help

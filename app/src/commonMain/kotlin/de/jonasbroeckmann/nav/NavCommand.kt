@@ -6,7 +6,9 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.convert
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.arguments.validate
+import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
+import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.flag
@@ -17,14 +19,15 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.app.BuildConfig
-import de.jonasbroeckmann.nav.utils.WorkingDirectory
 import de.jonasbroeckmann.nav.utils.absolute
 import de.jonasbroeckmann.nav.utils.cleaned
+import de.jonasbroeckmann.nav.utils.exitProcess
 import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
 
-class NavCommand : CliktCommand() {
-    private val startingDirectory by argument(
+class NavCommand : CliktCommand(name = BinaryName) {
+
+    val startingDirectory by argument(
         "DIRECTORY",
         help = "The directory to start in",
         completionCandidates = CompletionCandidates.Path
@@ -32,48 +35,81 @@ class NavCommand : CliktCommand() {
         .convert { Path(it).absolute().cleaned() }
         .optional()
         .validate {
-            val metadata = it.metadataOrNull()
-                ?: fail("\"$it\": No such file or directory")
+            val metadata = it.metadataOrNull() ?: fail("\"$it\": No such file or directory")
             require(metadata.isDirectory) { "\"$it\": Not a directory" }
         }
 
-    private val init by mutuallyExclusiveOptions<Pair<Shell, InitAction>>(
+    val configurationOptions by ConfigurationOptions()
+
+    class ConfigurationOptions : OptionGroup(
+        name = "Configuration",
+        help = "Options to configure the behavior of $BinaryName"
+    ) {
+        val configPath by option(
+            "--config",
+            metavar = "PATH",
+            help = """Explicitly specify the config file to use (default: looks for config file at $${Config.ENV_VAR_NAME} or "${Config.DefaultPath}")"""
+        )
+
+        val shell by option(
+            "--shell",
+            "--correct-init", // Deprecated
+            metavar = "SHELL",
+            help = "Uses this shell for command execution. Also signals that the initialization script is being used correctly"
+        ).choice(Shell.available)
+
+        val editor by option(
+            "--editor",
+            metavar = "COMMAND",
+            help = "Explicitly specify the editor to use (overrides all configuration)"
+        ).convert { it.trim() }
+
+        val editConfig by option(
+            "--edit-config",
+            help = "Opens the current config file in the editor"
+        ).flag()
+    }
+
+    private val initOption by mutuallyExclusiveOptions<InitOption>(
+        option(
+            "--init-help",
+            "--init-info", // Deprecated
+            help = "Prints information about how to initialize $BinaryName correctly"
+        ).flag().convert { if (it) InitOption.Info else null },
         option(
             "--init",
             metavar = "SHELL",
             help = "Prints the initialization script for the specified shell"
-        ).choice(Shell.available).convert { it to { printInitScript() } },
+        ).choice(Shell.available).convert { InitOption.Init(it) },
         option(
             "--profile-location",
             metavar = "SHELL",
             help = "Prints the typical location of the profile file for the specified shell"
-        ).choice(Shell.available).convert { it to { printProfileLocation() } },
+        ).choice(Shell.available).convert { InitOption.ProfileLocation(it) },
         option(
             "--profile-command",
             metavar = "SHELL",
             help = "Prints the command that should be added to the profile file for the specified shell"
-        ).choice(Shell.available).convert { it to { printProfileCommand() } },
+        ).choice(Shell.available).convert { InitOption.ProfileCommand(it) },
+        name = "Initialization",
+        help = "Options related to $BinaryName initialization"
     ).single()
 
-    private val initInfo by option(
-        "--init-info",
-        help = "Prints information about how to initialize $BinaryName correctly"
-    ).flag()
+    private sealed interface InitOption {
+        data object Info : InitOption
+        data class Init(val shell: Shell) : InitOption
+        data class ProfileLocation(val shell: Shell) : InitOption
+        data class ProfileCommand(val shell: Shell) : InitOption
+    }
 
-    private val correctInit by option(
-        "--correct-init",
-        metavar = "SHELL",
-        help = "Signals that the initialization script is being used correctly from the specified shell"
-    ).choice(Shell.available)
-
-    private val debugMode by option(
+    val debugMode by option(
         "--debug",
         help = "Enables debug mode"
     ).flag()
 
     private val version by option(
         "--version",
-        help = "Print version"
+        help = "Print version and exit"
     ).flag()
 
     override fun run() {
@@ -84,32 +120,48 @@ class NavCommand : CliktCommand() {
             return
         }
 
-        init?.let { (shell, action) ->
-            shell.action(terminal)
-            return
+        initOption?.let { initOption ->
+            when (initOption) {
+                InitOption.Info -> {
+                    terminal.println()
+                    Shell.printInitInfo(terminal)
+                    terminal.println()
+                    return
+                }
+                is InitOption.Init -> {
+                    initOption.shell.printInitScript()
+                    return
+                }
+                is InitOption.ProfileLocation -> {
+                    initOption.shell.printProfileLocation()
+                    return
+                }
+                is InitOption.ProfileCommand -> {
+                    initOption.shell.printProfileCommand()
+                    return
+                }
+            }
         }
 
-        if (initInfo) {
-            terminal.println()
-            Shell.printInitInfo(terminal)
-            terminal.println()
-            return
+        context(RunContext(terminal, this)) {
+            val config = Config.load()
+
+            if (configurationOptions.shell == null && !config.suppressInitCheck) {
+                terminal.danger("The installation is not complete and some feature will not work.")
+                terminal.info("Use --init-help to get more information.")
+            }
+
+            val app = App(config)
+
+            if (configurationOptions.editConfig) {
+                val configPath = Config.findExplicitPath() ?: Config.DefaultPath
+                terminal.info("""Opening config file at "$configPath" ...""")
+                val exitCode = app.openInEditor(configPath)
+                exitProcess(exitCode ?: 1)
+            }
+
+            app.main()
         }
-
-        val config = Config.load(terminal)
-
-        if (correctInit == null && !config.suppressInitCheck) {
-            terminal.danger("The installation is not complete and some feature will not work.")
-            terminal.info("Use --init-info to get more information.")
-        }
-
-        App(
-            terminal = terminal,
-            config = config,
-            startingDirectory = startingDirectory ?: WorkingDirectory,
-            initShell = correctInit,
-            debugMode = debugMode
-        ).main()
     }
 
     companion object {
