@@ -2,10 +2,13 @@ import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.*
 import com.netflix.gradle.plugins.deb.Deb
 import dev.detekt.gradle.Detekt
 import org.gradle.crypto.checksum.Checksum
+import org.jetbrains.kotlin.gradle.plugin.mpp.DisableCacheInKotlinVersion
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCacheApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
+import java.net.URI
 
 plugins {
     kotlin("multiplatform")
@@ -57,6 +60,17 @@ kotlin {
             executable {
                 baseName = binaryName
                 entryPoint = "$group.main"
+
+                if (target.konanTarget == KonanTarget.LINUX_X64) {
+                    @OptIn(KotlinNativeCacheApi::class)
+                    disableNativeCache(
+                        version = DisableCacheInKotlinVersion.`2_4_10`,
+                        reason = "Cache bug with mordant",
+                        issueUrl = URI(
+                            "https://youtrack.jetbrains.com/issue/KT-75928/ld.lld-error-duplicate-symbol-when-enabling-.konan-cache"
+                        )
+                    )
+                }
             }
         }
     }
