@@ -1,7 +1,7 @@
 package de.jonasbroeckmann.nav.update
 
 import de.jonasbroeckmann.nav.Constants
-import de.jonasbroeckmann.nav.app.BuildConfig
+import de.jonasbroeckmann.nav.BuildKonfig
 import kotlin.text.get
 
 data class Version(
@@ -45,7 +45,7 @@ data class Version(
         }
 
         val Current by lazy {
-            of(Constants.Version) ?: throw AssertionError("Could not parse current version '${BuildConfig.VERSION}'")
+            of(Constants.Version) ?: throw AssertionError("Could not parse current version '${BuildKonfig.VERSION}'")
         }
     }
 }

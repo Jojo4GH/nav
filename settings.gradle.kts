@@ -12,10 +12,9 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
 }
 
-// Project structure
-rootProject.name = "nav"
-include("app")
-
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
+// Project structure
+rootProject.name = "nav"
 include("framework")
+include("app")

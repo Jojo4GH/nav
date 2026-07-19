@@ -1,3 +1,4 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.*
 import com.netflix.gradle.plugins.deb.Deb
 import dev.detekt.gradle.Detekt
 import org.gradle.crypto.checksum.Checksum
@@ -10,7 +11,7 @@ plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("dev.detekt")
-    id("com.github.gmazzo.buildconfig")
+    id("com.codingfeline.buildkonfig")
     id("org.gradle.crypto.checksum")
     id("com.netflix.nebula.ospackage")
 }
@@ -22,19 +23,25 @@ description = "The interactive and stylish replacement for ls & cd!"
 
 val binaryName = "nav"
 
-buildConfig {
-    buildConfigField("String", "VERSION", "\"$version\"")
-    buildConfigField("String", "BINARY_NAME", "\"$binaryName\"")
+buildkonfig {
+    packageName = "$group"
+    defaultConfigs {
+        buildConfigField(STRING, "VERSION", "$version")
+        buildConfigField(STRING, "BINARY_NAME", binaryName)
+    }
 }
 
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(
-            "-Xcontext-parameters",
+            "-Xexplicit-context-arguments",
+            "-Xcollection-literals",
+            "-Xintrinsic-const-evaluation",
+            "-Xallow-returns-result-of",
             "-Xcontext-sensitive-resolution",
-            "-Xnested-type-aliases",
+            "-Xexpect-actual-classes",
+            "-Xreturn-value-checker=check",
             "-Xconsistent-data-class-copy-visibility",
-            "-Xallow-holdsin-contract",
         )
     }
 
@@ -55,13 +62,13 @@ kotlin {
     }
 
     sourceSets {
-        val ktorVersion = "3.3.1"
+        val ktorVersion = "3.5.1"
 
         commonMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
 
-            val kotlinxIOVersion = "0.8.0"
+            val kotlinxIOVersion = "0.9.1"
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:$kotlinxIOVersion")
             implementation("org.jetbrains.kotlinx:kotlinx-io-okio:$kotlinxIOVersion")
 
@@ -69,9 +76,9 @@ kotlin {
             implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
             implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
 
-            implementation("com.charleskorn.kaml:kaml:0.97.0")
+            implementation("com.charleskorn.kaml:kaml:0.104.0")
 
-            implementation("com.github.ajalt.clikt:clikt:5.0.3")
+            implementation("com.github.ajalt.clikt:clikt:5.1.0")
 
             val mordantVersion = "3.0.2"
             implementation("com.github.ajalt.mordant:mordant:$mordantVersion")
@@ -98,7 +105,7 @@ kotlin {
 }
 
 dependencies {
-    detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
+    detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.5")
 }
 
 tasks.withType<Detekt>().configureEach {

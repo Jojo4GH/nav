@@ -11,10 +11,14 @@ group = "de.jonasbroeckmann.nav"
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(
-            "-Xcontext-parameters",
+            "-Xexplicit-context-arguments",
+            "-Xcollection-literals",
+            "-Xintrinsic-const-evaluation",
+            "-Xallow-returns-result-of",
             "-Xcontext-sensitive-resolution",
-            "-Xnested-type-aliases",
-            "-Xconsistent-data-class-copy-visibility"
+            "-Xexpect-actual-classes",
+            "-Xreturn-value-checker=check",
+            "-Xconsistent-data-class-copy-visibility",
         )
     }
 
@@ -27,10 +31,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
 
-            val kotlinxIOVersion = "0.8.0"
+            val kotlinxIOVersion = "0.9.1"
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:$kotlinxIOVersion")
             implementation("org.jetbrains.kotlinx:kotlinx-io-okio:$kotlinxIOVersion")
 
