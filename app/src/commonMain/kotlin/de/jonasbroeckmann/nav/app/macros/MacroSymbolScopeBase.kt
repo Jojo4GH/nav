@@ -9,7 +9,7 @@ open class MacroSymbolScopeBase(
 ) : MacroSymbolScope {
     protected open val variables = mutableMapOf<MacroSymbol.Generic, String>()
 
-    override operator fun get(symbol: MacroSymbol) = context(context, stateProvider) {
+    override operator fun get(symbol: MacroSymbol): String = context(context, stateProvider) {
         when (symbol) {
             is MacroSymbol.EnvironmentVariable -> symbol.get()
             is MacroSymbol.Generic -> {

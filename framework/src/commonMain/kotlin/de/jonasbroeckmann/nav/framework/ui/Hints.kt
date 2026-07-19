@@ -76,7 +76,7 @@ class HintsBuilder internal constructor(private val defaultStrongSpacing: String
         inputMode: InputMode?,
         weakSpacing: Boolean = false,
         render: context(Context) A.() -> String
-    ) = context(context) {
+    ): Unit = context(context) {
         if (!action.isShown(inputMode)) return
         add(weakSpacing) { action.render() }
     }

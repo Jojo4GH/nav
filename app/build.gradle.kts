@@ -1,16 +1,20 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.*
 import com.netflix.gradle.plugins.deb.Deb
 import dev.detekt.gradle.Detekt
 import org.gradle.crypto.checksum.Checksum
+import org.jetbrains.kotlin.gradle.plugin.mpp.DisableCacheInKotlinVersion
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCacheApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import org.jetbrains.kotlin.konan.target.*
 import org.jetbrains.kotlin.konan.target.Architecture
+import java.net.URI
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("dev.detekt")
-    id("com.github.gmazzo.buildconfig")
+    id("com.codingfeline.buildkonfig")
     id("org.gradle.crypto.checksum")
     id("com.netflix.nebula.ospackage")
 }
@@ -22,19 +26,25 @@ description = "The interactive and stylish replacement for ls & cd!"
 
 val binaryName = "nav"
 
-buildConfig {
-    buildConfigField("String", "VERSION", "\"$version\"")
-    buildConfigField("String", "BINARY_NAME", "\"$binaryName\"")
+buildkonfig {
+    packageName = "$group"
+    defaultConfigs {
+        buildConfigField(STRING, "VERSION", "$version", const = true)
+        buildConfigField(STRING, "BINARY_NAME", binaryName, const = true)
+    }
 }
 
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(
-            "-Xcontext-parameters",
+            "-Xexplicit-context-arguments",
+            "-Xcollection-literals",
+            "-Xintrinsic-const-evaluation",
+            "-Xallow-returns-result-of",
             "-Xcontext-sensitive-resolution",
-            "-Xnested-type-aliases",
+            "-Xexpect-actual-classes",
+            "-Xreturn-value-checker=check",
             "-Xconsistent-data-class-copy-visibility",
-            "-Xallow-holdsin-contract",
         )
     }
 
@@ -50,18 +60,29 @@ kotlin {
             executable {
                 baseName = binaryName
                 entryPoint = "$group.main"
+
+                if (target.konanTarget == KonanTarget.LINUX_X64) {
+                    @OptIn(KotlinNativeCacheApi::class)
+                    disableNativeCache(
+                        version = DisableCacheInKotlinVersion.`2_4_10`,
+                        reason = "Cache bug with mordant",
+                        issueUrl = URI(
+                            "https://youtrack.jetbrains.com/issue/KT-75928/ld.lld-error-duplicate-symbol-when-enabling-.konan-cache"
+                        )
+                    )
+                }
             }
         }
     }
 
     sourceSets {
-        val ktorVersion = "3.3.1"
+        val ktorVersion = "3.5.1"
 
         commonMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
 
-            val kotlinxIOVersion = "0.8.0"
+            val kotlinxIOVersion = "0.9.1"
             implementation("org.jetbrains.kotlinx:kotlinx-io-core:$kotlinxIOVersion")
             implementation("org.jetbrains.kotlinx:kotlinx-io-okio:$kotlinxIOVersion")
 
@@ -69,9 +90,9 @@ kotlin {
             implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
             implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
 
-            implementation("com.charleskorn.kaml:kaml:0.97.0")
+            implementation("com.charleskorn.kaml:kaml:0.104.0")
 
-            implementation("com.github.ajalt.clikt:clikt:5.0.3")
+            implementation("com.github.ajalt.clikt:clikt:5.1.0")
 
             val mordantVersion = "3.0.2"
             implementation("com.github.ajalt.mordant:mordant:$mordantVersion")
@@ -102,7 +123,7 @@ dependencies {
 }
 
 tasks.withType<Detekt>().configureEach {
-    exclude("de/jonasbroeckmann/nav/app/BuildConfig.kt")
+    exclude("de/jonasbroeckmann/nav/BuildKonfig.kt")
 }
 
 tasks.register("detektAll") {
