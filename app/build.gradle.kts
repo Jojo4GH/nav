@@ -26,8 +26,8 @@ val binaryName = "nav"
 buildkonfig {
     packageName = "$group"
     defaultConfigs {
-        buildConfigField(STRING, "VERSION", "$version")
-        buildConfigField(STRING, "BINARY_NAME", binaryName)
+        buildConfigField(STRING, "VERSION", "$version", const = true)
+        buildConfigField(STRING, "BINARY_NAME", binaryName, const = true)
     }
 }
 
@@ -109,7 +109,7 @@ dependencies {
 }
 
 tasks.withType<Detekt>().configureEach {
-    exclude("de/jonasbroeckmann/nav/app/BuildConfig.kt")
+    exclude("de/jonasbroeckmann/nav/BuildKonfig.kt")
 }
 
 tasks.register("detektAll") {

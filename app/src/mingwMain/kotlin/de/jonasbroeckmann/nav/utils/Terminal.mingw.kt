@@ -68,7 +68,10 @@ private object TerminalInterfaceNativeWindows : StandardTerminalInterface() {
         }
         val inputEvents = allocArray<INPUT_RECORD>(1)
         val eventsRead = alloc<UIntVar>()
+
+        @Suppress("detekt:BackingPropertyNaming")
         val _ = ReadConsoleInput!!(stdinHandle, inputEvents, 1u, eventsRead.ptr)
+
         if (eventsRead.value == 0u) {
             throw ConsoleException("Error reading from console input")
         }
