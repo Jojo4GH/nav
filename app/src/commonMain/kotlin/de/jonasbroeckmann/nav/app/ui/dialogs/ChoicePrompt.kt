@@ -4,6 +4,7 @@ import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.ui.buildDefaultHints
 import de.jonasbroeckmann.nav.app.ui.highlightFilterOccurrences
 import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.config.Config
@@ -17,7 +18,6 @@ import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.*
 import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
-import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog
 import de.jonasbroeckmann.nav.framework.ui.dialog.updateState
@@ -164,9 +164,9 @@ fun DialogShowScope.choicePrompt(
             }
             if (showHints) {
                 cell(
-                    buildHints(styles.genericElements(" • ")) {
+                    buildDefaultHints {
                         addActions(actions, this@inputDialog, inputMode) { render() }
-                    }.let {
+                    }.joinToString("").let {
                         "${styles.genericElements("•")} $it"
                     }
                 )

@@ -2,17 +2,34 @@ package de.jonasbroeckmann.nav.framework.ui
 
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.input.InputMode
+import kotlin.to
 
 fun buildHints(
     defaultStrongSpacing: String,
+    defaultWeakSpacing: String = " ",
+    spacingMergeStrategy: HintsBuilder.SpacingMergeStrategy = HintsBuilder.SpacingMergeStrategy.MergeNext,
     block: HintsBuilder.() -> Unit
-) = HintsBuilder(defaultStrongSpacing).apply(block).build()
+) = HintsBuilder(
+    defaultStrongSpacing = defaultStrongSpacing,
+    defaultWeakSpacing = defaultWeakSpacing,
+    spacingMergeStrategy = spacingMergeStrategy
+).apply(block).build()
 
 @DslMarker
 annotation class HintsBuilderDsl
 
 @HintsBuilderDsl
-class HintsBuilder internal constructor(private val defaultStrongSpacing: String) {
+class HintsBuilder internal constructor(
+    private val defaultStrongSpacing: String,
+    private val defaultWeakSpacing: String,
+    private val spacingMergeStrategy: SpacingMergeStrategy
+) {
+    enum class SpacingMergeStrategy {
+        NoMerge,
+        MergeNext,
+        MergePrevious
+    }
+
     private enum class ElementType(val isSpacing: Boolean) {
         WithWeakSpacing(false),
         WithStrongSpacing(false),
@@ -22,37 +39,72 @@ class HintsBuilder internal constructor(private val defaultStrongSpacing: String
 
     private val elements = mutableListOf<Pair<ElementType, () -> String>>()
 
-    internal fun build(): String = buildString {
+    internal fun build(): Sequence<String> = sequence {
         var lastElementType: ElementType? = null
         elements.forEachIndexed { index, (type, element) ->
             when (type) {
-                ElementType.StrongSpacing -> {
-                    append(element())
+                StrongSpacing -> {
+                    yield(type to element())
                     lastElementType = ElementType.StrongSpacing
                 }
-                ElementType.WeakSpacing -> {
+                WeakSpacing -> {
                     if (lastElementType != null && !lastElementType.isSpacing && index < elements.lastIndex) {
-                        append(element())
+                        yield(type to element())
                         lastElementType = ElementType.WeakSpacing
                     }
                 }
-                ElementType.WithStrongSpacing -> {
+                WithStrongSpacing -> {
                     if (lastElementType != null && !lastElementType.isSpacing) {
-                        append(defaultStrongSpacing)
+                        yield(ElementType.StrongSpacing to defaultStrongSpacing)
                     }
-                    append(element())
+                    yield(type to element())
                     lastElementType = ElementType.WithStrongSpacing
                 }
-                ElementType.WithWeakSpacing -> {
+                WithWeakSpacing -> {
                     if (lastElementType != null && !lastElementType.isSpacing) {
                         if (lastElementType == ElementType.WithWeakSpacing) {
-                            append(" ")
+                            yield(ElementType.WeakSpacing to defaultWeakSpacing)
                         } else {
-                            append(defaultStrongSpacing)
+                            yield(ElementType.StrongSpacing to defaultStrongSpacing)
                         }
                     }
-                    append(element())
+                    yield(type to element())
                     lastElementType = ElementType.WithWeakSpacing
+                }
+            }
+        }
+    }.run {
+        when (spacingMergeStrategy) {
+            NoMerge -> map { (_, element) -> element }
+            MergeNext -> sequence {
+                var spacingBuffer: String? = null
+                forEach { (type, element) ->
+                    if (type.isSpacing) {
+                        spacingBuffer = spacingBuffer.orEmpty() + element
+                    } else {
+                        yield(spacingBuffer.orEmpty() + element)
+                        spacingBuffer = null
+                    }
+                }
+                if (spacingBuffer != null) {
+                    yield(spacingBuffer)
+                }
+            }
+            MergePrevious -> sequence {
+                var elementBuffer: String? = null
+                forEach { (type, element) ->
+                    if (type.isSpacing) {
+                        yield(elementBuffer.orEmpty() + element)
+                        elementBuffer = null
+                    } else {
+                        if (elementBuffer != null) {
+                            yield(elementBuffer)
+                        }
+                        elementBuffer = element
+                    }
+                }
+                if (elementBuffer != null) {
+                    yield(elementBuffer)
                 }
             }
         }
@@ -62,7 +114,7 @@ class HintsBuilder internal constructor(private val defaultStrongSpacing: String
         elements += type to element
     }
 
-    fun addSpacing(weak: Boolean = false, render: () -> String = { defaultStrongSpacing }) {
+    fun addSpacing(weak: Boolean = false, render: () -> String = { if (weak) defaultWeakSpacing else defaultStrongSpacing }) {
         add(if (weak) ElementType.WeakSpacing else ElementType.StrongSpacing, render)
     }
 

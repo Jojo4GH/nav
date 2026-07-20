@@ -14,6 +14,8 @@ import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.MenuAction
+import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
+import de.jonasbroeckmann.nav.framework.ui.buildHints
 
 context(stylesProvider: StylesProvider)
 fun <Context> Action<Context, *, *>.render(
@@ -93,3 +95,16 @@ fun highlightFilterOccurrences(text: String, filter: String, highlightStyle: Tex
     }
     return result
 }
+
+context(_: StylesProvider)
+fun buildDefaultHints(
+    defaultStrongSpacing: String = styles.genericElements(" • "),
+    defaultWeakSpacing: String = " ",
+    spacingMergeStrategy: HintsBuilder.SpacingMergeStrategy = HintsBuilder.SpacingMergeStrategy.MergeNext,
+    block: HintsBuilder.() -> Unit
+) = buildHints(
+    defaultStrongSpacing = defaultStrongSpacing,
+    defaultWeakSpacing = defaultWeakSpacing,
+    spacingMergeStrategy = spacingMergeStrategy,
+    block = block
+)
