@@ -47,7 +47,7 @@ data class Macro(
         }
     }
 
-    context(scope: MacroSymbolScope)
+    context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
     fun available() = condition == null || condition.evaluate()
 
     private val usedSymbolsInDescriptionOrCondition by lazy {
@@ -68,24 +68,31 @@ data class Macro(
         DefaultMacroProperty.Filter.property.symbol in usedSymbolsInDescriptionOrCondition
     }
 
-    context(context: MacroRuntimeContext)
+    context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
     override fun run() = actions.run()
 
     companion object {
         context(_: FullContext, _: StateProvider)
-        fun Macro.computeKeyDescription() = if (!hideKey) MacroSymbolScope.empty { description.evaluate() } else ""
+        private fun <R> evaluationContext(block: context(MacroSymbolScope, MacroTraceContext) () -> R) = context(
+            MacroSymbolScope.Empty,
+            MacroTraceContext.Empty,
+            block
+        )
 
         context(_: FullContext, _: StateProvider)
-        fun Macro.computeQuickModeKeyDescription() = if (!hideQuickModeKey) MacroSymbolScope.empty { description.evaluate() } else ""
+        fun Macro.computeKeyDescription() = if (!hideKey) evaluationContext { description.evaluate() } else ""
+
+        context(_: FullContext, _: StateProvider)
+        fun Macro.computeQuickModeKeyDescription() = if (!hideQuickModeKey) evaluationContext { description.evaluate() } else ""
 
         context(_: FullContext, _: StateProvider)
         fun Macro.computeMenuDescription() = if (menuOrder != null) {
-            MacroSymbolScope.empty { description.evaluate().replaceFirstChar { it.uppercase() } }
+            evaluationContext { description.evaluate().replaceFirstChar { it.uppercase() } }
         } else {
             ""
         }
 
         context(_: FullContext, _: StateProvider)
-        fun Macro.computeCondition() = MacroSymbolScope.empty { available() }
+        fun Macro.computeCondition() = evaluationContext { available() }
     }
 }

@@ -9,11 +9,13 @@ import kotlin.jvm.JvmInline
 value class MacroActions(private val actions: List<MacroAction> = emptyList()) : MacroRunnable {
     constructor(vararg actions: MacroAction) : this(listOf(*actions))
 
-    context(context: MacroRuntimeContext)
+    context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
     override fun run() {
-        actions.forEach {
-            context.printlnOnDebug { "Running macro action: $it" }
-            it.run()
+        actions.forEachIndexed { i, action ->
+            macroTrace({ MacroTraceElement.ActionAtIndex(i, action) }) {
+                context.printlnOnDebug { "Running macro action: $action" }
+                action.run()
+            }
         }
     }
 }

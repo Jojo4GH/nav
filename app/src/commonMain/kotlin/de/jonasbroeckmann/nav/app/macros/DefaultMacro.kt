@@ -37,6 +37,7 @@ sealed class DefaultMacro(
             )
         )
     )
+
     object Delete : DefaultMacro(
         Macro(
             id = "nav:delete",
@@ -60,8 +61,10 @@ sealed class DefaultMacro(
                                 then = MacroActions(
                                     Prompt(
                                         prompt = StringWithPlaceholders(
-                                            "The directory ${DefaultMacroProperty.EntryName.placeholder} is not empty. " +
-                                                    "Do you want to delete it recursively?"
+                                            """
+                                                The directory ${DefaultMacroProperty.EntryName.placeholder} is not empty.
+                                                Do you want to delete it recursively?
+                                            """.trimIndent()
                                         ),
                                         choices = listOf(
                                             StringWithPlaceholders("No"),

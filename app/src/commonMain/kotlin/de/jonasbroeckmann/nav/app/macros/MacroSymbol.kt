@@ -43,5 +43,8 @@ sealed class MacroSymbol {
         } else {
             Generic(string)
         }
+
+        context(scope: MacroSymbolScope)
+        fun MacroSymbol.get() = scope[this]
     }
 }
