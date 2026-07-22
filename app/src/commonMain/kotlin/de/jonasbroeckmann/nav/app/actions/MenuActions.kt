@@ -17,7 +17,7 @@ import kotlinx.io.files.SystemFileSystem
 class MenuActions(context: FullContext) : FullContext by context {
     @Suppress("detekt:MagicNumber")
     val all = listOf(
-        *config.macros.mapNotNull { macro ->
+        *macros.mapNotNull { macro ->
             if (macro.menuOrder == null) return@mapNotNull null
             macro.menuOrder to MenuAction<State, MainController>(
                 description = { macro.computeMenuDescription() },

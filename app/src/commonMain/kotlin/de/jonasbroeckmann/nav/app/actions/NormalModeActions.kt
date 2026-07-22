@@ -22,7 +22,7 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         action = { currentMenuAction?.run(null) }
     )
 
-    val normalModeMacroActions = config.macros.mapNotNull { macro ->
+    val normalModeMacroActions = macros.mapNotNull { macro ->
         if (macro.key == null) return@mapNotNull null
         registerKeyAction(
             macro.key,
