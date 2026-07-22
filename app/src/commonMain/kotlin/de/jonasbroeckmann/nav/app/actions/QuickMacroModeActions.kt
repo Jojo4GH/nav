@@ -22,6 +22,7 @@ class QuickMacroModeActions(context: FullContext) : KeyActions<State, MainContro
     )
 
     val quickMacroModeMacroActions = macros.mapNotNull { macro ->
+        if (!macro.enabled) return@mapNotNull null
         if (macro.quickModeKey == null) return@mapNotNull null
         registerKeyAction(
             macro.quickModeKey.copy(ctrl = false),

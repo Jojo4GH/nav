@@ -23,6 +23,7 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
     )
 
     val normalModeMacroActions = macros.mapNotNull { macro ->
+        if (!macro.enabled) return@mapNotNull null
         if (macro.key == null) return@mapNotNull null
         registerKeyAction(
             macro.key,

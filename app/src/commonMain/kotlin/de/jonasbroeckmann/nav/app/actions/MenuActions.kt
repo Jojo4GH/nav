@@ -18,6 +18,7 @@ class MenuActions(context: FullContext) : FullContext by context {
     @Suppress("detekt:MagicNumber")
     val all = listOf(
         *macros.mapNotNull { macro ->
+            if (!macro.enabled) return@mapNotNull null
             if (macro.menuOrder == null) return@mapNotNull null
             macro.menuOrder to MenuAction<State, MainController>(
                 description = { macro.computeMenuDescription() },

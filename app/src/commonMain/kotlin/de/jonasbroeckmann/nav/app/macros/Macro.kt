@@ -13,13 +13,14 @@ import kotlinx.serialization.UseSerializers
 /**
  * A macro that can be run in the application.
  *
- * If their [condition] is met, macros are shown in the following places:
+ * If it is enabled and its [condition] is met, a macro is shown in the following places:
  * - In key hints, if a [key] is set and not [hideKey]
  * - In quick macro mode, if a [quickModeKey] is set and not [hideQuickModeKey]
  * - In the menu, if a [menuOrder] is set
  *
  * @property id An optional identifier for the macro. If set, it can be referenced by other macros.
  * @property description A human-readable short description of what the macro does. Can contain placeholders for variables.
+ * @property enabled Whether the macro is enabled.
  * @property key The key that triggers the macro when in normal mode.
  * @property hideKey Whether to hide the hint for the normal mode key.
  * @property quickModeKey The key that triggers the macro when in quick macro mode.
@@ -32,6 +33,7 @@ import kotlinx.serialization.UseSerializers
 data class Macro(
     val id: String? = null,
     val description: StringWithPlaceholders = Empty,
+    val enabled: Boolean = true,
     val key: KeyboardEvent? = null,
     val hideKey: Boolean = false,
     val quickModeKey: KeyboardEvent? = null,
@@ -42,7 +44,7 @@ data class Macro(
     private val actions: MacroActions = MacroActions()
 ) : MacroRunnable {
     init {
-        require(menuOrder == null || description.raw.isNotBlank()) {
+        if (enabled) require(menuOrder == null || description.raw.isNotBlank()) {
             "Macros shown in the menu must have a ${::description.name}"
         }
     }
