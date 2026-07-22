@@ -70,13 +70,6 @@ val Entry?.style get() = when (this?.type) {
     Unknown -> styles.nameDecorations
 }
 
-context(_: StylesProvider, _: StateProvider)
-val Macro.style get() = when {
-    dependsOnEntry -> state.currentItem.style
-    dependsOnFilter && state.filter.isNotEmpty() -> styles.filter
-    else -> TextStyle()
-}
-
 fun highlightFilterOccurrences(text: String, filter: String, highlightStyle: TextStyle): String {
     if (filter.isEmpty()) return text
     var index = 0

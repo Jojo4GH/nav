@@ -4,6 +4,8 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.MacroAction.*
 import de.jonasbroeckmann.nav.app.macros.MacroCondition.*
+import de.jonasbroeckmann.nav.config.StyleString.Companion.styleString
+import de.jonasbroeckmann.nav.config.Styles
 
 sealed class DefaultMacro(
     val macro: Macro
@@ -105,6 +107,7 @@ sealed class DefaultMacro(
         Macro(
             id = "nav:newFile",
             description = StringWithPlaceholders("new file: ${DefaultMacroProperty.Filter}"),
+            style = Styles::file.styleString,
             menuOrder = 200,
             condition = All(
                 NotBlank(DefaultMacroProperty.Filter.placeholder),
@@ -121,6 +124,7 @@ sealed class DefaultMacro(
         Macro(
             id = "nav:newDirectory",
             description = StringWithPlaceholders("new directory: ${DefaultMacroProperty.Filter}"),
+            style = Styles::directory.styleString,
             menuOrder = 200,
             condition = All(
                 NotBlank(DefaultMacroProperty.Filter.placeholder),

@@ -3,8 +3,14 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.state.StateProvider
+import de.jonasbroeckmann.nav.app.state.state
+import de.jonasbroeckmann.nav.app.ui.style
+import de.jonasbroeckmann.nav.config.StyleString
+import de.jonasbroeckmann.nav.config.StylesProvider
+import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.KeyboardEventAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,8 +25,9 @@ import kotlinx.serialization.UseSerializers
  * - In the menu, if a [menuOrder] is set
  *
  * @property id An optional identifier for the macro. If set, it can be referenced by other macros.
- * @property description A human-readable short description of what the macro does. Can contain placeholders for variables.
  * @property enabled Whether the macro is enabled.
+ * @property description A human-readable short description of what the macro does. Can contain placeholders for variables.
+ * @property style A style for the macro. If null, a default style is computed.
  * @property key The key that triggers the macro when in normal mode.
  * @property hideKey Whether to hide the hint for the normal mode key.
  * @property quickModeKey The key that triggers the macro when in quick macro mode.
@@ -32,8 +39,9 @@ import kotlinx.serialization.UseSerializers
 @Serializable
 data class Macro(
     val id: String? = null,
-    val description: StringWithPlaceholders = Empty,
     val enabled: Boolean = true,
+    val description: StringWithPlaceholders = Empty,
+    val style: StyleString? = null,
     val key: KeyboardEvent? = null,
     val hideKey: Boolean = false,
     val quickModeKey: KeyboardEvent? = null,
@@ -56,7 +64,7 @@ data class Macro(
         description.symbols.toSet() + condition?.usedSymbols.orEmpty()
     }
 
-    val dependsOnEntry by lazy {
+    private val dependsOnEntry by lazy {
         listOf(
             DefaultMacroProperty.EntryPath,
             DefaultMacroProperty.EntryName,
@@ -66,7 +74,7 @@ data class Macro(
         }
     }
 
-    val dependsOnFilter by lazy {
+    private val dependsOnFilter by lazy {
         DefaultMacroProperty.Filter.property.symbol in usedSymbolsInDescriptionOrCondition
     }
 
@@ -92,6 +100,14 @@ data class Macro(
             evaluationContext { description.evaluate().replaceFirstChar { it.uppercase() } }
         } else {
             ""
+        }
+
+        context(_: StylesProvider, _: StateProvider)
+        fun Macro.computeStyle() = when {
+            style != null -> style.evaluate()
+            dependsOnEntry -> state.currentItem.style
+            dependsOnFilter && state.filter.isNotEmpty() -> styles.filter
+            else -> TextStyle()
         }
 
         context(_: FullContext, _: StateProvider)

@@ -3,10 +3,10 @@ package de.jonasbroeckmann.nav.app.actions
 import de.jonasbroeckmann.nav.app.*
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeKeyDescription
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.State
-import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyActions
 import de.jonasbroeckmann.nav.framework.input.InputMode
@@ -28,7 +28,7 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         registerKeyAction(
             macro.key,
             description = { macro.computeKeyDescription() },
-            style = { macro.style },
+            style = { macro.computeStyle() },
             hidden = { macro.hideKey },
             condition = { macro.computeCondition() },
             action = { runMacro(macro) }

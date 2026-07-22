@@ -5,6 +5,7 @@ import de.jonasbroeckmann.nav.app.*
 import de.jonasbroeckmann.nav.app.macros.DefaultMacro
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeMenuDescription
+import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.prettyName
 import de.jonasbroeckmann.nav.app.ui.style
@@ -19,7 +20,7 @@ class MenuActions(context: FullContext) : FullContext by context {
             if (macro.menuOrder == null) return@mapNotNull null
             macro.menuOrder to MenuAction<State, MainController>(
                 description = { macro.computeMenuDescription() },
-                style = { macro.style },
+                style = { macro.computeStyle() },
                 condition = { macro.computeCondition() },
                 action = { runMacro(macro) }
             )
