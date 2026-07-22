@@ -179,10 +179,6 @@ data class Config private constructor(
             AtomOneDark(Themes.AtomOneDark),
             HackerHacker(Themes.HackerHacker),
         }
-
-        companion object {
-            private fun String.parseColor() = rgb(this)
-        }
     }
 
     @Serializable
