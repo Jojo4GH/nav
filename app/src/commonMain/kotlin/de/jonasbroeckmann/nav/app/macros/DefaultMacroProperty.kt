@@ -52,7 +52,7 @@ sealed class DefaultMacroProperty(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("directory"),
             onGet = { state.directory.toString() },
-            onSet = { newValue -> newValue.parseAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
+            onSet = { newValue -> newValue.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
         )
     )
 

@@ -6,7 +6,7 @@ import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
 import de.jonasbroeckmann.nav.app.macros.MacroSymbol.Companion.get
-import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateAsAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import de.jonasbroeckmann.nav.utils.exists
 import de.jonasbroeckmann.nav.utils.isDirectory
@@ -164,7 +164,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         override val usedSymbols by lazy { exists.symbols.toSet() }
 
         context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
-        override fun evaluate() = macroTrace { exists.evaluateAsAbsolutePath().exists() }
+        override fun evaluate() = macroTrace { exists.evaluateToAbsolutePath().exists() }
     }
 
     @Serializable
@@ -182,7 +182,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
                 DefaultMacroProperty.EntryName.placeholder, DefaultMacroProperty.EntryPath.placeholder -> {
                     DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.DIRECTORY
                 }
-                else -> isDirectory.evaluateAsAbsolutePath().isDirectory
+                else -> isDirectory.evaluateToAbsolutePath().isDirectory()
             }
         }
     }
@@ -202,7 +202,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
                 DefaultMacroProperty.EntryName.placeholder, DefaultMacroProperty.EntryPath.placeholder -> {
                     DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.FILE
                 }
-                else -> isFile.evaluateAsAbsolutePath().isRegularFile
+                else -> isFile.evaluateToAbsolutePath().isRegularFile()
             }
         }
     }

@@ -26,9 +26,9 @@ value class StringWithPlaceholders(val raw: String) : MacroEvaluable<String> {
         val Empty = StringWithPlaceholders("")
 
         context(_: MacroSymbolScope, _: MacroTraceContext)
-        fun StringWithPlaceholders.evaluateAsAbsolutePath() = evaluate().parseAbsolutePath()
+        fun StringWithPlaceholders.evaluateToAbsolutePath() = evaluate().parseToAbsolutePath()
 
         context(_: MacroSymbolScope, _: PartialContext, _: MacroTraceContext)
-        fun StringWithPlaceholders.evaluateAsAbsolutePathToDirectoryOrNull() = evaluate().parseAbsolutePathToDirectoryOrNull()
+        fun StringWithPlaceholders.evaluateToAbsolutePathToDirectoryOrNull() = evaluate().parseToAbsolutePathToDirectoryOrNull()
     }
 }

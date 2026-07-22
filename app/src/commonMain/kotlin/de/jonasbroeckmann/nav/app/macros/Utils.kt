@@ -9,7 +9,7 @@ import de.jonasbroeckmann.nav.utils.metadataOrNull
 import kotlinx.io.files.Path
 
 context(scope: MacroSymbolScope)
-internal fun String.parseAbsolutePath() = Path(this).let { path ->
+internal fun String.parseToAbsolutePath() = Path(this).let { path ->
     if (path.isAbsolute) {
         path
     } else {
@@ -18,8 +18,8 @@ internal fun String.parseAbsolutePath() = Path(this).let { path ->
 }
 
 context(context: PartialContext, scope: MacroSymbolScope)
-internal fun String.parseAbsolutePathToDirectoryOrNull(): Path? {
-    val path = parseAbsolutePath()
+internal fun String.parseToAbsolutePathToDirectoryOrNull(): Path? {
+    val path = parseToAbsolutePath()
     val metadata = path.metadataOrNull()
     if (metadata == null) {
         context.printlnOnDebug { "\"$this\": No such file or directory" }

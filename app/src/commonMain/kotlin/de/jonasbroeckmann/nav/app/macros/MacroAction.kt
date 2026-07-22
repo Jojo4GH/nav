@@ -11,7 +11,8 @@ import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
-import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateAsAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePathToDirectoryOrNull
 import de.jonasbroeckmann.nav.app.openInEditor
 import de.jonasbroeckmann.nav.app.runCommand
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
@@ -190,7 +191,7 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val exitCode = openInEditor(open.evaluateAsAbsolutePath())
+            val exitCode = openInEditor(open.evaluateToAbsolutePath())
             context[exitCodeTo] = exitCode?.toString().orEmpty()
         }
     }
@@ -206,8 +207,8 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
-            val path = writeFile.evaluateAsAbsolutePath()
             if (path.isDirectory) {
+            val path = writeFile.evaluateToAbsolutePath()
                 if (!silent) context.reportWarning("Cannot write file because it is a directory: $path")
                 return
             }
@@ -243,7 +244,7 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
-            val path = createDirectory.evaluateAsAbsolutePath()
+            val path = createDirectory.evaluateToAbsolutePath()
             if (createParents) {
                 path.createDirectories()
             } else {
@@ -266,7 +267,7 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
-            val path = delete.evaluateAsAbsolutePath()
+            val path = delete.evaluateToAbsolutePath()
             if (!path.exists()) {
                 if (!silent) context.reportWarning("Cannot delete item because it does not exist: $path")
                 return
@@ -293,7 +294,7 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val path = childrenOf.evaluateAsAbsolutePath()
+            val path = childrenOf.evaluateToAbsolutePath()
             context[resultTo] = when {
                 path.isDirectory -> when {
                     fullPath -> path.children().joinToString("\n")
@@ -412,7 +413,7 @@ sealed interface MacroAction : MacroRunnable {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             if (exit) {
-                exit(atDirectory = at?.evaluate()?.parseAbsolutePathToDirectoryOrNull())
+                exit(atDirectory = at?.evaluateToAbsolutePathToDirectoryOrNull())
             }
         }
     }
