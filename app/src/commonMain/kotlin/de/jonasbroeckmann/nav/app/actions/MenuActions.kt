@@ -2,7 +2,7 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextColors
 import de.jonasbroeckmann.nav.app.*
-import de.jonasbroeckmann.nav.app.macros.DefaultMacros
+import de.jonasbroeckmann.nav.app.macros.DefaultMacro
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeMenuDescription
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
@@ -53,13 +53,13 @@ class MenuActions(context: FullContext) : FullContext by context {
                 updateState { withFilter("").updatedEntries { it.path.name == filter } }
             }
         ),
-        300 to MenuAction(
+        400 to MenuAction(
             description = { "Run command here" },
             style = { styles.path },
             condition = { !isTypingCommand },
             action = { updateState { withCommand("") } }
         ),
-        300 to MenuAction(
+        400 to MenuAction(
             description = {
                 val commandString = buildTextFieldContent(
                     text = command.orEmpty(),
@@ -76,33 +76,8 @@ class MenuActions(context: FullContext) : FullContext by context {
                 if (command.isNullOrBlank()) {
                     updateState { withCommand(null) }
                 } else {
-                    val macro = identifiedMacros[DefaultMacros.RunCommand.id] ?: DefaultMacros.RunCommand
-                    runMacro(macro)
+                    runMacro(DefaultMacro.RunCommand.get())
                 }
-            }
-        ),
-        400 to MenuAction(
-            description = {
-                val currentEntry = currentItem
-                requireNotNull(currentEntry)
-                val style = when (currentEntry.type) {
-                    SymbolicLink -> styles.link
-                    Directory -> styles.directory
-                    RegularFile -> styles.file
-                    Unknown -> TextColors.magenta
-                }
-                style("Delete: ${currentEntry.path.name}")
-            },
-            condition = { currentItem.let { it != null && it.type != Directory } },
-            action = {
-                val currentEntry = requireNotNull(currentItem)
-                when (currentEntry.type) {
-                    SymbolicLink -> SystemFileSystem.delete(currentEntry.path)
-                    Directory -> SystemFileSystem.delete(currentEntry.path)
-                    RegularFile -> SystemFileSystem.delete(currentEntry.path)
-                    Unknown -> { /* no-op */ }
-                }
-                updateState { updatedEntries() }
             }
         ),
     )

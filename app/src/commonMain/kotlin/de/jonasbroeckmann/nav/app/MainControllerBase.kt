@@ -2,6 +2,7 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
+import de.jonasbroeckmann.nav.app.macros.DefaultMacro
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
@@ -48,8 +49,12 @@ abstract class MainControllerBase internal constructor() : MainController {
             }
     }
 
+    override val macros by lazy {
+        DefaultMacro.macros + config.macros
+    }
+
     override val identifiedMacros by lazy {
-        config.macros
+        macros
             .mapNotNull { macro -> macro.id?.let { it to macro } }
             .toMap()
     }
