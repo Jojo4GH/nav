@@ -21,7 +21,7 @@ class MacroRuntimeContext private constructor(
             symbol.set(value)
         }
         is MacroSymbol.Generic -> {
-            DefaultMacroProperties.BySymbol[symbol]?.let {
+            DefaultMacroProperty.BySymbol[symbol]?.let {
                 printlnOnDebug { "Setting property $symbol to '$value'" }
                 return it.trySet(value)
             }

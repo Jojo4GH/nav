@@ -56,16 +56,16 @@ data class Macro(
 
     val dependsOnEntry by lazy {
         listOf(
-            DefaultMacroProperties.EntryPath,
-            DefaultMacroProperties.EntryName,
-            DefaultMacroProperties.EntryType
+            DefaultMacroProperty.EntryPath,
+            DefaultMacroProperty.EntryName,
+            DefaultMacroProperty.EntryType
         ).any {
             it.property.symbol in usedSymbolsInDescriptionOrCondition
         }
     }
 
     val dependsOnFilter by lazy {
-        DefaultMacroProperties.Filter.property.symbol in usedSymbolsInDescriptionOrCondition
+        DefaultMacroProperty.Filter.property.symbol in usedSymbolsInDescriptionOrCondition
     }
 
     context(context: MacroRuntimeContext)

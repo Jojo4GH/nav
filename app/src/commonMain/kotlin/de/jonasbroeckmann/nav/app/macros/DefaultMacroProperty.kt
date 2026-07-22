@@ -4,108 +4,144 @@ import de.jonasbroeckmann.nav.app.context
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.updateState
+import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 
-enum class DefaultMacroProperties(
+sealed class DefaultMacroProperty(
     val property: MacroProperty
 ) {
     // From context
-    WorkingDirectory(
+    object WorkingDirectory : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("workingDirectory"),
             onGet = { de.jonasbroeckmann.nav.utils.WorkingDirectory.toString() }
         )
-    ),
-    StartingDirectory(
+    )
+    object StartingDirectory : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("startingDirectory"),
             onGet = { context.startingDirectory.toString() }
         )
-    ),
-    DebugMode(
+    )
+    object DebugMode : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("debugMode"),
             onGet = { context.debugMode.toString() }
         )
-    ),
-    Shell(
+    )
+    object Shell : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("shell"),
             onGet = { context.shell?.shell }
         )
-    ),
+    )
+    object Separator : DefaultMacroProperty(
+        MacroProperty.DelegatedImmutable(
+            symbol = MacroSymbol.Generic("separator"),
+            onGet = { "$RealSystemPathSeparator" }
+        )
+    )
 
     // From state
-    Directory(
+    object Directory : DefaultMacroProperty(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("directory"),
             onGet = { state.directory.toString() },
             onSet = { newValue -> newValue.parseAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
         )
-    ),
-    EntryPath(
+    )
+    object EntryPath : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("entryPath"),
             onGet = { state.currentItem?.path?.toString() }
         )
-    ),
-    EntryName(
+    )
+    object EntryName : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("entryName"),
             onGet = { state.currentItem?.path?.name }
         )
-    ),
-    EntryType(
+    )
+    object EntryType : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("entryType"),
             onGet = {
                 when (state.currentItem?.type) {
-                    Entry.Type.Directory -> "directory"
-                    Entry.Type.RegularFile -> "file"
-                    Entry.Type.SymbolicLink -> "link"
-                    Entry.Type.Unknown -> "unknown"
+                    Entry.Type.Directory -> Value.Directory
+                    Entry.Type.RegularFile -> Value.File
+                    Entry.Type.SymbolicLink -> Value.Link
+                    Entry.Type.Unknown -> Value.Unknown
                     null -> null
                 }
             }
         )
-    ),
-    Filter(
+    ) {
+        object Value {
+            const val Directory = "directory"
+            const val File = "file"
+            const val Link = "link"
+            const val Unknown = "unknown"
+        }
+    }
+    object Filter : DefaultMacroProperty(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("filter"),
             onGet = { state.filter },
             onSet = { newValue -> updateState { withFilter(newValue) } }
         )
-    ),
-    FilteredEntriesCount(
+    )
+    object FilteredEntriesCount : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("filteredEntriesCount"),
             onGet = { state.filteredItems.size.toString() }
         )
-    ),
-    Command(
+    )
+    object Command : DefaultMacroProperty(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("command"),
             onGet = { state.command },
             onSet = { newValue -> updateState { withCommand(newValue.takeUnless { it.isEmpty() }) } }
         )
-    ),
-    EntryCursorPosition(
+    )
+    object EntryCursorPosition : DefaultMacroProperty(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("entryCursorPosition"),
             onGet = { state.cursor.toString() },
             onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withCursor(it) } } }
         )
-    ),
-    MenuCursorPosition(
+    )
+    object MenuCursorPosition : DefaultMacroProperty(
         MacroProperty.DelegatedMutable(
             symbol = MacroSymbol.Generic("menuCursorPosition"),
             onGet = { state.menuCursor.toString() },
             onSet = { newValue -> newValue.toIntOrNull()?.let { updateState { withMenuCursor(it) } } }
         )
-    );
+    )
+
+    val symbol get() = property.symbol
+
+    val placeholder get() = symbol.placeholder
+
+    override fun toString() = placeholder.toString()
 
     companion object {
+        val All = listOf(
+            WorkingDirectory,
+            StartingDirectory,
+            DebugMode,
+            Shell,
+            Separator,
+            Directory,
+            EntryPath,
+            EntryName,
+            EntryType,
+            Filter,
+            FilteredEntriesCount,
+            Command,
+            EntryCursorPosition,
+            MenuCursorPosition,
+        )
         val BySymbol by lazy {
-            entries.associate { it.property.symbol to it.property }
+            All.associate { it.symbol to it.property }
         }
     }
 }
