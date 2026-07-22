@@ -230,7 +230,7 @@ sealed interface MacroAction : MacroRunnable {
                     path.rawSink(append = false).writeAndClose()
                 }
             }
-            updateState { updatedEntries() }
+            updateState { updatedEntries { it.path == path } }
         }
     }
 
@@ -253,6 +253,7 @@ sealed interface MacroAction : MacroRunnable {
                 }
                 path.createDirectories()
             }
+            updateState { updatedEntries { it.path == path } }
         }
     }
 

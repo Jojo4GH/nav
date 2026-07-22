@@ -106,16 +106,29 @@ sealed class DefaultMacro(
             id = "nav:newFile",
             description = StringWithPlaceholders("new file: ${DefaultMacroProperty.Filter}"),
             menuOrder = 200,
-            condition = NotBlank(DefaultMacroProperty.Filter.placeholder),
+            condition = All(
+                NotBlank(DefaultMacroProperty.Filter.placeholder),
+                NotExists(DefaultMacroProperty.Filter.placeholder)
+            ),
             actions = MacroActions(
-                WriteFile(
-                    StringWithPlaceholders(
-                        "${DefaultMacroProperty.Directory}${DefaultMacroProperty.Separator}${DefaultMacroProperty.Filter}"
-                    )
-                ),
-                Set(
-                    DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty
-                )
+                WriteFile(writeFile = DefaultMacroProperty.Filter.placeholder),
+                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
+            )
+        )
+    )
+
+    object NewDirectory : DefaultMacro(
+        Macro(
+            id = "nav:newDirectory",
+            description = StringWithPlaceholders("new directory: ${DefaultMacroProperty.Filter}"),
+            menuOrder = 200,
+            condition = All(
+                NotBlank(DefaultMacroProperty.Filter.placeholder),
+                NotExists(DefaultMacroProperty.Filter.placeholder)
+            ),
+            actions = MacroActions(
+                CreateDirectory(createDirectory = DefaultMacroProperty.Filter.placeholder),
+                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
             )
         )
     )
@@ -128,6 +141,7 @@ sealed class DefaultMacro(
             RunCommand.macro,
             Delete.macro,
             NewFile.macro,
+            NewDirectory.macro,
         )
     }
 }

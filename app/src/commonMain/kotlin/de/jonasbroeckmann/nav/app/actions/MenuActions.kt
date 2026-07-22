@@ -5,14 +5,11 @@ import de.jonasbroeckmann.nav.app.*
 import de.jonasbroeckmann.nav.app.macros.DefaultMacro
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
 import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeMenuDescription
-import de.jonasbroeckmann.nav.app.state.Entry.Type.*
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.prettyName
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.framework.action.MenuAction
 import de.jonasbroeckmann.nav.framework.ui.buildTextFieldContent
-import de.jonasbroeckmann.nav.utils.div
-import kotlinx.io.files.SystemFileSystem
 
 class MenuActions(context: FullContext) : FullContext by context {
     @Suppress("detekt:MagicNumber")
@@ -28,7 +25,7 @@ class MenuActions(context: FullContext) : FullContext by context {
             )
         }.toTypedArray(),
         *config.entryMacros.map { macro ->
-            100 to MenuAction<State, MainController>(
+            500 to MenuAction<State, MainController>(
                 description = { currentItem?.let { macro.computeDescription(it) }.orEmpty() },
                 style = { currentItem.style },
                 hidden = { currentItem == null },
@@ -36,31 +33,13 @@ class MenuActions(context: FullContext) : FullContext by context {
                 action = { runEntryMacro(macro) }
             )
         }.toTypedArray(),
-        200 to MenuAction(
-            description = { "New file: \"${filter}\"" },
-            style = { styles.file },
-            condition = { filter.isNotEmpty() && !unfilteredItems.any { it.path.name == filter } },
-            action = {
-                SystemFileSystem.sink(directory / filter).close()
-                updateState { withFilter("").updatedEntries { it.path.name == filter } }
-            }
-        ),
-        200 to MenuAction(
-            description = { "New directory: \"${filter}\"" },
-            style = { styles.directory },
-            condition = { filter.isNotEmpty() && !unfilteredItems.any { it.path.name == filter } },
-            action = {
-                SystemFileSystem.createDirectories(directory / filter)
-                updateState { withFilter("").updatedEntries { it.path.name == filter } }
-            }
-        ),
-        400 to MenuAction(
+        1000 to MenuAction(
             description = { "Run command here" },
             style = { styles.path },
             condition = { !isTypingCommand },
             action = { updateState { withCommand("") } }
         ),
-        400 to MenuAction(
+        1000 to MenuAction(
             description = {
                 val commandString = buildTextFieldContent(
                     text = command.orEmpty(),
