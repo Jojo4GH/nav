@@ -54,7 +54,7 @@ data class State private constructor(
     fun navigatedTo(path: Path?): State {
         if (path == null) return this
         if (directory == path) return this
-        if (!path.isDirectory) return this
+        if (!path.isDirectory()) return this
 
         tailrec fun Path.nearestChildToOrNull(parent: Path): Path? {
             if (this.parent == parent) return this

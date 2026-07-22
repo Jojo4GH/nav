@@ -305,11 +305,11 @@ data class Config private constructor(
             ?: getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
         fun findDefaultPath(mustExist: Boolean = true): Path? {
-            val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile }
+            val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile() }
             return if (mustExist) {
                 firstExiting
             } else {
-                firstExiting ?: DefaultPaths.firstOrNull { !it.exists() || it.isRegularFile }
+                firstExiting ?: DefaultPaths.firstOrNull { !it.exists() || it.isRegularFile() }
             }
         }
 
@@ -324,7 +324,7 @@ data class Config private constructor(
             try {
                 val explicitPath = findExplicitPath()?.also {
                     require(it.exists()) { "The specified config does not exist: $it" }
-                    require(it.isRegularFile) { "The specified config is not a file: $it" }
+                    require(it.isRegularFile()) { "The specified config is not a file: $it" }
                 }
                 val path = explicitPath
                     ?: findDefaultPath(mustExist = true)

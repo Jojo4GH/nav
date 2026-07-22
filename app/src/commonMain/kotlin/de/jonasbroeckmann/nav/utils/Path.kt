@@ -1,6 +1,11 @@
 package de.jonasbroeckmann.nav.utils
 
 import de.jonasbroeckmann.nav.Constants
+import de.jonasbroeckmann.nav.framework.utils.copyRecursively
+import de.jonasbroeckmann.nav.framework.utils.deleteRecursively
+import de.jonasbroeckmann.nav.framework.utils.isDirectory
+import de.jonasbroeckmann.nav.framework.utils.isRegularFile
+import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemPathSeparator
@@ -15,31 +20,32 @@ val UserHome: Path by lazy {
         ?: throw IllegalStateException("Could not determine user home directory")
 }
 
+/** @see FileSystem.resolve */
 fun Path.absolute() = SystemFileSystem.resolve(this)
 
 fun Path.exists() = SystemFileSystem.exists(this)
 
 fun Path.metadataOrNull() = SystemFileSystem.metadataOrNull(this)
 
-val Path.isDirectory get() = metadataOrNull()?.isDirectory == true
+fun Path.isDirectory() = SystemFileSystem.isDirectory(this)
 
-val Path.isRegularFile get() = metadataOrNull()?.isRegularFile == true
+fun Path.isRegularFile() = SystemFileSystem.isRegularFile(this)
 
-val Path.size get() = metadataOrNull()?.size ?: -1L
+fun Path.size() = metadataOrNull()?.size ?: -1L
 
 fun Path.children() = SystemFileSystem.list(this)
 
+/** @see FileSystem.createDirectories */
 fun Path.createDirectories(mustCreate: Boolean = false) = SystemFileSystem.createDirectories(this, mustCreate = mustCreate)
+
+/** @see FileSystem.atomicMove */
+fun Path.atomicMove(to: Path) = SystemFileSystem.atomicMove(this, to)
 
 fun Path.delete(mustExist: Boolean = true) = SystemFileSystem.delete(this, mustExist = mustExist)
 
-fun Path.deleteRecursively(mustExist: Boolean = true): Unit = when {
-    isDirectory -> {
-        children().forEach { it.deleteRecursively(mustExist = mustExist) }
-        delete(mustExist = mustExist)
-    }
-    else -> delete(mustExist = mustExist)
-}
+fun Path.deleteRecursively(mustExist: Boolean = true) = SystemFileSystem.deleteRecursively(this, mustExist = mustExist)
+
+fun Path.copyRecursively(to: Path) = SystemFileSystem.copyRecursively(this, to)
 
 inline fun <R> withTemporaryDirectory(label: String = Constants.BinaryName, block: (Path) -> R): R {
     var path: Path
@@ -62,7 +68,7 @@ val Path.nameAndExtension: Pair<String, String?> get() = Regex("""(.+)\.([^.]+)"
     ?.let { (name, extension) -> name to extension }
     ?: (name to null)
 
-operator fun Path.div(child: String) = Path(this, child).cleaned()
+operator fun Path.div(child: String) = Path(this, child) //.cleaned()
 
 operator fun Path.div(child: Path) = this / child.toString()
 

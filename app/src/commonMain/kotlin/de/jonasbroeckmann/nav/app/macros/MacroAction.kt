@@ -20,6 +20,7 @@ import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
+import de.jonasbroeckmann.nav.utils.atomicMove
 import de.jonasbroeckmann.nav.utils.children
 import de.jonasbroeckmann.nav.utils.createDirectories
 import de.jonasbroeckmann.nav.utils.delete
@@ -207,8 +208,8 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
-            if (path.isDirectory) {
             val path = writeFile.evaluateToAbsolutePath()
+            if (path.isDirectory()) {
                 if (!silent) context.reportWarning("Cannot write file because it is a directory: $path")
                 return
             }
@@ -272,7 +273,7 @@ sealed interface MacroAction : MacroRunnable {
                 if (!silent) context.reportWarning("Cannot delete item because it does not exist: $path")
                 return
             }
-            if (path.isDirectory && !recursive) {
+            if (path.isDirectory() && !recursive && path.children().isNotEmpty()) {
                 if (!silent) context.reportWarning("Cannot delete directory non-recursively because it is not empty: $path")
                 return
             }
@@ -296,7 +297,7 @@ sealed interface MacroAction : MacroRunnable {
         override fun run() = macroTrace {
             val path = childrenOf.evaluateToAbsolutePath()
             context[resultTo] = when {
-                path.isDirectory -> when {
+                path.isDirectory() -> when {
                     fullPath -> path.children().joinToString("\n")
                     else -> path.children().joinToString("\n") { it.name }
                 }
