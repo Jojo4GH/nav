@@ -75,20 +75,20 @@ sealed class DefaultMacroProperty(
             symbol = MacroSymbol.Generic("entryType"),
             onGet = {
                 when (state.currentItem?.type) {
-                    Entry.Type.Directory -> Value.Directory
-                    Entry.Type.RegularFile -> Value.File
-                    Entry.Type.SymbolicLink -> Value.Link
-                    Entry.Type.Unknown -> Value.Unknown
+                    Entry.Type.Directory -> Value.DIRECTORY
+                    Entry.Type.RegularFile -> Value.FILE
+                    Entry.Type.SymbolicLink -> Value.LINK
+                    Entry.Type.Unknown -> Value.UNKNOWN
                     null -> null
                 }
             }
         )
     ) {
         object Value {
-            const val Directory = "directory"
-            const val File = "file"
-            const val Link = "link"
-            const val Unknown = "unknown"
+            const val DIRECTORY = "directory"
+            const val FILE = "file"
+            const val LINK = "link"
+            const val UNKNOWN = "unknown"
         }
     }
 

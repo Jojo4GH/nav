@@ -180,7 +180,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         override fun evaluate(): Boolean = macroTrace {
             when (isDirectory) {
                 DefaultMacroProperty.EntryName.placeholder, DefaultMacroProperty.EntryPath.placeholder -> {
-                    DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.Directory
+                    DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.DIRECTORY
                 }
                 else -> isDirectory.evaluateAsAbsolutePath().isDirectory
             }
@@ -200,7 +200,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         override fun evaluate(): Boolean = macroTrace {
             when (isFile) {
                 DefaultMacroProperty.EntryName.placeholder, DefaultMacroProperty.EntryPath.placeholder -> {
-                    DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.File
+                    DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.FILE
                 }
                 else -> isFile.evaluateAsAbsolutePath().isRegularFile
             }

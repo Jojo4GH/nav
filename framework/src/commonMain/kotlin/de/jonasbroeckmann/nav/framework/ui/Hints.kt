@@ -73,39 +73,39 @@ class HintsBuilder internal constructor(
                 }
             }
         }
-    }.run {
-        when (spacingMergeStrategy) {
-            NoMerge -> map { (_, element) -> element }
-            MergeNext -> sequence {
-                var spacingBuffer: String? = null
-                forEach { (type, element) ->
-                    if (type.isSpacing) {
-                        spacingBuffer = spacingBuffer.orEmpty() + element
-                    } else {
-                        yield(spacingBuffer.orEmpty() + element)
-                        spacingBuffer = null
-                    }
-                }
-                if (spacingBuffer != null) {
-                    yield(spacingBuffer)
+    }.applySpacingMergeStrategy()
+
+    private fun Sequence<Pair<ElementType, String>>.applySpacingMergeStrategy(): Sequence<String> = when (spacingMergeStrategy) {
+        NoMerge -> map { (_, element) -> element }
+        MergeNext -> sequence {
+            var spacingBuffer: String? = null
+            forEach { (type, element) ->
+                if (type.isSpacing) {
+                    spacingBuffer = spacingBuffer.orEmpty() + element
+                } else {
+                    yield(spacingBuffer.orEmpty() + element)
+                    spacingBuffer = null
                 }
             }
-            MergePrevious -> sequence {
-                var elementBuffer: String? = null
-                forEach { (type, element) ->
-                    if (type.isSpacing) {
-                        yield(elementBuffer.orEmpty() + element)
-                        elementBuffer = null
-                    } else {
-                        if (elementBuffer != null) {
-                            yield(elementBuffer)
-                        }
-                        elementBuffer = element
+            if (spacingBuffer != null) {
+                yield(spacingBuffer)
+            }
+        }
+        MergePrevious -> sequence {
+            var elementBuffer: String? = null
+            forEach { (type, element) ->
+                if (type.isSpacing) {
+                    yield(elementBuffer.orEmpty() + element)
+                    elementBuffer = null
+                } else {
+                    if (elementBuffer != null) {
+                        yield(elementBuffer)
                     }
+                    elementBuffer = element
                 }
-                if (elementBuffer != null) {
-                    yield(elementBuffer)
-                }
+            }
+            if (elementBuffer != null) {
+                yield(elementBuffer)
             }
         }
     }
