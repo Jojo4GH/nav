@@ -40,6 +40,92 @@ sealed class DefaultMacro(
         )
     )
 
+    object NewFile : DefaultMacro(
+        Macro(
+            id = "nav:newFile",
+            description = StringWithPlaceholders("new file: ${DefaultMacroProperty.Filter}"),
+            style = Styles::file.styleString,
+            menuOrder = 200,
+            condition = All(
+                NotBlank(DefaultMacroProperty.Filter.placeholder),
+                NotExists(DefaultMacroProperty.Filter.placeholder)
+            ),
+            actions = MacroActions(
+                WriteFile(writeFile = DefaultMacroProperty.Filter.placeholder),
+                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
+            )
+        )
+    )
+
+    object NewDirectory : DefaultMacro(
+        Macro(
+            id = "nav:newDirectory",
+            description = StringWithPlaceholders("new directory: ${DefaultMacroProperty.Filter}"),
+            style = Styles::directory.styleString,
+            menuOrder = 210,
+            condition = All(
+                NotBlank(DefaultMacroProperty.Filter.placeholder),
+                NotExists(DefaultMacroProperty.Filter.placeholder)
+            ),
+            actions = MacroActions(
+                CreateDirectory(createDirectory = DefaultMacroProperty.Filter.placeholder),
+                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
+            )
+        )
+    )
+
+    object Rename : DefaultMacro(
+        Macro(
+            id = "nav:rename",
+            description = StringWithPlaceholders("rename ${DefaultMacroProperty.EntryName}"),
+            menuOrder = 250,
+            condition = NotEmpty(DefaultMacroProperty.EntryName.placeholder),
+            actions = run {
+                val newNameVar = MacroSymbol.Generic("nav:rename:newName")
+                MacroActions(
+                    Prompt(
+                        prompt = StringWithPlaceholders("New name:"),
+                        format = Regex("""[^:*?"<>|]+"""),
+                        default = DefaultMacroProperty.EntryName.placeholder,
+                        resultTo = newNameVar.name
+                    ),
+                    If(
+                        condition = Exists(newNameVar.placeholder),
+                        then = MacroActions(
+                            Prompt(
+                                prompt = StringWithPlaceholders(
+                                    """
+                                    ${newNameVar.placeholder} already exists.
+                                    Do you want to overwrite it?
+                                    """.trimIndent()
+                                ),
+                                choices = listOf(
+                                    StringWithPlaceholders("No"),
+                                    StringWithPlaceholders("Yes")
+                                ),
+                                default = StringWithPlaceholders("No"),
+                                onChoice = mapOf(
+                                    StringWithPlaceholders("No") to MacroActions(Return())
+                                )
+                            ),
+                            Move(
+                                move = DefaultMacroProperty.EntryPath.placeholder,
+                                to = newNameVar.placeholder,
+                                overwrite = true,
+                            )
+                        ),
+                        otherwise = MacroActions(
+                            Move(
+                                move = DefaultMacroProperty.EntryPath.placeholder,
+                                to = newNameVar.placeholder,
+                            )
+                        )
+                    )
+                )
+            }
+        )
+    )
+
     object Delete : DefaultMacro(
         Macro(
             id = "nav:delete",
@@ -103,49 +189,16 @@ sealed class DefaultMacro(
         )
     )
 
-    object NewFile : DefaultMacro(
-        Macro(
-            id = "nav:newFile",
-            description = StringWithPlaceholders("new file: ${DefaultMacroProperty.Filter}"),
-            style = Styles::file.styleString,
-            menuOrder = 200,
-            condition = All(
-                NotBlank(DefaultMacroProperty.Filter.placeholder),
-                NotExists(DefaultMacroProperty.Filter.placeholder)
-            ),
-            actions = MacroActions(
-                WriteFile(writeFile = DefaultMacroProperty.Filter.placeholder),
-                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
-            )
-        )
-    )
-
-    object NewDirectory : DefaultMacro(
-        Macro(
-            id = "nav:newDirectory",
-            description = StringWithPlaceholders("new directory: ${DefaultMacroProperty.Filter}"),
-            style = Styles::directory.styleString,
-            menuOrder = 200,
-            condition = All(
-                NotBlank(DefaultMacroProperty.Filter.placeholder),
-                NotExists(DefaultMacroProperty.Filter.placeholder)
-            ),
-            actions = MacroActions(
-                CreateDirectory(createDirectory = DefaultMacroProperty.Filter.placeholder),
-                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
-            )
-        )
-    )
-
     context(context: FullContext)
     fun get(): Macro = macro.id?.let { context.macroById(it) } ?: macro
 
     companion object : MacroProvider {
         override val macros = listOf(
             RunCommand.macro,
-            Delete.macro,
             NewFile.macro,
             NewDirectory.macro,
+            Rename.macro,
+            Delete.macro,
         )
     }
 }
