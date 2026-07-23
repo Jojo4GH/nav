@@ -3,10 +3,13 @@ package de.jonasbroeckmann.nav.app
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.DefaultMacro
+import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.which
+import kotlinx.serialization.encodeToString
 
 abstract class MainControllerBase internal constructor() : MainController {
     override val editorCommand by lazy {
@@ -50,7 +53,20 @@ abstract class MainControllerBase internal constructor() : MainController {
     }
 
     override val macros by lazy {
-        DefaultMacro.macros + config.macros
+        buildList {
+            fun append(macro: Macro) {
+                if (macro.id == null) {
+                    add(macro)
+                } else {
+                    // TODO merge macros with same id instead of replacing
+                    removeAll { it.id == macro.id }
+                    add(macro)
+                }
+            }
+
+            DefaultMacro.macros.forEach(::append)
+            config.macros.forEach(::append)
+        }
     }
 
     override val identifiedMacros by lazy {
