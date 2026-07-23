@@ -17,8 +17,8 @@ import de.jonasbroeckmann.nav.framework.ui.FillLayout
 import de.jonasbroeckmann.nav.framework.ui.FlowRowLayout
 import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
 import de.jonasbroeckmann.nav.framework.ui.buildTextFieldContent
+import de.jonasbroeckmann.nav.utils.Paths
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
-import de.jonasbroeckmann.nav.utils.UserHome
 import kotlinx.io.files.Path
 import kotlin.collections.plus
 
@@ -228,7 +228,7 @@ private fun buildPathWithFilter(
     var elements = path.elements()
 
     // replace user home with "~" and get prefix
-    val userHomeElements = UserHome.elements()
+    val userHomeElements = Paths.UserHome.elements()
     if (userHomeElements.withIndex().all { (i, it) -> it == elements.getOrNull(i) }) {
         elements = listOf("~") + elements.drop(userHomeElements.size)
     } else if (path.isAbsolute) {

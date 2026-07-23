@@ -12,7 +12,7 @@ import de.jonasbroeckmann.nav.framework.action.KeyActions
 import de.jonasbroeckmann.nav.framework.input.InputMode
 import de.jonasbroeckmann.nav.framework.semantics.autocomplete
 import de.jonasbroeckmann.nav.framework.semantics.updateTextField
-import de.jonasbroeckmann.nav.utils.WorkingDirectory
+import de.jonasbroeckmann.nav.utils.Paths
 
 @Suppress("unused")
 class NormalModeActions(context: FullContext) : KeyActions<State, MainController, Unit>(InputMode.Normal), FullContext by context {
@@ -142,7 +142,7 @@ class NormalModeActions(context: FullContext) : KeyActions<State, MainController
         config.keys.submit,
         description = { "exit here" },
         style = { styles.path },
-        hidden = { directory == WorkingDirectory },
+        hidden = { directory == Paths.WorkingDirectory },
         condition = { true },
         action = { exit(atDirectory = directory) }
     )

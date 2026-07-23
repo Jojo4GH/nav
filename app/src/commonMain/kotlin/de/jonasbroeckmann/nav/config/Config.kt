@@ -273,7 +273,7 @@ data class Config private constructor(
             state: State,
             currentEntry: Entry
         ) = this
-            .replace(PLACEHOLDER_INITIAL_DIR, WorkingDirectory.toString())
+            .replace(PLACEHOLDER_INITIAL_DIR, Paths.WorkingDirectory.toString())
             .replace(PLACEHOLDER_DIR, state.directory.toString())
             .replace(PLACEHOLDER_ENTRY_PATH, currentEntry.path.toString())
             .replace(PLACEHOLDER_ENTRY_NAME, currentEntry.path.name)
@@ -298,9 +298,9 @@ data class Config private constructor(
     companion object {
         val DefaultPaths by lazy {
             listOf(
-                UserHome / ".config" / "nav.yaml",
-                UserHome / ".config" / "nav.yml",
-                UserHome / ".config" / "nav.toml",
+                Paths.UserHome / ".config" / "nav.yaml",
+                Paths.UserHome / ".config" / "nav.yml",
+                Paths.UserHome / ".config" / "nav.toml",
             )
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"

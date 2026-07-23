@@ -4,6 +4,7 @@ import de.jonasbroeckmann.nav.app.context
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.updateState
+import de.jonasbroeckmann.nav.utils.Paths
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 
 sealed class DefaultMacroProperty(
@@ -14,7 +15,7 @@ sealed class DefaultMacroProperty(
     object WorkingDirectory : DefaultMacroProperty(
         MacroProperty.DelegatedImmutable(
             symbol = MacroSymbol.Generic("workingDirectory"),
-            onGet = { de.jonasbroeckmann.nav.utils.WorkingDirectory.toString() }
+            onGet = { Paths.WorkingDirectory.toString() }
         )
     )
 

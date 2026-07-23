@@ -11,7 +11,7 @@ import kotlinx.io.writeString
 
 object CDFile {
     val PathInUserHome: Path = Path(".nav-cd")
-    val Path = UserHome / PathInUserHome
+    val Path = Paths.UserHome / PathInUserHome
 
     fun broadcastChangeDirectory(path: Path) {
         if (Path.exists()) {

@@ -285,7 +285,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         )
     }
 
-    override val startingDirectory get() = directory ?: WorkingDirectory
+    override val startingDirectory get() = directory ?: Paths.WorkingDirectory
 
     override val shell get() = configurationOptions.shell
 
