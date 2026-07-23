@@ -1,6 +1,8 @@
 package de.jonasbroeckmann.nav.utils
 
 import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.exists
 import kotlinx.io.files.Path
 
 expect fun getEnvironmentVariable(key: String): String?

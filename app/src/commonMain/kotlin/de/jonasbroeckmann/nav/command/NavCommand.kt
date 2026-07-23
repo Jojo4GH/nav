@@ -39,6 +39,11 @@ import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.framework.utils.absolute
+import de.jonasbroeckmann.nav.framework.utils.createDirectories
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
+import de.jonasbroeckmann.nav.framework.utils.rawSink
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.update.checkForUpdatesAnimated

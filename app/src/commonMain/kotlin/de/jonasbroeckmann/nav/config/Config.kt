@@ -9,7 +9,6 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.Macro
@@ -21,12 +20,18 @@ import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteAutoNavigation
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteStyle
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.isRegularFile
+import de.jonasbroeckmann.nav.framework.utils.nameAndExtension
+import de.jonasbroeckmann.nav.framework.utils.rawSource
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlin.getValue
 import kotlin.lazy
 
 @Serializable

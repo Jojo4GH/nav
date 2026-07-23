@@ -13,9 +13,9 @@ import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListState
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemListState
-import de.jonasbroeckmann.nav.utils.children
+import de.jonasbroeckmann.nav.framework.utils.children
+import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.utils.cleaned
-import de.jonasbroeckmann.nav.utils.isDirectory
 import kotlinx.io.files.Path
 
 @Suppress("detekt:TooManyFunctions")

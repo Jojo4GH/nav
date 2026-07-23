@@ -20,14 +20,14 @@ import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
-import de.jonasbroeckmann.nav.utils.atomicMove
-import de.jonasbroeckmann.nav.utils.children
-import de.jonasbroeckmann.nav.utils.createDirectories
-import de.jonasbroeckmann.nav.utils.delete
-import de.jonasbroeckmann.nav.utils.deleteRecursively
-import de.jonasbroeckmann.nav.utils.exists
-import de.jonasbroeckmann.nav.utils.isDirectory
-import de.jonasbroeckmann.nav.utils.rawSink
+import de.jonasbroeckmann.nav.framework.utils.atomicMove
+import de.jonasbroeckmann.nav.framework.utils.children
+import de.jonasbroeckmann.nav.framework.utils.createDirectories
+import de.jonasbroeckmann.nav.framework.utils.delete
+import de.jonasbroeckmann.nav.framework.utils.deleteRecursively
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.isDirectory
+import de.jonasbroeckmann.nav.framework.utils.rawSink
 import kotlinx.io.RawSink
 import kotlinx.io.buffered
 import kotlinx.io.writeString
@@ -260,6 +260,31 @@ sealed interface MacroAction : MacroRunnable {
     }
 
     @Serializable
+    @SerialName("move")
+    data class Move(
+        val move: StringWithPlaceholders,
+        val to: StringWithPlaceholders,
+        val createParents: Boolean = true,
+        val overwrite: Boolean = false,
+        val silent: Boolean = false
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() {
+            val source = move.evaluateToAbsolutePath()
+            val destination = to.evaluateToAbsolutePath()
+            if (destination.exists() && !overwrite) {
+                if (!silent) context.reportWarning("Cannot move item because destination already exists: $destination")
+                return
+            }
+            if (createParents) {
+                destination.parent?.createDirectories()
+            }
+            source.atomicMove(destination)
+            updateState { updatedEntries { it.path == destination } }
+        }
+    }
+
+    @Serializable
     @SerialName("delete")
     data class Delete(
         val delete: StringWithPlaceholders,
@@ -430,6 +455,7 @@ sealed interface MacroAction : MacroRunnable {
                     OpenFile.serializer(),
                     WriteFile.serializer(),
                     CreateDirectory.serializer(),
+                    Move.serializer(),
                     Delete.serializer(),
                     ChildrenOf.serializer(),
                     Set.serializer(),

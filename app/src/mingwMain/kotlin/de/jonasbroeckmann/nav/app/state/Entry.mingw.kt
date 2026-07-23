@@ -1,19 +1,17 @@
 package de.jonasbroeckmann.nav.app.state
 
+import de.jonasbroeckmann.nav.framework.utils.absolute
 import de.jonasbroeckmann.nav.utils.FileAttributes
 import de.jonasbroeckmann.nav.utils.FileAttributesResult
 import de.jonasbroeckmann.nav.utils.FinalPathResult
 import de.jonasbroeckmann.nav.utils.Stat
-import de.jonasbroeckmann.nav.utils.absolute
 import de.jonasbroeckmann.nav.utils.error
 import de.jonasbroeckmann.nav.utils.fileAttributes
 import de.jonasbroeckmann.nav.utils.finalPath
 import kotlinx.io.files.Path
-import kotlin.time.ExperimentalTime
 
 actual fun Path.entry(): Entry = EntryImpl(this)
 
-@OptIn(ExperimentalTime::class)
 private data class EntryImpl(override val path: Path) : NativeEntry(path) {
     private var fileAttributesError: String? = null
     private val fileAttributesResult: FileAttributesResult by lazy {

@@ -4,8 +4,8 @@ import com.charleskorn.kaml.YamlMap
 import de.jonasbroeckmann.nav.app.macros.MacroSymbol.Companion.get
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
-import de.jonasbroeckmann.nav.utils.div
-import de.jonasbroeckmann.nav.utils.metadataOrNull
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
 import kotlinx.io.files.Path
 
 context(scope: MacroSymbolScope)
