@@ -23,6 +23,7 @@ import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.input.*
 import de.jonasbroeckmann.nav.framework.input.InputMode.Normal
 import de.jonasbroeckmann.nav.framework.ui.WidgetAnimation
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.utils.StateManager
 import de.jonasbroeckmann.nav.utils.exitProcess
@@ -261,13 +262,13 @@ class App private constructor(
 
     private data object DialogInputMode : InputMode("D")
 
-    override fun <R> showDialog(block: DialogShowScope.() -> R): R {
+    override fun <R> showDialog(options: DialogOptions, block: DialogShowScope.() -> R): R {
         val previous = state.dialog
         try {
             useInputMode(DialogInputMode) {
                 val scope = object : DialogShowScope, InputModeScope by this {
                     override fun render(widget: Widget) {
-                        state = state.withDialog(widget)
+                        state = state.withDialog(State.Dialog(widget, options))
                         ui.tryUpdate()
                     }
                 }
