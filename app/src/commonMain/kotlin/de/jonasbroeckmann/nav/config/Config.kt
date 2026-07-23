@@ -354,30 +354,35 @@ data class Config private constructor(
             }
         }
 
-        private fun loadFromYaml(path: Path) = yaml.decodeFromSource(
+        private fun loadFromYaml(path: Path) = Yaml.decodeFromSource(
             deserializer = serializer(),
             source = path.source().asOkioSource()
         )
 
-        private fun loadFromToml(path: Path) = toml.decodeFromFile(
+        private fun loadFromToml(path: Path) = Toml.decodeFromFile(
             deserializer = serializer(),
             tomlFilePath = path.toString()
         )
 
-        private val yaml by lazy {
+        val Yaml by lazy {
             Yaml(
                 configuration = YamlConfiguration(
-                    strictMode = true
+                    encodeDefaults = false,
+                    strictMode = true,
+                    breakScalarsAt = Int.MAX_VALUE,
+                    multiLineStringStyle = Literal
                 )
             )
         }
 
-        private val toml by lazy {
+        val Toml by lazy {
             TomlFileReader(
                 inputConfig = TomlInputConfig(
                     ignoreUnknownNames = false
                 ),
-                outputConfig = TomlOutputConfig()
+                outputConfig = TomlOutputConfig(
+                    ignoreDefaultValues = true
+                )
             )
         }
 

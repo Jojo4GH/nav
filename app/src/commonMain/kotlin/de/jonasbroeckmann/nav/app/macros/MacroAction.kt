@@ -31,6 +31,7 @@ import de.jonasbroeckmann.nav.framework.utils.sink
 import kotlinx.io.RawSink
 import kotlinx.io.buffered
 import kotlinx.io.writeString
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -420,6 +421,7 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("return")
     data class Return(
         @SerialName("return")
+        @EncodeDefault(ALWAYS)
         val doReturn: Boolean = true,
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
@@ -433,6 +435,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("exit")
     data class Exit(
+        @EncodeDefault(ALWAYS)
         val exit: Boolean = true,
         val at: StringWithPlaceholders? = null
     ) : MacroAction {
