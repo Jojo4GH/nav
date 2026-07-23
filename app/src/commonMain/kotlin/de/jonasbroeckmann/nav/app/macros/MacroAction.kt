@@ -19,7 +19,6 @@ import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.command.printlnOnDebug
-import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import de.jonasbroeckmann.nav.framework.utils.atomicMove
 import de.jonasbroeckmann.nav.framework.utils.children
 import de.jonasbroeckmann.nav.framework.utils.createDirectories
@@ -28,6 +27,7 @@ import de.jonasbroeckmann.nav.framework.utils.deleteRecursively
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.framework.utils.sink
+import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.RawSink
 import kotlinx.io.buffered
 import kotlinx.io.writeString

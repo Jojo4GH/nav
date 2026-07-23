@@ -4,11 +4,8 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
-import de.jonasbroeckmann.nav.app.state.StateProvider
-import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.action.Action

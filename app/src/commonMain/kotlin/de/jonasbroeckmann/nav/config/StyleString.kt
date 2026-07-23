@@ -9,7 +9,6 @@ import kotlin.reflect.KProperty1
 @Serializable
 @JvmInline
 value class StyleString(val raw: String) {
-
     context(_: StylesProvider)
     fun evaluate(): TextStyle = styles[raw] ?: raw.parseColor()
 
