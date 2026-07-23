@@ -58,6 +58,8 @@ import kotlinx.io.writeString
 
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
+        instance = this@NavCommand
+
         context {
             terminal = when (val terminalInterface = customTerminalInterface()) {
                 null -> Terminal(theme = DefaultTerminalTheme)
@@ -412,6 +414,8 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     }
 
     companion object {
+        lateinit var instance: NavCommand
+
         private val directoryArgumentName get() = "directory"
 
         private fun helpLines(vararg lines: String) = lines.joinToString("\u0085")

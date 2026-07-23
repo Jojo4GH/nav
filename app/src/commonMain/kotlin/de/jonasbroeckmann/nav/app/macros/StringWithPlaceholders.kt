@@ -7,7 +7,7 @@ import kotlin.jvm.JvmInline
 
 @Serializable
 @JvmInline
-value class StringWithPlaceholders(val raw: String) : MacroEvaluable<String> {
+value class StringWithPlaceholders(val raw: String) : MacroEvaluable<String>, CharSequence by raw {
     val placeholders get() = PlaceholderRegex.findAll(raw).map { it.groupValues[1] }
     val symbols get() = placeholders.map { MacroSymbol.fromString(it) }
 
