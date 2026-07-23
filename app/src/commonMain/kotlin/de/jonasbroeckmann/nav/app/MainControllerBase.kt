@@ -6,8 +6,10 @@ import de.jonasbroeckmann.nav.app.macros.DefaultMacro
 import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.which
+import kotlinx.serialization.encodeToString
 
 abstract class MainControllerBase internal constructor() : MainController {
     override val editorCommand by lazy {
@@ -56,14 +58,20 @@ abstract class MainControllerBase internal constructor() : MainController {
                 if (macro.id == null) {
                     add(macro)
                 } else {
-                    // TODO merge macros with same id instead of replacing
+                    val merged = filter { it.id == macro.id }
+                        .reduceOrNull { a, b -> a + b }
+                        ?.let { it + macro }
+                        ?: macro
                     removeAll { it.id == macro.id }
-                    add(macro)
+                    add(merged)
                 }
             }
 
             DefaultMacro.macros.forEach(::append)
             config.macros.forEach(::append)
+        }.also {
+            printlnOnDebug { "\nLoaded ${it.size} macros:" }
+            printlnOnDebug { Config.Yaml.encodeToString(it) + "\n" }
         }
     }
 

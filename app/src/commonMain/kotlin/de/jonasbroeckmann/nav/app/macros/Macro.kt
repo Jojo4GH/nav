@@ -14,7 +14,9 @@ import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.utils.KeyboardEventAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
+import kotlin.reflect.KProperty1
 
 /**
  * A macro that can be run in the application.
@@ -37,20 +39,49 @@ import kotlinx.serialization.UseSerializers
  * @property actions The actions to run when the macro is executed.
  */
 @Serializable
-data class Macro(
-    val id: String? = null,
-    val enabled: Boolean = true,
-    val description: StringWithPlaceholders = Empty,
-    val style: StyleString? = null,
-    val key: KeyboardEvent? = null,
-    val hideKey: Boolean = false,
-    val quickModeKey: KeyboardEvent? = null,
-    val hideQuickModeKey: Boolean = false,
-    val menuOrder: Int? = null,
-    private val condition: MacroCondition? = null,
+data class Macro private constructor(
+    @Transient
+    private val initializerRecorder: PropertyInitializerRecorder<Macro> = PropertyInitializerRecorder(),
+    val id: String? = initializerRecorder.record(Macro::id, null),
+    val enabled: Boolean = initializerRecorder.record(Macro::enabled, true),
+    val description: StringWithPlaceholders = initializerRecorder.record(Macro::description, Empty),
+    val style: StyleString? = initializerRecorder.record(Macro::style, null),
+    val key: KeyboardEvent? = initializerRecorder.record(Macro::key, null),
+    val hideKey: Boolean = initializerRecorder.record(Macro::hideKey, false),
+    val quickModeKey: KeyboardEvent? = initializerRecorder.record(Macro::quickModeKey, null),
+    val hideQuickModeKey: Boolean = initializerRecorder.record(Macro::hideQuickModeKey, false),
+    val menuOrder: Int? = initializerRecorder.record(Macro::menuOrder, null),
+    private val condition: MacroCondition? = initializerRecorder.record(Macro::condition, null),
     @SerialName("run")
-    private val actions: MacroActions = MacroActions()
+    private val actions: MacroActions = initializerRecorder.record(Macro::actions, MacroActions())
 ) : MacroRunnable {
+    constructor(
+        id: String? = null,
+        enabled: Boolean = true,
+        description: StringWithPlaceholders = Empty,
+        style: StyleString? = null,
+        key: KeyboardEvent? = null,
+        hideKey: Boolean = false,
+        quickModeKey: KeyboardEvent? = null,
+        hideQuickModeKey: Boolean = false,
+        menuOrder: Int? = null,
+        condition: MacroCondition? = null,
+        actions: MacroActions = MacroActions()
+    ) : this(
+        initializerRecorder = PropertyInitializerRecorder(),
+        id = id,
+        enabled = enabled,
+        description = description,
+        style = style,
+        key = key,
+        hideKey = hideKey,
+        quickModeKey = quickModeKey,
+        hideQuickModeKey = hideQuickModeKey,
+        menuOrder = menuOrder,
+        condition = condition,
+        actions = actions
+    )
+
     init {
         if (enabled) require(menuOrder == null || description.raw.isNotBlank()) {
             "Macros shown in the menu must have a ${::description.name}"
@@ -80,6 +111,28 @@ data class Macro(
 
     context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
     override fun run() = actions.run()
+    
+    fun replaceFrom(other: Macro): Macro {
+        fun <T> KProperty1<Macro, T>.replace(): T {
+            val otherHasExplicitValue = !other.initializerRecorder.usedInitializer(this)
+            return get(if (otherHasExplicitValue) other else this@Macro)
+        }
+        return copy(
+            id = Macro::id.replace(),
+            enabled = Macro::enabled.replace(),
+            description = Macro::description.replace(),
+            style = Macro::style.replace(),
+            key = Macro::key.replace(),
+            hideKey = Macro::hideKey.replace(),
+            quickModeKey = Macro::quickModeKey.replace(),
+            hideQuickModeKey = Macro::hideQuickModeKey.replace(),
+            menuOrder = Macro::menuOrder.replace(),
+            condition = Macro::condition.replace(),
+            actions = Macro::actions.replace()
+        )
+    }
+
+    operator fun plus(other: Macro) = replaceFrom(other)
 
     companion object {
         context(_: FullContext, _: StateProvider)
@@ -113,4 +166,15 @@ data class Macro(
         context(_: FullContext, _: StateProvider)
         fun Macro.computeCondition() = evaluationContext { available() }
     }
+}
+
+private class PropertyInitializerRecorder<This> {
+    private val records = mutableSetOf<KProperty1<This, *>>()
+
+    fun <T> record(property: KProperty1<This, T>, default: T): T {
+        records += property
+        return default
+    }
+
+    fun usedInitializer(property: KProperty1<This, *>) = property in records
 }
