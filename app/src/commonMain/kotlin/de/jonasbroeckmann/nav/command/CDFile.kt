@@ -3,7 +3,7 @@ package de.jonasbroeckmann.nav.command
 import de.jonasbroeckmann.nav.framework.utils.delete
 import de.jonasbroeckmann.nav.framework.utils.div
 import de.jonasbroeckmann.nav.framework.utils.exists
-import de.jonasbroeckmann.nav.framework.utils.rawSink
+import de.jonasbroeckmann.nav.framework.utils.sink
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -17,7 +17,7 @@ object CDFile {
         if (Path.exists()) {
             Path.delete()
         }
-        Path.rawSink().buffered().use {
+        Path.sink().buffered().use {
             it.writeString(path.toString())
         }
     }

@@ -43,7 +43,7 @@ import de.jonasbroeckmann.nav.framework.utils.absolute
 import de.jonasbroeckmann.nav.framework.utils.createDirectories
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
-import de.jonasbroeckmann.nav.framework.utils.rawSink
+import de.jonasbroeckmann.nav.framework.utils.sink
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.update.checkForUpdatesAnimated
@@ -388,7 +388,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         if (!configPath.exists()) {
             terminal.info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
             configPath.parent?.createDirectories(mustCreate = false)
-            configPath.rawSink().buffered().use {
+            configPath.sink().buffered().use {
                 it.writeString("# $BinaryName configuration file\n\n")
             }
         }

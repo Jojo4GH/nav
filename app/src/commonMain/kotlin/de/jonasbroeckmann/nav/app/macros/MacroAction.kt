@@ -27,7 +27,7 @@ import de.jonasbroeckmann.nav.framework.utils.delete
 import de.jonasbroeckmann.nav.framework.utils.deleteRecursively
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
-import de.jonasbroeckmann.nav.framework.utils.rawSink
+import de.jonasbroeckmann.nav.framework.utils.sink
 import kotlinx.io.RawSink
 import kotlinx.io.buffered
 import kotlinx.io.writeString
@@ -222,14 +222,14 @@ sealed interface MacroAction : MacroRunnable {
             }
 
             when {
-                append -> path.rawSink(append = true).writeAndClose()
-                overwrite -> path.rawSink(append = false).writeAndClose()
+                append -> path.sink(append = true).writeAndClose()
+                overwrite -> path.sink(append = false).writeAndClose()
                 !overwrite -> {
                     if (path.exists()) {
                         if (!silent) context.reportWarning("Cannot write file because it already exists: $path")
                         return
                     }
-                    path.rawSink(append = false).writeAndClose()
+                    path.sink(append = false).writeAndClose()
                 }
             }
             updateState { updatedEntries { it.path == path } }

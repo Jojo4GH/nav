@@ -24,7 +24,7 @@ import de.jonasbroeckmann.nav.framework.utils.div
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isRegularFile
 import de.jonasbroeckmann.nav.framework.utils.nameAndExtension
-import de.jonasbroeckmann.nav.framework.utils.rawSource
+import de.jonasbroeckmann.nav.framework.utils.source
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSource
@@ -356,7 +356,7 @@ data class Config private constructor(
 
         private fun loadFromYaml(path: Path) = yaml.decodeFromSource(
             deserializer = serializer(),
-            source = path.rawSource().asOkioSource()
+            source = path.source().asOkioSource()
         )
 
         private fun loadFromToml(path: Path) = toml.decodeFromFile(

@@ -4,9 +4,23 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 
+/**
+ * @see FileSystem.metadataOrNull
+ * @see kotlinx.io.files.FileMetadata.isDirectory
+ */
 fun FileSystem.isDirectory(path: Path) = metadataOrNull(path)?.isDirectory == true
 
+/**
+ * @see FileSystem.metadataOrNull
+ * @see kotlinx.io.files.FileMetadata.isRegularFile
+ */
 fun FileSystem.isRegularFile(path: Path) = metadataOrNull(path)?.isRegularFile == true
+
+/**
+ * @see FileSystem.metadataOrNull
+ * @see kotlinx.io.files.FileMetadata.size
+ */
+fun FileSystem.size(path: Path) = metadataOrNull(path)?.size ?: -1L
 
 fun FileSystem.deleteRecursively(path: Path, mustExist: Boolean = true) {
     when {
