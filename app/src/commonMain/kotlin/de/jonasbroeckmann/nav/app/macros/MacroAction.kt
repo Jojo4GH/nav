@@ -19,6 +19,7 @@ import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.utils.atomicMove
 import de.jonasbroeckmann.nav.framework.utils.children
 import de.jonasbroeckmann.nav.framework.utils.createDirectories
@@ -45,6 +46,7 @@ sealed interface MacroAction : MacroRunnable {
         val format: Regex? = null,
         val default: StringWithPlaceholders? = null,
         val choices: List<StringWithPlaceholders> = emptyList(),
+        val hideMainTable: Boolean = false,
         val resultTo: String = DefaultMacroSymbols.ResultDefault.name,
         val onChoice: Map<StringWithPlaceholders, MacroActions> = emptyMap()
     ) : MacroAction {
@@ -56,9 +58,10 @@ sealed interface MacroAction : MacroRunnable {
 
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
+            val dialogOptions = DialogOptions(hideMainTable = hideMainTable)
             val result = if (choices.isNotEmpty()) {
                 val evaluatedChoices = choices.map { it.evaluate() }
-                context.showMacroDialog {
+                context.showMacroDialog(dialogOptions) {
                     defaultChoicePrompt(
                         title = prompt.evaluate(),
                         choices = evaluatedChoices,
@@ -66,7 +69,7 @@ sealed interface MacroAction : MacroRunnable {
                     )
                 }
             } else {
-                context.showMacroDialog {
+                context.showMacroDialog(dialogOptions) {
                     defaultTextPrompt(
                         title = prompt.evaluate(),
                         initialText = default?.evaluate() ?: "",
