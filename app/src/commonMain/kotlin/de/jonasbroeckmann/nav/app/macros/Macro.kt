@@ -111,7 +111,7 @@ data class Macro private constructor(
 
     context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
     override fun run() = actions.run()
-    
+
     fun replaceFrom(other: Macro): Macro {
         fun <T> KProperty1<Macro, T>.replace(): T {
             val otherHasExplicitValue = !other.initializerRecorder.usedInitializer(this)
