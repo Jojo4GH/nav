@@ -45,7 +45,8 @@ sealed interface MacroAction : MacroRunnable {
         val format: Regex? = null,
         val default: StringWithPlaceholders? = null,
         val choices: List<StringWithPlaceholders> = emptyList(),
-        val resultTo: String = DefaultMacroSymbols.ResultDefault.name
+        val resultTo: String = DefaultMacroSymbols.ResultDefault.name,
+        val onChoice: Map<StringWithPlaceholders, MacroActions> = emptyMap()
     ) : MacroAction {
         init {
             require(listOfNotNull(format, choices.takeIf { it.isNotEmpty() }).size <= 1) {
@@ -79,6 +80,11 @@ sealed interface MacroAction : MacroRunnable {
                 context.doReturn()
             }
             context[resultTo] = result
+            onChoice.forEach { (case, actions) ->
+                if (case.evaluate() == result) {
+                    actions.run()
+                }
+            }
         }
     }
 
