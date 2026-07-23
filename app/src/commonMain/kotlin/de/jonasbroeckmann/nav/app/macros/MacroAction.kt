@@ -388,10 +388,33 @@ sealed interface MacroAction : MacroRunnable {
     }
 
     @Serializable
+    @SerialName("when")
+    data class When(
+        @SerialName("when")
+        val switch: StringWithPlaceholders,
+        val ignoreCase: Boolean = false,
+        @SerialName("is")
+        val cases: Map<StringWithPlaceholders, MacroActions> = emptyMap()
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
+            val switchValue = switch.evaluate()
+            val (_, actions) = cases.asSequence().firstOrNull { (case, _) ->
+                val caseValue = case.evaluate()
+                switchValue.equals(caseValue, ignoreCase = ignoreCase)
+            } ?: run {
+                context.reportDebug { "No case matched for value '$switchValue'" }
+                return
+            }
+            actions.run()
+        }
+    }
+
+    @Serializable
     @SerialName("print")
     data class Print(
         val print: StringWithPlaceholders,
-        val style: Style? = null,
+        val style: Style? = null, // TODO convert to StyleString
         val debug: Boolean = false
     ) : MacroAction {
         @Serializable
@@ -469,6 +492,7 @@ sealed interface MacroAction : MacroRunnable {
                     ChildrenOf.serializer(),
                     Set.serializer(),
                     If.serializer(),
+                    When.serializer(),
                     Print.serializer(),
                     Return.serializer(),
                     Exit.serializer(),
