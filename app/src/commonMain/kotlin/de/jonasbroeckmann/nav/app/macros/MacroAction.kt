@@ -11,14 +11,27 @@ import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.exit
 import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
+import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePathToDirectoryOrNull
 import de.jonasbroeckmann.nav.app.openInEditor
 import de.jonasbroeckmann.nav.app.runCommand
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
-import de.jonasbroeckmann.nav.command.dangerOnDebug
+import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.framework.utils.atomicMove
+import de.jonasbroeckmann.nav.framework.utils.children
+import de.jonasbroeckmann.nav.framework.utils.createDirectories
+import de.jonasbroeckmann.nav.framework.utils.delete
+import de.jonasbroeckmann.nav.framework.utils.deleteRecursively
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.isDirectory
+import de.jonasbroeckmann.nav.framework.utils.sink
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
-import kotlinx.io.files.Path
+import kotlinx.io.RawSink
+import kotlinx.io.buffered
+import kotlinx.io.writeString
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -32,7 +45,8 @@ sealed interface MacroAction : MacroRunnable {
         val format: Regex? = null,
         val default: StringWithPlaceholders? = null,
         val choices: List<StringWithPlaceholders> = emptyList(),
-        val resultTo: String = "result"
+        val resultTo: String = DefaultMacroSymbols.ResultDefault.name,
+        val onChoice: Map<StringWithPlaceholders, MacroActions> = emptyMap()
     ) : MacroAction {
         init {
             require(listOfNotNull(format, choices.takeIf { it.isNotEmpty() }).size <= 1) {
@@ -40,8 +54,8 @@ sealed interface MacroAction : MacroRunnable {
             }
         }
 
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             val result = if (choices.isNotEmpty()) {
                 val evaluatedChoices = choices.map { it.evaluate() }
                 context.showMacroDialog {
@@ -62,10 +76,15 @@ sealed interface MacroAction : MacroRunnable {
                 }
             }
             if (result == null) {
-                context.dangerOnDebug { "Aborting macro because prompt was cancelled." }
+                context.reportDebug { "Aborting macro because prompt was cancelled." }
                 context.doReturn()
             }
             context[resultTo] = result
+            onChoice.forEach { (case, actions) ->
+                if (case.evaluate() == result) {
+                    actions.run()
+                }
+            }
         }
     }
 
@@ -78,24 +97,33 @@ sealed interface MacroAction : MacroRunnable {
         val capture: Map<String, StringWithPlaceholders>? = null,
         val continueOnReturn: Boolean = true
     ) : MacroAction {
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             val macroId = macro.evaluate()
             val macro = context.identifiedMacros[macroId]
-                ?: throw IllegalArgumentException("No macro with ${Macro::id.name} '$macroId' found")
-
+                ?: throw MacroException("No macro with ${Macro::id.name} '$macroId' found")
             context.call(
                 parameters = parameters?.mapKeys { (name, _) -> MacroSymbol.fromString(name) },
                 capture = capture?.mapKeys { (name, _) -> MacroSymbol.fromString(name) },
-                returnBarrier = continueOnReturn
-            ) {
-                MacroRunnable {
-                    if (ignoreCondition || macro.available()) {
-                        macro.run()
-                    } else {
-                        contextOf<MacroRuntimeContext>().printlnOnDebug {
-                            "Skipping macro '$macroId' because its condition was not met."
-                        }
+                returnBarrier = continueOnReturn,
+                runnable = Delegate(
+                    macro = macro,
+                    ignoreCondition = ignoreCondition
+                )
+            )
+        }
+
+        data class Delegate(
+            val macro: Macro,
+            val ignoreCondition: Boolean,
+        ) : MacroRunnable {
+            context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+            override fun run() {
+                if (ignoreCondition || macro.available()) {
+                    macro.run()
+                } else {
+                    context.printlnOnDebug {
+                        "Skipping macro '${macro.id}' because its condition was not met."
                     }
                 }
             }
@@ -111,8 +139,8 @@ sealed interface MacroAction : MacroRunnable {
         val errorTo: String? = null,
         val trimTrailingNewline: Boolean = true
     ) : MacroAction {
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             val result = runCommand(
                 command = command.evaluate(),
                 collectOutput = outputTo != null,
@@ -152,8 +180,8 @@ sealed interface MacroAction : MacroRunnable {
             if (ignoreCase) Regex(match.pattern, match.options + RegexOption.IGNORE_CASE) else match
         }
 
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
             val toMatch = value.evaluate()
             val result = regex.matchEntire(toMatch)
             result?.groupValues?.forEachIndexed { index, string ->
@@ -169,10 +197,144 @@ sealed interface MacroAction : MacroRunnable {
         val open: StringWithPlaceholders,
         val exitCodeTo: String = DefaultMacroSymbols.ExitCode.name
     ) : MacroAction {
-        context(context: MacroRuntimeContext)
-        override fun run() {
-            val exitCode = openInEditor(Path(open.evaluate()))
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
+            val exitCode = openInEditor(open.evaluateToAbsolutePath())
             context[exitCodeTo] = exitCode?.toString().orEmpty()
+        }
+    }
+
+    @Serializable
+    @SerialName("writeFile")
+    data class WriteFile(
+        val writeFile: StringWithPlaceholders,
+        val content: StringWithPlaceholders? = null,
+        val append: Boolean = false,
+        val overwrite: Boolean = false,
+        val silent: Boolean = false
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
+            val path = writeFile.evaluateToAbsolutePath()
+            if (path.isDirectory()) {
+                if (!silent) context.reportWarning("Cannot write file because it is a directory: $path")
+                return
+            }
+
+            fun RawSink.writeAndClose() = use {
+                val content = content?.evaluate()?.takeUnless { it.isEmpty() }
+                if (content != null) {
+                    buffered().use { it.writeString(content) }
+                }
+            }
+
+            when {
+                append -> path.sink(append = true).writeAndClose()
+                overwrite -> path.sink(append = false).writeAndClose()
+                !overwrite -> {
+                    if (path.exists()) {
+                        if (!silent) context.reportWarning("Cannot write file because it already exists: $path")
+                        return
+                    }
+                    path.sink(append = false).writeAndClose()
+                }
+            }
+            updateState { updatedEntries { it.path == path } }
+        }
+    }
+
+    @Serializable
+    @SerialName("createDirectory")
+    data class CreateDirectory(
+        val createDirectory: StringWithPlaceholders,
+        val createParents: Boolean = true,
+        val silent: Boolean = false
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
+            val path = createDirectory.evaluateToAbsolutePath()
+            if (createParents) {
+                path.createDirectories()
+            } else {
+                if (path.parent?.exists() == false) {
+                    if (!silent) context.reportWarning("Cannot create directory because its parents do not exist: $path")
+                    return
+                }
+                path.createDirectories()
+            }
+            updateState { updatedEntries { it.path == path } }
+        }
+    }
+
+    @Serializable
+    @SerialName("move")
+    data class Move(
+        val move: StringWithPlaceholders,
+        val to: StringWithPlaceholders,
+        val createParents: Boolean = true,
+        val overwrite: Boolean = false,
+        val silent: Boolean = false
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() {
+            val source = move.evaluateToAbsolutePath()
+            val destination = to.evaluateToAbsolutePath()
+            if (destination.exists() && !overwrite) {
+                if (!silent) context.reportWarning("Cannot move item because destination already exists: $destination")
+                return
+            }
+            if (createParents) {
+                destination.parent?.createDirectories()
+            }
+            source.atomicMove(destination)
+            updateState { updatedEntries { it.path == destination } }
+        }
+    }
+
+    @Serializable
+    @SerialName("delete")
+    data class Delete(
+        val delete: StringWithPlaceholders,
+        val recursive: Boolean = false,
+        val silent: Boolean = false
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
+            val path = delete.evaluateToAbsolutePath()
+            if (!path.exists()) {
+                if (!silent) context.reportWarning("Cannot delete item because it does not exist: $path")
+                return
+            }
+            if (path.isDirectory() && !recursive && path.children().isNotEmpty()) {
+                if (!silent) context.reportWarning("Cannot delete directory non-recursively because it is not empty: $path")
+                return
+            }
+            if (recursive) {
+                path.deleteRecursively()
+            } else {
+                path.delete()
+            }
+            updateState { updatedEntries() }
+        }
+    }
+
+    @Serializable
+    @SerialName("childrenOf")
+    data class ChildrenOf(
+        val childrenOf: StringWithPlaceholders,
+        val fullPath: Boolean = false,
+        val resultTo: String = DefaultMacroSymbols.ResultDefault.name
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
+            val path = childrenOf.evaluateToAbsolutePath()
+            context[resultTo] = when {
+                path.isDirectory() -> when {
+                    fullPath -> path.children().joinToString("\n")
+                    else -> path.children().joinToString("\n") { it.name }
+                }
+                else -> ""
+            }
         }
     }
 
@@ -194,11 +356,15 @@ sealed interface MacroAction : MacroRunnable {
             }
         }
 
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             set.forEach { (variable, value) ->
                 context[variable] = value.evaluate()
             }
+        }
+
+        companion object {
+            operator fun invoke(vararg pairs: Pair<String, StringWithPlaceholders>) = Set(mapOf(*pairs))
         }
     }
 
@@ -211,8 +377,8 @@ sealed interface MacroAction : MacroRunnable {
         @SerialName("else")
         val otherwise: MacroActions = MacroActions()
     ) : MacroAction {
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             if (condition.evaluate()) {
                 then.run()
             } else {
@@ -222,10 +388,32 @@ sealed interface MacroAction : MacroRunnable {
     }
 
     @Serializable
+    @SerialName("when")
+    data class When(
+        @SerialName("when")
+        val switch: StringWithPlaceholders,
+        val ignoreCase: Boolean = false,
+        @SerialName("is")
+        val cases: Map<StringWithPlaceholders, MacroActions> = emptyMap(),
+        @SerialName("else")
+        val otherwise: MacroActions = MacroActions()
+    ) : MacroAction {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
+            val switchValue = switch.evaluate()
+            val actions = cases.asSequence().firstOrNull { (case, _) ->
+                val caseValue = case.evaluate()
+                switchValue.equals(caseValue, ignoreCase = ignoreCase)
+            }?.value ?: otherwise
+            actions.run()
+        }
+    }
+
+    @Serializable
     @SerialName("print")
     data class Print(
         val print: StringWithPlaceholders,
-        val style: Style? = null,
+        val style: Style? = null, // TODO convert to StyleString
         val debug: Boolean = false
     ) : MacroAction {
         @Serializable
@@ -243,8 +431,8 @@ sealed interface MacroAction : MacroRunnable {
             Error,
         }
 
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run(): Unit = macroTrace {
             if (debug && !context.debugMode) return
             val message = print.evaluate()
             when (style) {
@@ -261,10 +449,11 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("return")
     data class Return(
         @SerialName("return")
+        @EncodeDefault(ALWAYS)
         val doReturn: Boolean = true,
     ) : MacroAction {
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             if (doReturn) {
                 context.doReturn()
             }
@@ -274,13 +463,14 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("exit")
     data class Exit(
+        @EncodeDefault(ALWAYS)
         val exit: Boolean = true,
         val at: StringWithPlaceholders? = null
     ) : MacroAction {
-        context(context: MacroRuntimeContext)
-        override fun run() {
+        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        override fun run() = macroTrace {
             if (exit) {
-                exit(atDirectory = at?.evaluate()?.parseAbsolutePathToDirectoryOrNull())
+                exit(atDirectory = at?.evaluateToAbsolutePathToDirectoryOrNull())
             }
         }
     }
@@ -294,8 +484,14 @@ sealed interface MacroAction : MacroRunnable {
                     RunCommand.serializer(),
                     Match.serializer(),
                     OpenFile.serializer(),
+                    WriteFile.serializer(),
+                    CreateDirectory.serializer(),
+                    Move.serializer(),
+                    Delete.serializer(),
+                    ChildrenOf.serializer(),
                     Set.serializer(),
                     If.serializer(),
+                    When.serializer(),
                     Print.serializer(),
                     Return.serializer(),
                     Exit.serializer(),

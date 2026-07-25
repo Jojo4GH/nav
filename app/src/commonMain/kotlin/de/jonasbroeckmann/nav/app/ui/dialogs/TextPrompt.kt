@@ -4,6 +4,7 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextAlign.LEFT
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
+import de.jonasbroeckmann.nav.app.ui.buildDefaultHints
 import de.jonasbroeckmann.nav.app.ui.render
 import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.config.StylesProvider
@@ -16,7 +17,6 @@ import de.jonasbroeckmann.nav.framework.action.handle
 import de.jonasbroeckmann.nav.framework.action.register
 import de.jonasbroeckmann.nav.framework.semantics.updateTextField
 import de.jonasbroeckmann.nav.framework.ui.appendTextFieldContent
-import de.jonasbroeckmann.nav.framework.ui.buildHints
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.dismissDialog
 import de.jonasbroeckmann.nav.framework.ui.dialog.updateState
@@ -107,12 +107,12 @@ fun DialogShowScope.textPrompt(
             )
             if (showHints) {
                 cell(
-                    buildHints(styles.genericElements(" • ")) {
+                    buildDefaultHints {
                         addActions(actions, this@inputDialog, inputMode) { render() }
                         if (!validate(text)) {
                             add { (TextStyles.dim + styles.danger)("input not valid") }
                         }
-                    }
+                    }.joinToString("")
                 )
             }
         }

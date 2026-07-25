@@ -13,9 +13,9 @@ import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListState
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemListState
-import de.jonasbroeckmann.nav.utils.children
+import de.jonasbroeckmann.nav.framework.utils.children
+import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.utils.cleaned
-import de.jonasbroeckmann.nav.utils.isDirectory
 import kotlinx.io.files.Path
 
 @Suppress("detekt:TooManyFunctions")
@@ -54,7 +54,7 @@ data class State private constructor(
     fun navigatedTo(path: Path?): State {
         if (path == null) return this
         if (directory == path) return this
-        if (!path.isDirectory) return this
+        if (!path.isDirectory()) return this
 
         tailrec fun Path.nearestChildToOrNull(parent: Path): Path? {
             if (this.parent == parent) return this

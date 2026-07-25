@@ -12,10 +12,7 @@ open class MacroSymbolScopeBase(
     override operator fun get(symbol: MacroSymbol): String = context(context, stateProvider) {
         when (symbol) {
             is MacroSymbol.EnvironmentVariable -> symbol.get()
-            is MacroSymbol.Generic -> {
-                DefaultMacroProperties.BySymbol[symbol]?.let { return it.get() }
-                variables[symbol].orEmpty()
-            }
+            is MacroSymbol.Generic -> DefaultMacroProperty.BySymbol[symbol]?.get() ?: variables[symbol] ?: ""
         }
     }
 }

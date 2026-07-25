@@ -9,7 +9,6 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.Macro
@@ -21,12 +20,18 @@ import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteAutoNavigation
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteStyle
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.isRegularFile
+import de.jonasbroeckmann.nav.framework.utils.nameAndExtension
+import de.jonasbroeckmann.nav.framework.utils.source
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlin.getValue
 import kotlin.lazy
 
 @Serializable
@@ -179,10 +184,6 @@ data class Config private constructor(
             AtomOneDark(Themes.AtomOneDark),
             HackerHacker(Themes.HackerHacker),
         }
-
-        companion object {
-            private fun String.parseColor() = rgb(this)
-        }
     }
 
     @Serializable
@@ -272,7 +273,7 @@ data class Config private constructor(
             state: State,
             currentEntry: Entry
         ) = this
-            .replace(PLACEHOLDER_INITIAL_DIR, WorkingDirectory.toString())
+            .replace(PLACEHOLDER_INITIAL_DIR, Paths.WorkingDirectory.toString())
             .replace(PLACEHOLDER_DIR, state.directory.toString())
             .replace(PLACEHOLDER_ENTRY_PATH, currentEntry.path.toString())
             .replace(PLACEHOLDER_ENTRY_NAME, currentEntry.path.name)
@@ -297,9 +298,9 @@ data class Config private constructor(
     companion object {
         val DefaultPaths by lazy {
             listOf(
-                UserHome / ".config" / "nav.yaml",
-                UserHome / ".config" / "nav.yml",
-                UserHome / ".config" / "nav.toml",
+                Paths.UserHome / ".config" / "nav.yaml",
+                Paths.UserHome / ".config" / "nav.yml",
+                Paths.UserHome / ".config" / "nav.toml",
             )
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"
@@ -309,11 +310,11 @@ data class Config private constructor(
             ?: getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
         fun findDefaultPath(mustExist: Boolean = true): Path? {
-            val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile }
+            val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile() }
             return if (mustExist) {
                 firstExiting
             } else {
-                firstExiting ?: DefaultPaths.firstOrNull { !it.exists() || it.isRegularFile }
+                firstExiting ?: DefaultPaths.firstOrNull { !it.exists() || it.isRegularFile() }
             }
         }
 
@@ -328,7 +329,7 @@ data class Config private constructor(
             try {
                 val explicitPath = findExplicitPath()?.also {
                     require(it.exists()) { "The specified config does not exist: $it" }
-                    require(it.isRegularFile) { "The specified config is not a file: $it" }
+                    require(it.isRegularFile()) { "The specified config is not a file: $it" }
                 }
                 val path = explicitPath
                     ?: findDefaultPath(mustExist = true)
@@ -353,30 +354,35 @@ data class Config private constructor(
             }
         }
 
-        private fun loadFromYaml(path: Path) = yaml.decodeFromSource(
+        private fun loadFromYaml(path: Path) = Yaml.decodeFromSource(
             deserializer = serializer(),
-            source = path.rawSource().asOkioSource()
+            source = path.source().asOkioSource()
         )
 
-        private fun loadFromToml(path: Path) = toml.decodeFromFile(
+        private fun loadFromToml(path: Path) = Toml.decodeFromFile(
             deserializer = serializer(),
             tomlFilePath = path.toString()
         )
 
-        private val yaml by lazy {
+        val Yaml by lazy {
             Yaml(
                 configuration = YamlConfiguration(
-                    strictMode = true
+                    encodeDefaults = false,
+                    strictMode = true,
+                    breakScalarsAt = Int.MAX_VALUE,
+                    multiLineStringStyle = Literal
                 )
             )
         }
 
-        private val toml by lazy {
+        val Toml by lazy {
             TomlFileReader(
                 inputConfig = TomlInputConfig(
                     ignoreUnknownNames = false
                 ),
-                outputConfig = TomlOutputConfig()
+                outputConfig = TomlOutputConfig(
+                    ignoreDefaultValues = true
+                )
             )
         }
 

@@ -1,5 +1,9 @@
 package de.jonasbroeckmann.nav.command
 
+import de.jonasbroeckmann.nav.framework.utils.delete
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.sink
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -7,13 +11,13 @@ import kotlinx.io.writeString
 
 object CDFile {
     val PathInUserHome: Path = Path(".nav-cd")
-    val Path = UserHome / PathInUserHome
+    val Path = Paths.UserHome / PathInUserHome
 
     fun broadcastChangeDirectory(path: Path) {
         if (Path.exists()) {
             Path.delete()
         }
-        Path.rawSink().buffered().use {
+        Path.sink().buffered().use {
             it.writeString(path.toString())
         }
     }

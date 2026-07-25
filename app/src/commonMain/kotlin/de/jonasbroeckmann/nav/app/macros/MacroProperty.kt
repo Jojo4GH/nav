@@ -8,7 +8,7 @@ sealed interface MacroProperty : MacroEvaluable<String>, MacroIdentified {
     context(_: FullContext, _: StateProvider)
     fun get(): String
 
-    context(scope: MacroSymbolScope)
+    context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
     override fun evaluate() = scope[symbol]
 
     sealed interface Mutable : MacroProperty {

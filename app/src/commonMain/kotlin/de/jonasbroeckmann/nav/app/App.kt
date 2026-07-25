@@ -31,6 +31,8 @@ import kotlinx.io.IOException
 import kotlinx.io.files.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.measureTime
+import kotlin.time.measureTimedValue
 
 class App private constructor(
     context: PartialContext,
@@ -52,7 +54,14 @@ class App private constructor(
     private val ui = WidgetAnimation(terminal)
 
     fun WidgetAnimation.tryUpdate() = stateManager.consume { state ->
-        render(buildUI(state))
+        val (widget, uiBuildTime) = measureTimedValue {
+            buildUI(state)
+        }
+        printlnOnDebug { "Built UI in $uiBuildTime" }
+        val renderTime = measureTime {
+            render(widget)
+        }
+        printlnOnDebug { "Rendered UI in $renderTime" }
     }
 
     private val inputController = StackBasedInputController(
@@ -100,8 +109,14 @@ class App private constructor(
     fun main(): Nothing = useInputMode(Normal) {
         ui.tryUpdate()
         captureInputEvents { input ->
-            processInput(input)
-            ui.tryUpdate()
+            val inputProcessTime = measureTime {
+                processInput(input)
+            }
+            printlnOnDebug { "Processed input in $inputProcessTime" }
+            val uiUpdateTime = measureTime {
+                ui.tryUpdate()
+            }
+            printlnOnDebug { "Updated UI in $uiUpdateTime" }
         }
     }
 

@@ -2,10 +2,14 @@ package de.jonasbroeckmann.nav.app
 
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
+import de.jonasbroeckmann.nav.app.macros.DefaultMacro
+import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
 import de.jonasbroeckmann.nav.utils.which
+import kotlinx.serialization.encodeToString
 
 abstract class MainControllerBase internal constructor() : MainController {
     override val editorCommand by lazy {
@@ -48,8 +52,31 @@ abstract class MainControllerBase internal constructor() : MainController {
             }
     }
 
+    override val macros by lazy {
+        buildList {
+            fun append(macro: Macro) {
+                if (macro.id == null) {
+                    add(macro)
+                } else {
+                    val merged = filter { it.id == macro.id }
+                        .reduceOrNull { a, b -> a + b }
+                        ?.let { it + macro }
+                        ?: macro
+                    removeAll { it.id == macro.id }
+                    add(merged)
+                }
+            }
+
+            DefaultMacro.macros.forEach(::append)
+            config.macros.forEach(::append)
+        }.also {
+            printlnOnDebug { "\nLoaded ${it.size} macros:" }
+            printlnOnDebug { Config.Yaml.encodeToString(it) + "\n" }
+        }
+    }
+
     override val identifiedMacros by lazy {
-        config.macros
+        macros
             .mapNotNull { macro -> macro.id?.let { it to macro } }
             .toMap()
     }

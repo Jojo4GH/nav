@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.utils
 
+import de.jonasbroeckmann.nav.framework.utils.div
 import kotlinx.cinterop.*
 import kotlinx.io.files.Path
 import platform.posix.PATH_MAX

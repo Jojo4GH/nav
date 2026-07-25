@@ -39,6 +39,11 @@ import de.jonasbroeckmann.nav.app.App
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.framework.utils.absolute
+import de.jonasbroeckmann.nav.framework.utils.createDirectories
+import de.jonasbroeckmann.nav.framework.utils.exists
+import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
+import de.jonasbroeckmann.nav.framework.utils.sink
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.update.checkForUpdatesAnimated
@@ -53,6 +58,8 @@ import kotlinx.io.writeString
 
 class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     init {
+        instance = this@NavCommand
+
         context {
             terminal = when (val terminalInterface = customTerminalInterface()) {
                 null -> Terminal(theme = DefaultTerminalTheme)
@@ -280,7 +287,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         )
     }
 
-    override val startingDirectory get() = directory ?: WorkingDirectory
+    override val startingDirectory get() = directory ?: Paths.WorkingDirectory
 
     override val shell get() = configurationOptions.shell
 
@@ -383,7 +390,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         if (!configPath.exists()) {
             terminal.info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
             configPath.parent?.createDirectories(mustCreate = false)
-            configPath.rawSink().buffered().use {
+            configPath.sink().buffered().use {
                 it.writeString("# $BinaryName configuration file\n\n")
             }
         }
@@ -407,6 +414,8 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     }
 
     companion object {
+        lateinit var instance: NavCommand
+
         private val directoryArgumentName get() = "directory"
 
         private fun helpLines(vararg lines: String) = lines.joinToString("\u0085")

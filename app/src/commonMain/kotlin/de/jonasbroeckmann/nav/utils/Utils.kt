@@ -1,5 +1,8 @@
 package de.jonasbroeckmann.nav.utils
 
+import com.github.ajalt.mordant.rendering.TextColors.Companion.rgb
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.exists
 import kotlinx.io.files.Path
 
 expect fun getEnvironmentVariable(key: String): String?
@@ -23,3 +26,5 @@ fun which(command: String): Path? {
 infix fun Boolean.implies(other: Boolean) = !this || other
 
 expect fun exitProcess(status: Int): Nothing
+
+fun String.parseColor() = rgb(this)

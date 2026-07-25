@@ -4,16 +4,15 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.rendering.TextStyles
-import de.jonasbroeckmann.nav.app.macros.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.Entry.Type.*
-import de.jonasbroeckmann.nav.app.state.StateProvider
-import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.config.styles
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.MenuAction
+import de.jonasbroeckmann.nav.framework.ui.HintsBuilder
+import de.jonasbroeckmann.nav.framework.ui.buildHints
 
 context(stylesProvider: StylesProvider)
 fun <Context> Action<Context, *, *>.render(
@@ -68,13 +67,6 @@ val Entry?.style get() = when (this?.type) {
     Unknown -> styles.nameDecorations
 }
 
-context(_: StylesProvider, _: StateProvider)
-val Macro.style get() = when {
-    dependsOnEntry -> state.currentItem.style
-    dependsOnFilter && state.filter.isNotEmpty() -> styles.filter
-    else -> TextStyle()
-}
-
 fun highlightFilterOccurrences(text: String, filter: String, highlightStyle: TextStyle): String {
     if (filter.isEmpty()) return text
     var index = 0
@@ -93,3 +85,16 @@ fun highlightFilterOccurrences(text: String, filter: String, highlightStyle: Tex
     }
     return result
 }
+
+context(_: StylesProvider)
+fun buildDefaultHints(
+    defaultStrongSpacing: String = styles.genericElements(" • "),
+    defaultWeakSpacing: String = " ",
+    spacingMergeStrategy: HintsBuilder.SpacingMergeStrategy = HintsBuilder.SpacingMergeStrategy.MergeNext,
+    block: HintsBuilder.() -> Unit
+) = buildHints(
+    defaultStrongSpacing = defaultStrongSpacing,
+    defaultWeakSpacing = defaultWeakSpacing,
+    spacingMergeStrategy = spacingMergeStrategy,
+    block = block
+)

@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros
 
-fun interface MacroRunnable {
-    context(context: MacroRuntimeContext)
+sealed interface MacroRunnable {
+    context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
     fun run()
 }

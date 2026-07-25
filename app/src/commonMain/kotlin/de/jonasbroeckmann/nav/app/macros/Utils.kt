@@ -1,26 +1,25 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import com.charleskorn.kaml.YamlMap
-import de.jonasbroeckmann.nav.app.state.StateProvider
-import de.jonasbroeckmann.nav.app.state.state
+import de.jonasbroeckmann.nav.app.macros.MacroSymbol.Companion.get
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
-import de.jonasbroeckmann.nav.utils.div
-import de.jonasbroeckmann.nav.utils.metadataOrNull
+import de.jonasbroeckmann.nav.framework.utils.div
+import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
 import kotlinx.io.files.Path
 
-context(stateProvider: StateProvider)
-internal fun String.parseAbsolutePath() = Path(this).let { path ->
+context(scope: MacroSymbolScope)
+internal fun String.parseToAbsolutePath() = Path(this).let { path ->
     if (path.isAbsolute) {
         path
     } else {
-        state.directory / path
+        Path(DefaultMacroProperty.Directory.symbol.get()) / path
     }
 }
 
-context(context: PartialContext, stateProvider: StateProvider)
-internal fun String.parseAbsolutePathToDirectoryOrNull(): Path? {
-    val path = parseAbsolutePath()
+context(context: PartialContext, scope: MacroSymbolScope)
+internal fun String.parseToAbsolutePathToDirectoryOrNull(): Path? {
+    val path = parseToAbsolutePath()
     val metadata = path.metadataOrNull()
     if (metadata == null) {
         context.printlnOnDebug { "\"$this\": No such file or directory" }
