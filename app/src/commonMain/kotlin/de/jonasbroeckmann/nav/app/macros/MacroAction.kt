@@ -394,18 +394,17 @@ sealed interface MacroAction : MacroRunnable {
         val switch: StringWithPlaceholders,
         val ignoreCase: Boolean = false,
         @SerialName("is")
-        val cases: Map<StringWithPlaceholders, MacroActions> = emptyMap()
+        val cases: Map<StringWithPlaceholders, MacroActions> = emptyMap(),
+        @SerialName("else")
+        val otherwise: MacroActions = MacroActions()
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
             val switchValue = switch.evaluate()
-            val (_, actions) = cases.asSequence().firstOrNull { (case, _) ->
+            val actions = cases.asSequence().firstOrNull { (case, _) ->
                 val caseValue = case.evaluate()
                 switchValue.equals(caseValue, ignoreCase = ignoreCase)
-            } ?: run {
-                context.reportDebug { "No case matched for value '$switchValue'" }
-                return
-            }
+            }?.value ?: otherwise
             actions.run()
         }
     }
