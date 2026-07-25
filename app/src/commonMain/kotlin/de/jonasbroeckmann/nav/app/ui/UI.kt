@@ -25,6 +25,7 @@ import kotlin.collections.plus
 context(context: FullContext)
 fun buildUI(state: State): Widget = FillLayout(
     top = {
+        if (state.dialog?.options?.hidePath == true) return@FillLayout null
         buildTitle(
             directory = state.directory,
             maxVisiblePathElements = context.config.maxVisiblePathElements,
@@ -43,6 +44,7 @@ fun buildUI(state: State): Widget = FillLayout(
         )
     },
     fill = { availableLines ->
+        if (state.dialog?.options?.hideMainTable == true) return@FillLayout null
         buildTable(
             entries = state.filteredItems,
             cursor = state.cursor,
@@ -347,7 +349,7 @@ private fun buildBottom(
     overflowWrap = ELLIPSES
 
     if (state.dialog != null) {
-        cell(state.dialog)
+        cell(state.dialog.widget)
         return@verticalLayout
     }
 

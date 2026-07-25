@@ -6,16 +6,16 @@ import com.github.ajalt.mordant.rendering.WidthRange
 import com.github.ajalt.mordant.terminal.Terminal
 
 class FillLayout(
-    val top: () -> Widget,
-    val fill: (availableLines: Int?) -> Widget,
-    val bottom: () -> Widget,
+    val top: () -> Widget?,
+    val fill: (availableLines: Int?) -> Widget?,
+    val bottom: () -> Widget?,
     val limitToTerminalHeight: Boolean
 ) : Widget {
     override fun measure(t: Terminal, width: Int) = WidthRange(min = width, max = width)
 
     override fun render(t: Terminal, width: Int): Lines {
-        val topRendered = top().render(t)
-        val bottomRendered = bottom().render(t)
+        val topRendered = top()?.render(t, width = width) ?: Lines(emptyList())
+        val bottomRendered = bottom()?.render(t, width = width) ?: Lines(emptyList())
 
         val availableLines = if (limitToTerminalHeight) {
             t.updateSize()
@@ -24,7 +24,7 @@ class FillLayout(
             null
         }
 
-        val fillRendered = fill(availableLines).render(t, width)
+        val fillRendered = fill(availableLines)?.render(t, width = width) ?: Lines(emptyList())
 
         return Lines(topRendered.lines + fillRendered.lines + bottomRendered.lines)
     }

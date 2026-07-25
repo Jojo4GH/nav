@@ -13,6 +13,7 @@ import de.jonasbroeckmann.nav.framework.semantics.FilterableItemList
 import de.jonasbroeckmann.nav.framework.semantics.FilterableItemListState
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemList
 import de.jonasbroeckmann.nav.framework.semantics.NavigableItemListState
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.utils.children
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.utils.cleaned
@@ -37,11 +38,16 @@ data class State private constructor(
 
     val inputMode: InputMode?,
 
-    val dialog: Widget?,
+    val dialog: Dialog?,
 
     val lastReceivedEvent: KeyboardEvent?
 ) : StateProvider, FilterableItemList<State, Entry>, NavigableItemList<State, Entry> {
     override val state get() = this
+
+    data class Dialog(
+        val widget: Widget,
+        val options: DialogOptions
+    )
 
     private fun withDirectory(directory: Path) = copy(directory = directory)
         .withFilterableItems(
@@ -138,7 +144,7 @@ data class State private constructor(
 
     fun withInputMode(inputMode: InputMode?) = copy(inputMode = inputMode)
 
-    fun withDialog(dialog: Widget?) = copy(dialog = dialog)
+    fun withDialog(dialog: Dialog?) = copy(dialog = dialog)
 
     fun withLastReceivedEvent(event: KeyboardEvent?) = copy(lastReceivedEvent = event)
 

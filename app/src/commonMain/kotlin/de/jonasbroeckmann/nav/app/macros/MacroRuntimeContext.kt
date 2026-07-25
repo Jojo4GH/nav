@@ -8,6 +8,7 @@ import de.jonasbroeckmann.nav.app.ui.dialogs.macroDialogDecorator
 import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.infoOnDebug
 import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.decorate
 
@@ -15,7 +16,10 @@ class MacroRuntimeContext private constructor(
     controller: MainController,
     private val rootMacro: Macro
 ) : MacroSymbolScopeBase(controller, controller), MainController by controller {
-    fun <R> showMacroDialog(block: DialogShowScope.() -> R) = showDialog {
+    fun <R> showMacroDialog(
+        options: DialogOptions = DialogOptions(),
+        block: DialogShowScope.() -> R
+    ) = showDialog(options) {
         decorate(context(MacroTraceContext.Empty) { macroDialogDecorator(rootMacro) }, block)
     }
 
