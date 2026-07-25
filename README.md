@@ -557,6 +557,8 @@ They can also quickly be triggered by tapping <kbd>ctrl</kbd> together with or f
 
 ### Examples
 
+There are also more examples in the [default macro section](#current-default-macros).
+
 <details open>
 <summary>YAML</summary>
 
@@ -873,6 +875,7 @@ macros:
   format: null                # A regex pattern the entire input must match (optional, default: null)
   choices: []                 # A list of choices (values support templates, optional, default: [])
   default: null               # The default value (supports templates, optional, default: null)
+  hideMainTable: false        # Whether to hide the main table while the prompt is shown (optional, default: false)
   resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
   onChoice:                   # A map of actions to run when a choice is selected (optional, default: {})
   # "choice1":                # Array of actions (key supports templates, default: [])
@@ -957,6 +960,9 @@ Users can change their behavior or disable them by using macro merging as descri
 
 #### Current Default Macros
 
+<details open>
+<summary>YAML</summary>
+
 ```yaml
 - id: "nav:newFile"
   description: "new file: {{filter}}"
@@ -1036,13 +1042,9 @@ Users can change their behavior or disable them by using macro merging as descri
         choices:
         - "No"
         - "Yes"
-        resultTo: "nav:delete:prompt"
-      - if:
-          notEqual:
-          - "{{nav:delete:prompt}}"
-          - "Yes"
-        then:
-        - return: true
+        onChoice:
+          "No":
+          - return: true
       - delete: "{{entryPath}}"
         recursive: true
       else:
@@ -1050,6 +1052,8 @@ Users can change their behavior or disable them by using macro merging as descri
     else:
     - delete: "{{entryPath}}"
 ```
+
+</details>
 
 ## Entry Macros
 
