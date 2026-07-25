@@ -61,13 +61,14 @@ Written in Kotlin/Native, nav provides a modern and intuitive terminal UI to nav
   - [General](#general)
   - [Controls](#controls)
   - [Appearance](#appearance)
-- [Macros (experimental)](#-macros-experimental)
+- [Macros](#-macros-experimental)
   - [Examples](#examples)
   - [Definition](#definition)
   - [Conditions](#conditions)
   - [Actions](#actions)
-  - [Properties, Variables & Placeholders](#properties-variables--placeholders)
-- [Entry Macros](#entry-macros)
+  - [Properties, Variables & Template Strings](#properties-variables--placeholders)
+  - [Macro Merging & Default Macros](#macro-merging--default-macros)
+- [Entry Macros (deprecated)](#entry-macros)
 - [Known Issues](#known-issues)
 
 ## 🚀 Installation
@@ -540,9 +541,9 @@ decorations = false   # Whether to show decorations (default: auto)
 
 </details>
 
-## ⭐ Macros (experimental)
+## ⭐ Macros
 
-> [!WARNING]
+> [!NOTE]
 > Macros are currently an experimental feature.
 > They may change in future releases with no guarantees of compatibility.
 > Please report any [issues](https://github.com/Jojo4GH/nav/issues/new).
@@ -551,7 +552,7 @@ decorations = false   # Whether to show decorations (default: auto)
 With macros, you can define small scripts that can interact with nav in various ways (see [Examples](#examples)).
 They can also overwrite existing functionality to customize nav to your workflow.
 
-Macros are available in the menu (default <kbd>PageDown</kbd>) or with their `nonQuickModeKey`.
+Macros can be accessed with their `key` or through the menu (default <kbd>PageDown</kbd>).
 They can also quickly be triggered by tapping <kbd>ctrl</kbd> together with or followed by their `quickModeKey`.
 
 ### Examples
@@ -589,42 +590,6 @@ macros:
   run:
   - command: chromium "{{entryPath}}"
 
-# Rename the current entry (Trigger: F6)
-- description: rename {{entryName}}
-  key: F6
-  condition:
-    notEmpty: "{{entryName}}"
-  run:
-  - prompt: "New name:"
-    format: "[^\\/:*?\"<>|]+"                       # Valid filename characters on most systems
-    default: "{{entryName}}"
-    resultTo: newName
-  - command: mv "{{entryName}}" "{{newName}}"
-
-# Delete the current entry (non-empty directories only after confirmation) (Trigger: Delete)
-- description: delete {{entryName}}
-  key: Delete
-  condition:
-    notEmpty: "{{entryName}}"
-  run:
-  - if:                                             # Perform special checks for directories
-      equal: [ "{{entryType}}", "directory" ]       
-    then:
-    - command: ls -A "{{entryPath}}"                # Get directory contents
-      outputTo: "directoryContents"
-    - if:
-        notBlank: "{{directoryContents}}"           
-      then:
-      - prompt: "Are you sure you want to delete non-empty directory '{{entryName}}'?"
-        choices: [ "Yes", "No" ]                    # Confirm if directory is not empty
-        default: "Yes"
-        resultTo: "confirmation"
-      - if:
-          notEqual: [ "{{confirmation}}", "Yes" ]   # Check if confirmed
-        then:
-        - return: true                              # Return from macro if not confirmed
-  - command: rm -rf "{{entryPath}}"                 # Delete
-
 # Navigate to the home directory if not already there (Trigger: ctrl+Home)
 - description: home
   quickModeKey: Home
@@ -659,7 +624,7 @@ Currently, only the YAML configuration can be used to define macros:
 
 ```yaml
 # Defines a list of macros
-# Macros are shown in the following places, if their conditions are met:
+# Macros are shown in the following places if they are enabled and their condition is met:
 # - In key hints, if a 'key' is set and not 'hideKey'
 # - In quick macro mode, if a 'quickModeKey' is set and not 'hideQuickModeKey'
 # - In the menu, if a 'menuOrder' is set
@@ -668,8 +633,15 @@ macros:
 - # Unique id of the macro used for referencing it (optional, default: null)
   id: null
   
-  # Description of the macro shown in nav (supports placeholders, required if not hidden, default: "")
+  # Whether the macro is enabled (optional, default: true)
+  enabled: true
+  
+  # Description of the macro shown in nav (supports templates, required if not hidden, default: "")
   description: ""
+  
+  # Style of the macro key hints, menu entry and dialogs (optional, default: null)
+  # This can one of the keys of the 'colors' section (e.g. "directory") or a hex color 
+  style: null
 
   # Key used to trigger the macro in normal mode (optional, default: null)
   # For valid key names see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values
@@ -729,30 +701,49 @@ macros:
 - not:
     # child condition
   
-  # True if all values are equal (the values support placeholders)
+  # True if all values are equal (the values support templates)
 - equal: [ "value 1", "value 2", ... ]
-  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
+  ignoreCase: false       # Whether to ignore case when comparing (optional, default: false)
 
-  # True if any values are not equal (the values support placeholders)
+  # True if any values are not equal (the values support templates)
 - notEqual: [ "value 1", "value 2", ... ]
-  ignoreCase: false   # Whether to ignore case when comparing (optional, default: false)
+  ignoreCase: false       # Whether to ignore case when comparing (optional, default: false)
 
   # True if the entire value matches the given regular expression
-- match: "..."        # A regex pattern (required)
-  in: "..."           # (supports placeholders, required)
-  ignoreCase: false   # Whether to ignore case when matching (optional, default: false)
+- match: "..."            # A regex pattern (required)
+  in: "..."               # (supports templates, required)
+  ignoreCase: false       # Whether to ignore case when matching (optional, default: false)
 
   # True if the value is empty
-- empty: "..."        # (supports placeholders, required)
+- empty: "..."            # (supports templates, required)
 
   # True if the value is not empty
-- notEmpty: "..."     # (supports placeholders, required)
+- notEmpty: "..."         # (supports templates, required)
 
   # True if the value contains only whitespace 
-- blank: "..."        # (supports placeholders, required)
-  
+- blank: "..."            # (supports templates, required)
+
   # True if the value does not contain only whitespace
-- notBlank: "..."     # (supports placeholders, required)
+- notBlank: "..."         # (supports templates, required)
+
+  # True if the value is a path to file or directory
+- exists: "..."           # (supports templates, required)
+
+  # True if the value is not a path to file or directory
+- notExists: "..."        # (supports templates, required)
+
+  # True if the value is a path to a directory
+- isDirectory: "..."      # (supports templates, required)
+
+  # True if the value is not a path to a directory
+- notIsDirectory: "..."   # (supports templates, required)
+  
+  # True if the value is a path to a file
+- isFile: "..."           # (supports templates, required)
+
+  # True if the value is not a path to a file
+- notIsFile: "..."        # (supports templates, required)
+
 ```
 
 </details>
@@ -777,29 +768,49 @@ macros:
   - # else action 2
   - # ...
 
+  # Switches over the given values and runs the corresponding actions.
+  # If multiple cases match, the first matching case is executed.
+- when: "..."               # The value to compare (supports templates, required)
+  ignoreCase: false         # Whether to ignore case when matching (optional, default: false)
+  is:                       # A map of cases (optional, default: {})
+  # "case1":                # Array of actions (key supports templates, default: [])
+  # - # case1 action 1
+  # - # case1 action 2
+  # - # ...
+  # "case2":                # Array of actions (key supports templates, default: [])
+  # - # case2 action 1
+  # - # case2 action 2
+  # - # ...
+  # ...
+  else:                     # Array of actions (optional, default: [])
+  - # else action 1
+  - # else action 2
+  - # ...
+
+
   # Prints the given message.
-- print: "..."                # (supports placeholders, required)
+- print: "..."                # (supports templates, required)
   style: null                 # (optional, default: null, valid values: ["info", "success", "warning", "error"])
   debug: false                # Whether to only print in debug mode (optional, default: false)
 
   # Sets the given properties/variables to the given values.
   # The properties must be mutable.
-  # No property/variable that is set can appear in placeholders on the value side in the same set action
+  # No property/variable that is set can appear in templates on the value side in the same set action
   # (use multiple set actions instead).
 - set:
-    # name1: "value 1"        # (value supports placeholders)
+    # name1: "value 1"        # (value supports templates)
     # name2: "value 2"        # ^^
     # ...
 
   # Runs the sub macro with the given id.
 - macro: "..."                # (required)
   ignoreCondition: false      # Whether to ignore the macro's condition (optional, default: false)
-  # A map of parameters to pass to the sub macro (the values supports placeholders, optional, default: null)
+  # A map of parameters to pass to the sub macro (the values support templates, optional, default: null)
   # If this is null, then all currently set variables are passed to the sub macro.
   # All set parameters are available in the sub macro as variables.
   # Modifying those variables in the sub macro does not affect the parent macro.
   parameters: null
-  # A map of values to capture from the sub macro (the values supports placeholders, optional, default: null)
+  # A map of values to capture from the sub macro (the values support templates, optional, default: null)
   # The keys are the names of properties/variables to assign in the parent macro
   # The values are evaluated in the sub macro's context.
   capture: null
@@ -808,7 +819,7 @@ macros:
 
   # Runs the given command.
   # Commands are run in the directory where nav currently is (see {{directory}} placeholder).
-- command: "..."              # (supports placeholders, required)
+- command: "..."              # (supports templates, required)
   exitCodeTo: "exitCode"      # The variable/property to store the exit code in (optional, default: "exitCode")
   # The variable/property to store the standard output in (optional, default: null)
   # If this is null, the output gets printed to the terminal.
@@ -819,24 +830,66 @@ macros:
   errorTo: null
 
   # Opens the given file in the editor (see 'editor' configuration or '--editor' command line option).
-- open: "..."                 # (supports placeholders, required)
+- open: "..."                 # (supports templates, required)
   exitCodeTo: "exitCode"      # The variable/property to store the editor's exit code in (optional, default: "exitCode")
+
+  # Writes the given content to the given file.
+  # If the file does not exist, it is created.
+- writeFile: "..."            # (supports templates, required)
+  content: null               # The content to write to the file (optional, default: null)
+  append: false               # Whether to append to the file (optional, default: false)
+  overwrite: false            # Whether to overwrite the file if it already exists (optional, default: false)
+  silent: false               # Whether to omit warnings if the file could not be written (optional, default: false)
+
+  # Creates the given directory.
+- createDirectory: "..."      # (supports templates, required)
+  createParents: true         # Whether to create parent directories if they do not exist (optional, default: true)
+  silent: false               # Whether to omit warnings if the directory could not be created (optional, default: false)
+
+  # Moves the given file or directory to the given destination.
+  # Can be used to rename files or directories.
+- move: "..."                 # (supports templates, required)
+  to: "..."                   # (supports templates, required)
+  createParents: true         # Whether to create parent directories if they do not exist (optional, default: true)
+  overwrite: false            # Whether to overwrite the destination if it already exists (optional, default: false)
+  silent: false               # Whether to omit warnings if the operation fails (optional, default: false)
+
+  # Deletes the given file or directory.
+- delete: "..."               # (supports templates, required)
+  recursive: false            # Whether to delete the directory recursively (optional, default: false)
+  silent: false               # Whether to omit warnings if the operation fails (optional, default: false)
+
+  # Returns the children of the given directory.
+  # The children are separated by newlines.
+- childrenOf: "..."           # (supports templates, required)
+  fullPath: false             # Whether to return the full paths of the children instead of their names (optional, default: false)
+  resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
 
   # Prompts the user for input.
   # Not both 'format' and 'choices' can be specified at the same time.
   # If choices are specified, the user must select one of the choices.
   # Otherwise, the user must enter a value matching the format (if specified).
-- prompt: "..."               # The message to show (supports placeholders, required)
+- prompt: "..."               # The message to show (supports templates, required)
   format: null                # A regex pattern the entire input must match (optional, default: null)
-  choices: []                 # A list of choices (values support placeholders, optional, default: [])
-  default: null               # The default value (supports placeholders, optional, default: null)
+  choices: []                 # A list of choices (values support templates, optional, default: [])
+  default: null               # The default value (supports templates, optional, default: null)
   resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
+  onChoice:                   # A map of actions to run when a choice is selected (optional, default: {})
+  # "choice1":                # Array of actions (key supports templates, default: [])
+  # - # choice1 action 1
+  # - # choice1 action 2
+  # - # ...
+  # "choice2":                # Array of actions (key supports templates, default: [])
+  # - # choice2 action 1
+  # - # choice1 action 2
+  # - # ...
+  # ...
 
   # Matches the entire value against the given regex pattern.
   # If it matches, the capturing groups are stored in the given properties/variables.
   # The first capturing group is stored in the first property/variable, the second in the second, etc.
 - match: "..."                # A regex pattern (required)
-  in: "..."                   # (supports placeholders, required)
+  in: "..."                   # (supports templates, required)
   ignoreCase: false           # Whether to ignore case when matching (optional, default: false)
   groupsTo: []                # A list of properties/variables to store the capturing groups in (optional, default: [])
 
@@ -848,14 +901,14 @@ macros:
   # Immediately exits nav if the value is true.
   # If no directory is specified, nav exits at the working directory it was started from.
 - exit: true                  # (required)
-  at: null                    # The directory to exit at (supports placeholders, optional, default: null)
+  at: null                    # The directory to exit at (supports templates, optional, default: null)
 ```
 
 </details>
 
-### Properties, Variables & Placeholders
+### Properties, Variables & Template Strings
 
-Many strings in macros support placeholders that get replaced with their respective values when the macro is run.
+Many strings in macros support templates with placeholders that get replaced with their respective values when the macro is run.
 Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
 They can appear multiple times in a string and anywhere inside the string.
 Placeholders are replaced once (no recursive replacement).
@@ -865,23 +918,138 @@ There are several built-in properties, some of which can be modified to affect n
 
 | Name                   | Mutable | Description                                                                                                           |
 |------------------------|:-------:|-----------------------------------------------------------------------------------------------------------------------|
-| `workingDirectory`     |    ❌    | The working directory of nav's process                                                                                |
-| `startingDirectory`    |    ❌    | The directory where nav was started (i.e. the directory specified in the command line)                                |
-| `shell`                |    ❌    | The shell that nav currently uses (see `--shell`)                                                                     |
-| `debugMode`            |    ❌    | Whether nav is currently running in debug mode                                                                        |
-| `directory`            |    ✅    | The current directory inside nav                                                                                      |
-| `entryPath`            |    ❌    | The path of the currently highlighted entry or empty if no entry is highlighted.                                      |
-| `entryName`            |    ❌    | The name of the currently highlighted entry or empty if no entry is highlighted.                                      |
-| `entryType`            |    ❌    | The type of the currently highlighted entry.<br>Possible values are `directory`, `file`, `link`, `unknown` and empty. |
-| `entryCursorPosition`  |    ✅    | The index of the currently highlighted entry relative to all filtered entries                                         |
-| `menuCursorPosition`   |    ✅    | The index of the currently highlighted menu item                                                                      |
-| `filter`               |    ✅    | The current filter string or empty if no filter is set                                                                |
-| `filteredEntriesCount` |    ❌    | The number of entries currently matching the filter                                                                   |
-| `command`              |    ✅    | The currently typed command or empty if no command is typed                                                           |
+| `workingDirectory`     |   ❌    | The working directory of nav's process                                                                                |
+| `startingDirectory`    |   ❌    | The directory where nav was started (i.e. the directory specified in the command line)                                |
+| `shell`                |   ❌    | The shell that nav currently uses (see `--shell`)                                                                     |
+| `separator`            |   ✅    | The separator of path elements of the current platform (e.g. `/` or `\`)                                              |
+| `debugMode`            |   ❌    | Whether nav is currently running in debug mode                                                                        |
+| `directory`            |   ✅    | The current directory inside nav                                                                                      |
+| `entryPath`            |   ❌    | The path of the currently highlighted entry or empty if no entry is highlighted.                                      |
+| `entryName`            |   ❌    | The name of the currently highlighted entry or empty if no entry is highlighted.                                      |
+| `entryType`            |   ❌    | The type of the currently highlighted entry.<br>Possible values are `directory`, `file`, `link`, `unknown` and empty. |
+| `entryCursorPosition`  |   ✅    | The index of the currently highlighted entry relative to all filtered entries                                         |
+| `menuCursorPosition`   |   ✅    | The index of the currently highlighted menu item                                                                      |
+| `filter`               |   ✅    | The current filter string or empty if no filter is set                                                                |
+| `filteredEntriesCount` |   ❌    | The number of entries currently matching the filter                                                                   |
+| `command`              |   ✅    | The currently typed command or empty if no command is typed                                                           |
 
 Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
 
-Additionally, macros can define their own mutable variables that can be used in placeholders.
+Additionally, macros can define their own mutable variables that can be used in template strings (see `set` macro action).
+
+### Macro Merging & Default Macros
+
+Macros with the same `id` are merged.
+Options specified in the later macro overwrite those in the earlier one.
+
+Nav comes with a number of macros that are available without additional configuration.
+Users can change their behavior or disable them by using macro merging as described above:
+
+```yaml
+# Change the key of the default rename macro
+- id: "nav:rename"
+  key: F6
+
+# Disable the default deletion macro
+- id: "nav:delete"
+  enabled: false
+```
+
+#### Current Default Macros
+
+```yaml
+- id: "nav:newFile"
+  description: "new file: {{filter}}"
+  style: "file"
+  menuOrder: 200
+  condition:
+    all:
+    - notBlank: "{{filter}}"
+    - notExists: "{{filter}}"
+  run:
+  - writeFile: "{{filter}}"
+  - set:
+      "filter": ""
+
+- id: "nav:newDirectory"
+  description: "new directory: {{filter}}"
+  style: "directory"
+  menuOrder: 210
+  condition:
+    all:
+    - notBlank: "{{filter}}"
+    - notExists: "{{filter}}"
+  run:
+  - createDirectory: "{{filter}}"
+  - set:
+      "filter": ""
+
+- id: "nav:rename"
+  description: "rename {{entryName}}"
+  menuOrder: 250
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - prompt: "New name:"
+    format: "[^:*?\"<>|]+"
+    default: "{{entryName}}"
+    resultTo: "nav:rename:newName"
+  - if:
+      exists: "{{nav:rename:newName}}"
+    then:
+    - prompt: |-
+        {{nav:rename:newName}} already exists.
+        Do you want to overwrite it?
+      default: "No"
+      choices:
+      - "No"
+      - "Yes"
+      onChoice:
+        "No":
+        - return: true
+    - move: "{{entryPath}}"
+      to: "{{nav:rename:newName}}"
+      overwrite: true
+    else:
+    - move: "{{entryPath}}"
+      to: "{{nav:rename:newName}}"
+
+- id: "nav:delete"
+  description: "delete {{entryName}}"
+  key: "Delete"
+  menuOrder: 300
+  condition:
+    notEmpty: "{{entryName}}"
+  run:
+  - if:
+      isDirectory: "{{entryPath}}"
+    then:
+    - childrenOf: "{{entryPath}}"
+      resultTo: "nav:delete:children"
+    - if:
+        notEmpty: "{{nav:delete:children}}"
+      then:
+      - prompt: |-
+          The directory {{entryName}} is not empty.
+          Do you want to delete it recursively?
+        default: "No"
+        choices:
+        - "No"
+        - "Yes"
+        resultTo: "nav:delete:prompt"
+      - if:
+          notEqual:
+          - "{{nav:delete:prompt}}"
+          - "Yes"
+        then:
+        - return: true
+      - delete: "{{entryPath}}"
+        recursive: true
+      else:
+      - delete: "{{entryPath}}"
+    else:
+    - delete: "{{entryPath}}"
+```
 
 ## Entry Macros
 
