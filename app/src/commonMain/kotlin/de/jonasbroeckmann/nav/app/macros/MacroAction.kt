@@ -96,7 +96,7 @@ sealed interface MacroAction : MacroRunnable {
     data class RunMacro(
         val macro: StringWithPlaceholders,
         val ignoreCondition: Boolean = false,
-        val parameters: Map<String, StringWithPlaceholders>? = null,
+        val parameters: Map<StringWithPlaceholders, StringWithPlaceholders>? = null,
         val capture: Map<String, StringWithPlaceholders>? = null,
         val continueOnReturn: Boolean = true
     ) : MacroAction {
@@ -106,8 +106,8 @@ sealed interface MacroAction : MacroRunnable {
             val macro = context.identifiedMacros[macroId]
                 ?: throw MacroException("No macro with ${Macro::id.name} '$macroId' found")
             context.call(
-                parameters = parameters?.mapKeys { (name, _) -> MacroSymbol.fromString(name) },
-                capture = capture?.mapKeys { (name, _) -> MacroSymbol.fromString(name) },
+                parameters = parameters?.mapKeys { (name, _) -> MacroSymbol(name) },
+                capture = capture?.mapKeys { (name, _) -> MacroSymbol(name) },
                 returnBarrier = continueOnReturn,
                 runnable = Delegate(
                     macro = macro,
@@ -344,30 +344,17 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("set")
     data class Set(
-        val set: Map<String, StringWithPlaceholders>
+        val set: Map<StringWithPlaceholders, StringWithPlaceholders>
     ) : MacroAction {
-        init {
-            set.forEach { (variable, value) ->
-                value.placeholders.forEach { placeholder ->
-                    if (placeholder != variable) {
-                        require(placeholder !in set) {
-                            "Circular dependency: " +
-                                "Variable '$variable' depends on '$placeholder' which is also being set in the same action."
-                        }
-                    }
-                }
-            }
-        }
-
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             set.forEach { (variable, value) ->
-                context[variable] = value.evaluate()
+                context[variable.evaluate()] = value.evaluate()
             }
         }
 
         companion object {
-            operator fun invoke(vararg pairs: Pair<String, StringWithPlaceholders>) = Set(mapOf(*pairs))
+            operator fun invoke(vararg pairs: Pair<StringWithPlaceholders, StringWithPlaceholders>) = Set(mapOf(*pairs))
         }
     }
 

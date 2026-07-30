@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros
 
-fun interface MacroEvaluable<R> {
-    context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+fun interface MacroEvaluable<out R> {
+    context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
     fun evaluate(): R
 }

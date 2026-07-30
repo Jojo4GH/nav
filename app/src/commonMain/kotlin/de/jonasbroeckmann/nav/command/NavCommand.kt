@@ -320,17 +320,20 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             return
         }
 
-        val config = Config.load()
+        val (config, currentConfigPath) = Config.load()
 
+        if (currentConfigPath != null) {
+            printlnOnDebug { "Loaded config from: $currentConfigPath" }
+        }
         printlnOnDebug { "Using config: $config" }
 
         if (configurationOptions.shell == null && !config.suppressInitCheck) {
             warnIncompleteInit()
         }
 
-        App(config) {
+        App(config, currentConfigPath) {
             if (configurationOptions.editConfig) {
-                doEditConfig()
+                doEditConfig(currentConfigPath)
             }
 
             if (config.autoCheckForUpdates) launch {
@@ -380,9 +383,9 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         terminal.info("Use --init-help to get more information.")
     }
 
-    private fun App.doEditConfig(): Nothing {
-        val configPath = Config.findExplicitPath()
-            ?: Config.findDefaultPath(mustExist = false)
+    private fun App.doEditConfig(currentConfigPath: Path?): Nothing {
+        val configPath = currentConfigPath
+            ?: Config.findConfigPath(mustExist = false)
             ?: run {
                 terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
                 exit(1)

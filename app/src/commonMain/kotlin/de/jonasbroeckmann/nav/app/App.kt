@@ -37,7 +37,8 @@ import kotlin.time.measureTimedValue
 
 class App private constructor(
     context: PartialContext,
-    override val config: Config
+    override val config: Config,
+    override val configPath: Path?,
 ) : MainControllerBase(), PartialContext by context {
     private val stateManager = StateManager(
         initial = State.initial(
@@ -344,6 +345,14 @@ class App private constructor(
 
     companion object {
         context(context: PartialContext)
-        operator fun invoke(config: Config, block: App.() -> Unit): Nothing = App(context, config).execute(block)
+        operator fun invoke(
+            config: Config,
+            configPath: Path?,
+            block: App.() -> Unit
+        ): Nothing = App(
+            context = context,
+            config = config,
+            configPath = configPath
+        ).execute(block)
     }
 }

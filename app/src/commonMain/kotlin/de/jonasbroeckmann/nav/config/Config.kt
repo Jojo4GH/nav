@@ -20,6 +20,7 @@ import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteAutoNavigation
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteStyle
+import de.jonasbroeckmann.nav.framework.utils.absolute
 import de.jonasbroeckmann.nav.framework.utils.div
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isRegularFile
@@ -31,6 +32,7 @@ import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import okio.use
 import kotlin.getValue
 import kotlin.lazy
 
@@ -69,6 +71,7 @@ data class Config private constructor(
     val macros: List<Macro> = emptyList(),
 ) : ConfigProvider {
     override val config get() = this
+    override val configPath: Nothing? get() = null
 
     @Serializable
     data class Keys(
@@ -305,59 +308,90 @@ data class Config private constructor(
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-        context(context: PartialContext)
-        fun findExplicitPath(): Path? = context.command.configurationOptions.configPath?.let { Path(it) }
-            ?: getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
 
-        fun findDefaultPath(mustExist: Boolean = true): Path? {
-            val firstExiting = DefaultPaths.firstOrNull { it.exists() && it.isRegularFile() }
-            return if (mustExist) {
-                firstExiting
-            } else {
-                firstExiting ?: DefaultPaths.firstOrNull { !it.exists() || it.isRegularFile() }
+        private fun Path.isValidFile(mustExist: Boolean) = when {
+            exists() -> isRegularFile()
+            mustExist -> false
+            else -> true
+        }
+
+        fun findFilePath(
+            explicitPaths: List<Path> = emptyList(),
+            defaultPaths: List<Path> = emptyList(),
+            mustExist: Boolean = true,
+            onInvalidExplicitPath: ((Path) -> Nothing)? = null
+        ): Path? {
+            val explicitPath = explicitPaths.firstOrNull { it.isValidFile(mustExist) }
+            if (explicitPath == null && explicitPaths.isNotEmpty() && onInvalidExplicitPath != null) {
+                onInvalidExplicitPath(explicitPaths.first())
+            }
+            return run {
+                explicitPath
+                    ?: defaultPaths.firstOrNull { it.exists() && it.isRegularFile() } // Prefer existing files
+                    ?: defaultPaths.firstOrNull { it.isValidFile(mustExist) }
+            }?.let {
+                if (it.exists()) it.absolute() else null
             }
         }
 
+        context(context: PartialContext)
+        fun findConfigPath(
+            mustExist: Boolean,
+            onInvalidExplicitPath: ((Path) -> Nothing)? = null
+        ) = findFilePath(
+            explicitPaths = listOfNotNull(
+                context.command.configurationOptions.configPath?.let { Path(it) },
+                getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+            ),
+            defaultPaths = DefaultPaths,
+            mustExist = mustExist,
+            onInvalidExplicitPath = onInvalidExplicitPath
+        )
+
         @Suppress("detekt:ReturnCount")
         context(context: PartialContext)
-        fun load(): Config {
+        fun load(): Pair<Config, Path?> {
             fun errorOnLoad(e: Exception, message: Any?): Config {
                 context.dangerThrowable(e, "Could not load config: $message")
                 context.terminal.warning("Using default config")
                 return Config()
             }
             try {
-                val explicitPath = findExplicitPath()?.also {
-                    require(it.exists()) { "The specified config does not exist: $it" }
-                    require(it.isRegularFile()) { "The specified config is not a file: $it" }
-                }
-                val path = explicitPath
-                    ?: findDefaultPath(mustExist = true)
-                    ?: run {
-                        context.printlnOnDebug { "Could not find config, using default" }
-                        return Config()
+                val path = findConfigPath(
+                    mustExist = true,
+                    onInvalidExplicitPath = {
+                        throw IllegalArgumentException(
+                            "The specified config does not exist or is not a file: $it"
+                        )
                     }
+                ) ?: run {
+                    context.printlnOnDebug { "Could not find config, using default" }
+                    return Config() to null
+                }
                 val (_, extension) = path.nameAndExtension
-                when (extension?.lowercase()) {
-                    "yaml", "yml" -> return loadFromYaml(path)
-                    "toml" -> return loadFromToml(path)
+                val config = when (extension?.lowercase()) {
+                    "yaml", "yml" -> loadFromYaml(path)
+                    "toml" -> loadFromToml(path)
                     else -> {
                         context.terminal.danger("Could not determine type of config file for: $path")
                         context.terminal.warning("Using default config")
-                        return Config()
+                        Config()
                     }
                 }
+                return config to path
             } catch (e: YamlException) {
-                return errorOnLoad(e, e)
+                return errorOnLoad(e, e) to null
             } catch (e: Exception) {
-                return errorOnLoad(e, e.message)
+                return errorOnLoad(e, e.message) to null
             }
         }
 
-        private fun loadFromYaml(path: Path) = Yaml.decodeFromSource(
-            deserializer = serializer(),
-            source = path.source().asOkioSource()
-        )
+        private fun loadFromYaml(path: Path) = path.source().asOkioSource().use { source ->
+            Yaml.decodeFromSource(
+                deserializer = serializer(),
+                source = source
+            )
+        }
 
         private fun loadFromToml(path: Path) = Toml.decodeFromFile(
             deserializer = serializer(),

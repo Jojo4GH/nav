@@ -51,7 +51,7 @@ kotlin {
     jvm()
 
     linuxX64()
-    linuxArm64()
+//    linuxArm64()
     mingwX64()
 //    macosX64()
 
@@ -104,6 +104,8 @@ kotlin {
             implementation("io.ktor:ktor-client-core:$ktorVersion")
             implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
             implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+
+            implementation("me.alllex.parsus:parsus:0.6.1")
 
             api(projects.framework)
         }
