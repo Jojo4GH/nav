@@ -58,20 +58,20 @@ interface MacroProperty<out T : MacroValue?> : MacroEvaluable<T> {
 
         fun delegatedString(
             name: String,
-            onGetString: context(MacroEvaluationScope) () -> String?
+            onGetString: context(MacroEvaluationScope) () -> String
         ) = delegated(
             name = name,
-            onGet = { onGetString()?.let { MacroValue.Text(it) } }
+            onGet = { MacroValue.Text(onGetString()) }
         )
 
         fun delegatedString(
             name: String,
-            onGetString: context(MacroEvaluationScope) () -> String?,
-            onSetString: context(MacroStorageScope) (String?) -> Unit
+            onGetString: context(MacroEvaluationScope) () -> String,
+            onSetString: context(MacroStorageScope) (String) -> Unit
         ) = delegated(
             name = name,
-            onGet = { onGetString()?.let { MacroValue.Text(it) } },
-            onSet = { newValue -> onSetString(newValue?.value) }
+            onGet = { MacroValue.Text(onGetString()) },
+            onSet = { newValue -> onSetString(newValue.value) }
         )
 
         context(scope: MacroStorageScope)

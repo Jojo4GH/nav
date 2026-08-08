@@ -11,7 +11,7 @@ internal fun String.parseToAbsolutePath() = Path(this).let { path ->
     if (path.isAbsolute) {
         path
     } else {
-        Path(DefaultMacroProperty.Directory.get()?.value.orEmpty()) / path
+        Path(KnownMacroProperty.Directory.get().value) / path
     }
 }
 

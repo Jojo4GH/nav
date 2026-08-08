@@ -14,7 +14,7 @@ sealed class DefaultMacro(
         Macro(
             id = "nav_runCommand",
             actions = MacroActions(
-                RunCommand(command = DefaultMacroProperty.Command.templateString),
+                RunCommand(command = KnownMacroProperty.Command.templateString),
                 If(
                     condition = Not(
                         Equal(
@@ -31,7 +31,7 @@ sealed class DefaultMacro(
                         )
                     )
                 ),
-                Set(DefaultMacroProperty.Command.expressionString to StringWithPlaceholders.Empty)
+                Set(KnownMacroProperty.Command.expressionString to StringWithPlaceholders.Empty)
             )
         )
     )
@@ -39,16 +39,16 @@ sealed class DefaultMacro(
     object NewFile : DefaultMacro(
         Macro(
             id = "nav_newFile",
-            description = StringWithPlaceholders("new file: ${DefaultMacroProperty.Filter}"),
+            description = StringWithPlaceholders("new file: ${KnownMacroProperty.Filter}"),
             style = Styles::file.styleString,
             menuOrder = 200,
             condition = All(
-                NotBlank(DefaultMacroProperty.Filter.templateString),
-                NotExists(DefaultMacroProperty.Filter.templateString)
+                NotBlank(KnownMacroProperty.Filter.templateString),
+                NotExists(KnownMacroProperty.Filter.templateString)
             ),
             actions = MacroActions(
-                WriteFile(writeFile = DefaultMacroProperty.Filter.templateString),
-                Set(DefaultMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
+                WriteFile(writeFile = KnownMacroProperty.Filter.templateString),
+                Set(KnownMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
             )
         )
     )
@@ -56,16 +56,16 @@ sealed class DefaultMacro(
     object NewDirectory : DefaultMacro(
         Macro(
             id = "nav_newDirectory",
-            description = StringWithPlaceholders("new directory: ${DefaultMacroProperty.Filter}"),
+            description = StringWithPlaceholders("new directory: ${KnownMacroProperty.Filter}"),
             style = Styles::directory.styleString,
             menuOrder = 210,
             condition = All(
-                NotBlank(DefaultMacroProperty.Filter.templateString),
-                NotExists(DefaultMacroProperty.Filter.templateString)
+                NotBlank(KnownMacroProperty.Filter.templateString),
+                NotExists(KnownMacroProperty.Filter.templateString)
             ),
             actions = MacroActions(
-                CreateDirectory(createDirectory = DefaultMacroProperty.Filter.templateString),
-                Set(DefaultMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
+                CreateDirectory(createDirectory = KnownMacroProperty.Filter.templateString),
+                Set(KnownMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
             )
         )
     )
@@ -73,16 +73,16 @@ sealed class DefaultMacro(
     object Rename : DefaultMacro(
         Macro(
             id = "nav_rename",
-            description = StringWithPlaceholders("rename ${DefaultMacroProperty.EntryName}"),
+            description = StringWithPlaceholders("rename ${KnownMacroProperty.EntryName}"),
             menuOrder = 250,
-            condition = NotEmpty(DefaultMacroProperty.EntryName.templateString),
+            condition = NotEmpty(KnownMacroProperty.EntryName.templateString),
             actions = run {
                 val newNameVar = MacroExpression("nav_rename_newName")
                 MacroActions(
                     Prompt(
                         prompt = StringWithPlaceholders("New name:"),
                         format = Regex("""[^:*?"<>|]+"""),
-                        default = DefaultMacroProperty.EntryName.templateString,
+                        default = KnownMacroProperty.EntryName.templateString,
                         resultTo = newNameVar.expressionString
                     ),
                     If(
@@ -105,14 +105,14 @@ sealed class DefaultMacro(
                                 )
                             ),
                             Move(
-                                move = DefaultMacroProperty.EntryPath.templateString,
+                                move = KnownMacroProperty.EntryPath.templateString,
                                 to = newNameVar.templateString,
                                 overwrite = true,
                             )
                         ),
                         otherwise = MacroActions(
                             Move(
-                                move = DefaultMacroProperty.EntryPath.templateString,
+                                move = KnownMacroProperty.EntryPath.templateString,
                                 to = newNameVar.templateString,
                             )
                         )
@@ -125,19 +125,19 @@ sealed class DefaultMacro(
     object Delete : DefaultMacro(
         Macro(
             id = "nav_delete",
-            description = StringWithPlaceholders("delete ${DefaultMacroProperty.EntryName}"),
+            description = StringWithPlaceholders("delete ${KnownMacroProperty.EntryName}"),
             key = KeyboardEvent("Delete"),
             menuOrder = 300,
-            condition = NotEmpty(DefaultMacroProperty.EntryName.templateString),
+            condition = NotEmpty(KnownMacroProperty.EntryName.templateString),
             actions = run {
                 val childrenVar = MacroExpression("nav_delete_children")
                 val promptVar = MacroExpression("nav_delete_prompt")
                 MacroActions(
                     If(
-                        condition = IsDirectory(DefaultMacroProperty.EntryPath.templateString),
+                        condition = IsDirectory(KnownMacroProperty.EntryPath.templateString),
                         then = MacroActions(
                             ChildrenOf(
-                                childrenOf = DefaultMacroProperty.EntryPath.templateString,
+                                childrenOf = KnownMacroProperty.EntryPath.templateString,
                                 resultTo = childrenVar.expressionString
                             ),
                             If(
@@ -146,7 +146,7 @@ sealed class DefaultMacro(
                                     Prompt(
                                         prompt = StringWithPlaceholders(
                                             """
-                                            The directory ${DefaultMacroProperty.EntryName} is not empty.
+                                            The directory ${KnownMacroProperty.EntryName} is not empty.
                                             Do you want to delete it recursively?
                                             """.trimIndent()
                                         ),
@@ -167,17 +167,17 @@ sealed class DefaultMacro(
                                         )
                                     ),
                                     Delete(
-                                        delete = DefaultMacroProperty.EntryPath.templateString,
+                                        delete = KnownMacroProperty.EntryPath.templateString,
                                         recursive = true
                                     )
                                 ),
                                 otherwise = MacroActions(
-                                    Delete(delete = DefaultMacroProperty.EntryPath.templateString)
+                                    Delete(delete = KnownMacroProperty.EntryPath.templateString)
                                 )
                             )
                         ),
                         otherwise = MacroActions(
-                            Delete(delete = DefaultMacroProperty.EntryPath.templateString)
+                            Delete(delete = KnownMacroProperty.EntryPath.templateString)
                         )
                     )
                 )

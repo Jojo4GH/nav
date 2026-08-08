@@ -177,10 +177,10 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate(): Boolean = macroTrace {
-            DefaultMacroProperty.EntryName.templateString
+            KnownMacroProperty.EntryName.templateString
             when (isDirectory) {
-                DefaultMacroProperty.EntryName.templateString, DefaultMacroProperty.EntryPath.templateString -> {
-                    DefaultMacroProperty.EntryType.get()?.value == DefaultMacroProperty.EntryType.Value.DIRECTORY
+                KnownMacroProperty.EntryName.templateString, KnownMacroProperty.EntryPath.templateString -> {
+                    KnownMacroProperty.EntryType.get().value == KnownMacroProperty.EntryType.Value.DIRECTORY
                 }
                 else -> isDirectory.evaluateToAbsolutePath().isDirectory()
             }
@@ -199,8 +199,8 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate(): Boolean = macroTrace {
             when (isFile) {
-                DefaultMacroProperty.EntryName.templateString, DefaultMacroProperty.EntryPath.templateString -> {
-                    DefaultMacroProperty.EntryType.get()?.value == DefaultMacroProperty.EntryType.Value.FILE
+                KnownMacroProperty.EntryName.templateString, KnownMacroProperty.EntryPath.templateString -> {
+                    KnownMacroProperty.EntryType.get().value == KnownMacroProperty.EntryType.Value.FILE
                 }
                 else -> isFile.evaluateToAbsolutePath().isRegularFile()
             }

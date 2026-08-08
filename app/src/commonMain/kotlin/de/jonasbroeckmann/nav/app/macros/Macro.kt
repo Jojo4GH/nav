@@ -97,14 +97,14 @@ data class Macro private constructor(
 
     private val dependsOnEntry by lazy {
         listOf(
-            DefaultMacroProperty.EntryPath,
-            DefaultMacroProperty.EntryName,
-            DefaultMacroProperty.EntryType
+            KnownMacroProperty.EntryPath,
+            KnownMacroProperty.EntryName,
+            KnownMacroProperty.EntryType
         ).any { it in usedSymbolsInDescriptionOrCondition }
     }
 
     private val dependsOnFilter by lazy {
-        DefaultMacroProperty.Filter in usedSymbolsInDescriptionOrCondition
+        KnownMacroProperty.Filter in usedSymbolsInDescriptionOrCondition
     }
 
     context(context: MacroRuntimeContext, traceContext: MacroTraceContext)

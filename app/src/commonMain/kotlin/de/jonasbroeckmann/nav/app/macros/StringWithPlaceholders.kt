@@ -48,7 +48,7 @@ data class MacroTemplate private constructor(
     val parts: List<Part> = emptyList()
 ) : MacroEvaluable<String> {
     sealed interface Part : MacroEvaluable<String> {
-        val knownUsedProperties: Set<DefaultMacroProperty>
+        val knownUsedProperties: Set<KnownMacroProperty>
 
         fun tryEvaluateScopeless(): String?
     }
@@ -85,7 +85,7 @@ data class MacroTemplate private constructor(
         override fun toString() = "{{$expressionString}}"
     }
 
-    val knownUsedProperties: Set<DefaultMacroProperty> by lazy { parts.flatMapTo(mutableSetOf()) { it.knownUsedProperties } }
+    val knownUsedProperties: Set<KnownMacroProperty> by lazy { parts.flatMapTo(mutableSetOf()) { it.knownUsedProperties } }
 
     val templateString by lazy { StringWithPlaceholders(parts.joinToString("")) }
 
@@ -120,8 +120,8 @@ data class MacroTemplate private constructor(
 data class TemplatedExpressionString(
     val template: MacroTemplate
 ) : MacroEvaluable<MacroExpression> {
-    val knownUsedProperties: Set<DefaultMacroProperty> by lazy {
-        template.knownUsedProperties + setOfNotNull(tryEvaluateScopeless()?.let { DefaultMacroProperty.from(it) })
+    val knownUsedProperties: Set<KnownMacroProperty> by lazy {
+        template.knownUsedProperties + setOfNotNull(tryEvaluateScopeless()?.let { KnownMacroProperty.from(it) })
     }
 
     val expressionString get() = template.templateString.asExpressionString()

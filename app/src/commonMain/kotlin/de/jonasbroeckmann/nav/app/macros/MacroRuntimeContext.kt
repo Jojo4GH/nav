@@ -178,7 +178,7 @@ open class MacroEvaluationScopeBase(
     protected open val localStorage: MutableMacroValueStorage = InMemoryMacroValueStorage()
 
     override operator fun get(expression: MacroExpression): MacroValue? {
-        val property = DefaultMacroProperty.from(expression)
+        val property = KnownMacroProperty.from(expression)
         if (property != null) {
             return property.get()
         }
@@ -204,7 +204,7 @@ open class MacroStorageScopeBase(
     sessionContext: MacroSessionContext,
 ) : MacroEvaluationScopeBase(sessionContext), MacroStorageScope, StateUpdater by stateUpdater {
     override operator fun set(expression: MacroExpression, value: MacroValue?) {
-        val property = DefaultMacroProperty.from(expression)
+        val property = KnownMacroProperty.from(expression)
         if (property != null) {
             property.trySet(value, printOnFail = true)
             return
