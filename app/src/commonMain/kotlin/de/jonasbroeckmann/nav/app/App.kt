@@ -250,7 +250,7 @@ class App private constructor(
     }
 
     override fun runMacro(macro: Macro) {
-        MacroRuntimeContext.run(macro)
+        context(macroSessionContext) { MacroRuntimeContext.run(macro) }
     }
 
     override fun exit(exitCode: Int, atDirectory: Path?): Nothing {

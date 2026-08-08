@@ -1,10 +1,7 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.MainController
+import de.jonasbroeckmann.nav.app.macros.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.MacroPathExpression.Operator
-import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
-import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.command.Logger
 import de.jonasbroeckmann.nav.command.warningOnDebug
 import de.jonasbroeckmann.nav.config.Config
@@ -18,82 +15,39 @@ import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.Serializable
 import me.alllex.parsus.parser.Grammar
 import me.alllex.parsus.parser.ParseError
-import me.alllex.parsus.parser.ParseException
 import me.alllex.parsus.parser.ParsedValue
 import me.alllex.parsus.parser.Parser
+import me.alllex.parsus.parser.and
 import me.alllex.parsus.parser.choose
 import me.alllex.parsus.parser.map
+import me.alllex.parsus.parser.maybe
+import me.alllex.parsus.parser.or
+import me.alllex.parsus.parser.parseOrNull
 import me.alllex.parsus.parser.parser
-import me.alllex.parsus.token.literalToken
+import me.alllex.parsus.parser.unaryMinus
+import me.alllex.parsus.parser.zeroOrMore
 import me.alllex.parsus.token.regexToken
 import okio.buffer
 import okio.use
 import kotlin.collections.plus
 import kotlin.jvm.JvmInline
 
-sealed class MacroSymbol {
-    abstract val name: String
-
-    val placeholder by lazy {
-        StringWithPlaceholders.placeholder(name)
-    }
-
-    override fun toString() = "$placeholder"
-
-    data class Generic(override val name: String) : MacroSymbol()
-
-    data class EnvironmentVariable(
-        private val variableName: String
-    ) : MacroSymbol(), MacroProperty.Mutable {
-        override val name by lazy {
-            "$ENV_PREFIX$PREFIX_SEPARATOR$variableName"
-        }
-
-        override val symbol get() = this
-
-        context(_: FullContext, _: StateProvider)
-        override fun get() = getEnvironmentVariable(variableName).orEmpty()
-
-        context(_: MainController, _: MacroSymbolScope)
-        override fun set(value: String) {
-            setEnvironmentVariable(variableName, value)
-        }
-    }
-
-//    data class Persistent(
-//        override val name: String
-//    )
-
-    companion object {
-        private const val PREFIX_SEPARATOR = ':'
-        private const val ENV_PREFIX = "env"
-
-
-
-        operator fun invoke(string: String) = if (string.startsWith("$ENV_PREFIX$PREFIX_SEPARATOR")) {
-            EnvironmentVariable(string.removePrefix("$ENV_PREFIX$PREFIX_SEPARATOR"))
-        } else {
-            UByte
-            Generic(string)
-        }
-
-        context(scope: MacroSymbolScope)
-        fun MacroSymbol.get() = scope[this]
-    }
-}
-
 @Serializable
 sealed interface MacroValue {
     val description: String
 
-    fun stringify(): String
+    fun stringify(format: StringificationFormat = Representative): String
 
     @Serializable
     @JvmInline
     value class Text(val value: String = "") : MacroValue, CharSequence by value {
         override val description get() = "text"
 
-        override fun stringify() = value
+        override fun stringify(format: StringificationFormat) = when (format) {
+            Representative -> value
+            Json -> "\"$value\""
+            Textual -> value
+        }
     }
 
     sealed interface Collection : MacroValue {
@@ -107,14 +61,26 @@ sealed interface MacroValue {
 
         fun updated(key: String, update: (MacroValue?) -> MacroValue?): Dictionary {
             val newValue = update(this[key])
-            return if (newValue == null) Dictionary(this - key) else Dictionary(this + (key to newValue))
+            return if (newValue == null) this - key else this + (key to newValue)
         }
 
-        override fun stringify() = value.asSequence().joinToString(
-            separator = ", ",
-            prefix = "{ ",
-            postfix = " }"
-        ) { "${it.key}: ${it.value.stringify()}" }
+        override fun stringify(format: StringificationFormat) = when (format) {
+            Representative -> value.asSequence().joinToString(
+                separator = ", ",
+                prefix = "{ ",
+                postfix = " }"
+            ) { "${it.key}: ${it.value.stringify(format)}" }
+            Json -> value.asSequence().joinToString(
+                separator = ", ",
+                prefix = "{ ",
+                postfix = " }"
+            ) { "\"${it.key}\": ${it.value.stringify(format)}" }
+            Textual -> ""
+        }
+
+        operator fun plus(pair: Pair<String, MacroValue>) = Dictionary(value + pair)
+
+        operator fun minus(key: String) = Dictionary(value - key)
     }
 
     @Serializable
@@ -130,17 +96,44 @@ sealed interface MacroValue {
             return Array(untruncated.dropLastWhile { it == null })
         }
 
-        override fun stringify() = value.joinToString(
-            separator = ", ",
-            prefix = "[ ",
-            postfix = " ]"
-        ) { it?.stringify() ?: "null" }
+        override fun stringify(format: StringificationFormat) = when (format) {
+            Representative -> value.joinToString(
+                separator = ", ",
+                prefix = "[ ",
+                postfix = " ]"
+            ) { it?.stringify(format) ?: "" }
+            Json -> value.joinToString(
+                separator = ", ",
+                prefix = "[ ",
+                postfix = " ]"
+            ) { it?.stringify(format) ?: "null" }
+            Textual -> ""
+        }
     }
+
+    enum class StringificationFormat {
+        Representative,
+        Json,
+        Textual
+    }
+
+    companion object {
+        operator fun invoke(value: String) = Text(value)
+
+        operator fun invoke(value: String?) = value?.let { Text(it) }
+    }
+}
+
+fun MacroValue?.stringify(format: MacroValue.StringificationFormat = Representative) = this?.stringify(format) ?: when (format) {
+    Representative -> "null"
+    Json -> "null"
+    Textual -> ""
 }
 
 sealed class MacroValueStorageType(open val key: String) {
     override fun toString() = key
 
+    data object Property : MacroValueStorageType("property")
     data object Local : MacroValueStorageType("local")
     data object Session : MacroValueStorageType("session")
     data object Persistent : MacroValueStorageType("persistent")
@@ -148,12 +141,15 @@ sealed class MacroValueStorageType(open val key: String) {
     data class Custom(override val key: String) : MacroValueStorageType(key)
     companion object {
         operator fun invoke(key: String) = when (key) {
+            Property.key -> Property
             Local.key -> Local
             Session.key -> Session
             Persistent.key -> Persistent
             Environment.key -> Environment
             else -> Custom(key)
         }
+
+        val MacroValueStorageType?.isLocal get() = this is Local?
     }
 }
 
@@ -168,6 +164,8 @@ interface MacroValueStorage {
 interface MutableMacroValueStorage : MacroValueStorage {
     operator fun set(path: MacroPathExpression, newValue: MacroValue?)
 }
+
+
 
 abstract class MutableMacroValueStorageBase : MutableMacroValueStorage {
     override fun get(path: MacroPathExpression) = get().evaluate(path)
@@ -208,36 +206,67 @@ class EnvironmentMacroValueStorage(
     }
 }
 
-class PropertyStorage(
-    private val fullContext: FullContext,
-    private val stateProvider: StateProvider,
-    properties: List<MacroProperty<*>>
-) : MutableMacroValueStorage {
-    private val properties = properties.associateBy { it.name }
-
-    override fun get(path: MacroPathExpression): MacroValue? = context(fullContext, stateProvider) {
-        path.simpleKey()?.let { properties[it] }?.get()
-    }
-
-    override fun set(path: MacroPathExpression, newValue: MacroValue?) {
-        context(fullContext, stateProvider) {
-            path.simpleKey()?.let { properties[it] }?.trySet()
-        }
-    }
-
-    private fun MacroPathExpression.simpleKey(): String? = (operators.singleOrNull() as? Operator.Key)?.key
-}
+//class PropertyStorage(
+//    private val fullContext: FullContext,
+//    private val stateProvider: StateProvider,
+//    properties: List<MacroProperty<*>>
+//) : MutableMacroValueStorage {
+//    private val properties = properties.associateBy { it.name }
+//
+//    override fun get(path: MacroPathExpression): MacroValue? = context(fullContext, stateProvider) {
+//        path.simpleKey()?.let { properties[it] }?.get()
+//    }
+//
+//    override fun set(path: MacroPathExpression, newValue: MacroValue?) {
+//        context(fullContext, stateProvider) {
+//            path.simpleKey()?.let { properties[it] }?.trySet()
+//        }
+//    }
+//
+//    private fun MacroPathExpression.simpleKey(): String? = (operators.singleOrNull() as? Operator.Key)?.key
+//}
 
 class InMemoryMacroValueStorage(
     initial: Map<String, MacroValue> = emptyMap()
 ) : MutableMacroValueStorageBase() {
-    private var storage: MacroValue = MacroValue.Dictionary(initial)
+    private var value = MacroValue.Dictionary(initial)
 
-    override fun get() = storage
+    override fun get() = value
 
     override fun update(updater: MacroValue.() -> MacroValue) {
-        storage = storage.updater()
+        val new = value.updater()
+        if (new !is MacroValue.Dictionary) throw MacroValueStorageException("Root value must be a dictionary")
+        value = new
     }
+
+    operator fun set(key: String, newValue: MacroValue?) {
+        if (newValue == null) {
+            value -= key
+        } else {
+            value += (key to newValue)
+        }
+    }
+
+    fun toMap(): Map<MacroPathExpression, MacroValue> = value.mapKeys { (key, _) -> MacroPathExpression(Operator.Key(key)) }
+
+    fun copy() = InMemoryMacroValueStorage(value)
+}
+
+private class DelegatedMap<K, out V>(
+    private val delegate: () -> Map<K, V>
+) : Map<K, V> {
+    override val size get() = delegate().size
+    override val entries get() = delegate().entries
+    override val keys get() = delegate().keys
+    override val values get() = delegate().values
+
+    override fun get(key: K) = delegate()[key]
+
+    override fun containsKey(key: K) = delegate().containsKey(key)
+
+    override fun containsValue(value: @UnsafeVariance V) = delegate().containsValue(value)
+
+    override fun isEmpty() = delegate().isEmpty()
 }
 
 class YamlFileMacroValueStorage(
@@ -366,7 +395,7 @@ private fun MacroValue?.computeUpdated() = computeUpdated(
 
 context(context: MacroValueUpdateContext)
 private fun throwHere(message: String): Nothing = throw MacroValueStorageException(
-    "Cannot update value at '${context.currentPath.unparse()}': $message"
+    "Cannot update value at '${context.currentPath}': $message"
 )
 
 context(context: MacroValueUpdateContext)
@@ -379,6 +408,10 @@ class ParserException(message: String) : Exception(message)
 data class MacroPathExpression(
     val operators: List<Operator>
 ) {
+    constructor(key: Operator.Key, vararg operators: Operator) : this(listOf(key, *operators))
+
+    constructor(key: String) : this(Operator.Key(key))
+
     init {
         if (operators.isEmpty()) throw ParserException("Path expression must have at least one operator")
         if (operators.first() !is Key) throw ParserException("Path expression must start with a key")
@@ -417,35 +450,54 @@ data class MacroPathExpression(
         }
     }
 
+    val unparsed by lazy {
+        operators
+            .fold(null) { base: String?, operator -> operator.unparse(base) }
+            .orEmpty()
+            .let { ExpressionString(it) }
+    }
+
     operator fun plus(operator: Operator) = MacroPathExpression(operators + operator)
 
-    fun unparse() = operators
-        .fold(null) { base: String?, operator -> operator.unparse(base) }
-        .orEmpty()
-
-    override fun toString() = unparse()
+    override fun toString() = unparsed.raw
 }
 
 data class MacroExpression(
     val storageType: MacroValueStorageType?,
     val path: MacroPathExpression
 ) : MacroEvaluable<MacroValue?> {
+    constructor(
+        storageType: MacroValueStorageType?,
+        key: Operator.Key,
+        vararg operators: Operator
+    ) : this(storageType, MacroPathExpression(key, *operators))
+
+    constructor(key: Operator.Key, vararg operators: Operator) : this(null, key, *operators)
+
+    constructor(storageType: MacroValueStorageType?, key: String) : this(storageType, Operator.Key(key))
+
+    constructor(key: String) : this(null, key)
+
+    val expressionString by lazy {
+        ExpressionString(listOfNotNull(storageType?.key, path.unparsed).joinToString(":"))
+    }
+
+    val templateString by lazy {
+        MacroTemplate(MacroTemplate.Placeholder(this)).templateString
+    }
 
     context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
     override fun evaluate() = scope[this]
 
-    fun unparse() = listOfNotNull(
-        storageType?.key,
-        path.unparse()
-    ).joinToString(":")
-
-    override fun toString() = unparse()
+    override fun toString() = templateString.raw
 
     companion object {
         fun parse(string: String) = when (val result = MacroExpressionGrammar.parse(string)) {
             is ParseError -> throw ParserException(result.describe())
             is ParsedValue<MacroExpression> -> result.value
         }
+
+        fun parseOrNull(string: String) = MacroExpressionGrammar.parseOrNull(string)
     }
 }
 
@@ -454,11 +506,11 @@ object MacroExpressionGrammar : Grammar<MacroExpression>() {
         regexToken("""\s+""", ignored = true)
     }
 
-    val identifier by regexToken("""[A-Za-z_][A-Za-z0-9_]*""")
-    val number by regexToken("""\d+""") map {
+    private val identifier by regexToken("""[A-Za-z_][A-Za-z0-9_]*""")
+    private val number by regexToken("""\d+""") map {
         it.text.toIntOrNull() ?: throw ParserException("Invalid number: ${it.text}")
     }
-    val string by regexToken(""""([^"\\]|\\.)*"""") map {
+    private val string by regexToken(""""([^"\\]|\\.)*"""") map {
         val raw = it.text.removeSurrounding("\"")
         buildString {
             val iterator = raw.iterator()
@@ -480,44 +532,39 @@ object MacroExpressionGrammar : Grammar<MacroExpression>() {
             }
         }
     }
-    val dot by regexToken("""\.""")
-    val leftBracket by regexToken("""\[""")
-    val rightBracket by regexToken("""]""")
-    val leftParentheses by regexToken("""\(""")
-    val rightParentheses by regexToken("""\)""")
-    val colon by regexToken(""":""")
+    private val dot by regexToken("""\.""")
+    private val leftBracket by regexToken("""\[""")
+    private val rightBracket by regexToken("""]""")
+    private val leftParentheses by regexToken("""\(""")
+    private val rightParentheses by regexToken("""\)""")
+    private val colon by regexToken(""":""")
 
-    val propertyAccess by parser {
-        val base = macroPathExpression()
-        dot()
-        val property = identifier()
-        base + Operator.Key(property.text)
-    }
-    val indexAccess by parser {
-        val base = macroPathExpression()
-        leftBracket()
-        val index = number()
-        rightBracket()
-        base + Operator.Index(index)
-    }
-    val functionApplication by parser {
+    private val key by identifier map { Operator.Key(it.text) }
+
+    private val propertyAccess by -dot and identifier map { property -> Operator.Key(property.text) }
+
+    private val indexAccess by -leftBracket and number and -rightBracket map { index -> Operator.Index(index) }
+
+    private val propertyOrIndexAccesses by zeroOrMore(propertyAccess or indexAccess)
+
+    private val functionApplication by parser(firstTokens = setOf(identifier)) {
         val name = identifier()
         leftParentheses()
-        val argument = macroPathExpression()
+        val argument = macroPathOperators()
         rightParentheses()
         argument + Operator.Function(name.text)
     }
-    val macroPathExpression: Parser<MacroPathExpression> by parser {
-        choose(propertyAccess, indexAccess, functionApplication)
-    }
 
-    val storageType by identifier map { MacroValueStorageType(it.text) }
+    private val keyOrFunctionApplication by functionApplication or (key map { listOf(it) })
 
-    val macroExpression: Parser<MacroExpression> by parser {
-        val storageType = storageType()
-        colon()
-        val operators = macroPathExpression()
-        MacroExpression(storageType, operators)
+    private val macroPathOperators: Parser<List<Operator>> by keyOrFunctionApplication and propertyOrIndexAccesses map { (a, b) -> a + b }
+
+    val macroPathExpression: Parser<MacroPathExpression> by macroPathOperators map { MacroPathExpression(it) }
+
+    private val storageTypePrefix by identifier and -colon map { MacroValueStorageType(it.text) }
+
+    val macroExpression: Parser<MacroExpression> by maybe(storageTypePrefix) and macroPathExpression map { (storageType, path) ->
+        MacroExpression(storageType, path)
     }
 
     override val root: Parser<MacroExpression> get() = macroExpression

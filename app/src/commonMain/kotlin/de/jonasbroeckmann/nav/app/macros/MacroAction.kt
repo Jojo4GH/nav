@@ -9,12 +9,9 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.app.exit
-import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext.Companion.set
+import de.jonasbroeckmann.nav.app.macros.MacroStorageScope.Companion.set
 import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
 import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePathToDirectoryOrNull
-import de.jonasbroeckmann.nav.app.openInEditor
-import de.jonasbroeckmann.nav.app.runCommand
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
@@ -36,6 +33,7 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlin.collections.component1
 
 @Serializable(with = MacroAction.Companion::class)
 sealed interface MacroAction : MacroRunnable {
@@ -47,7 +45,7 @@ sealed interface MacroAction : MacroRunnable {
         val default: StringWithPlaceholders? = null,
         val choices: List<StringWithPlaceholders> = emptyList(),
         val hideMainTable: Boolean = false,
-        val resultTo: String = DefaultMacroSymbols.ResultDefault.name,
+        val resultTo: ExpressionString = DefaultMacroExpressions.ResultDefault.expressionString,
         val onChoice: Map<StringWithPlaceholders, MacroActions> = emptyMap()
     ) : MacroAction {
         init {
@@ -96,8 +94,8 @@ sealed interface MacroAction : MacroRunnable {
     data class RunMacro(
         val macro: StringWithPlaceholders,
         val ignoreCondition: Boolean = false,
-        val parameters: Map<StringWithPlaceholders, StringWithPlaceholders>? = null,
-        val capture: Map<String, StringWithPlaceholders>? = null,
+        val parameters: Map<ExpressionString, StringWithPlaceholders>? = null,
+        val capture: Map<ExpressionString, StringWithPlaceholders>? = null,
         val continueOnReturn: Boolean = true
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
@@ -106,8 +104,12 @@ sealed interface MacroAction : MacroRunnable {
             val macro = context.identifiedMacros[macroId]
                 ?: throw MacroException("No macro with ${Macro::id.name} '$macroId' found")
             context.call(
-                parameters = parameters?.mapKeys { (name, _) -> MacroSymbol(name) },
-                capture = capture?.mapKeys { (name, _) -> MacroSymbol(name) },
+                parameters = parameters?.map { (expressionString, value) ->
+                    expressionString.evaluate() to value.asMacroValueEvaluable()
+                },
+                capture = capture?.map { (expressionString, value) ->
+                    expressionString.evaluate() to value.asMacroValueEvaluable()
+                },
                 returnBarrier = continueOnReturn,
                 runnable = Delegate(
                     macro = macro,
@@ -137,14 +139,14 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("command")
     data class RunCommand(
         val command: StringWithPlaceholders,
-        val exitCodeTo: String = DefaultMacroSymbols.ExitCode.name,
-        val outputTo: String? = null,
-        val errorTo: String? = null,
+        val exitCodeTo: ExpressionString = DefaultMacroExpressions.ExitCode.expressionString,
+        val outputTo: ExpressionString? = null,
+        val errorTo: ExpressionString? = null,
         val trimTrailingNewline: Boolean = true
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val result = runCommand(
+            val result = context.controller.runCommand(
                 command = command.evaluate(),
                 collectOutput = outputTo != null,
                 collectError = errorTo != null
@@ -177,7 +179,7 @@ sealed interface MacroAction : MacroRunnable {
         @SerialName("in")
         val value: StringWithPlaceholders,
         val ignoreCase: Boolean = false,
-        val groupsTo: List<String> = emptyList()
+        val groupsTo: List<ExpressionString> = emptyList()
     ) : MacroAction {
         private val regex by lazy {
             if (ignoreCase) Regex(match.pattern, match.options + RegexOption.IGNORE_CASE) else match
@@ -198,11 +200,11 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("open")
     data class OpenFile(
         val open: StringWithPlaceholders,
-        val exitCodeTo: String = DefaultMacroSymbols.ExitCode.name
+        val exitCodeTo: ExpressionString = DefaultMacroExpressions.ExitCode.expressionString
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val exitCode = openInEditor(open.evaluateToAbsolutePath())
+            val exitCode = context.controller.openInEditor(open.evaluateToAbsolutePath())
             context[exitCodeTo] = exitCode?.toString().orEmpty()
         }
     }
@@ -326,7 +328,7 @@ sealed interface MacroAction : MacroRunnable {
     data class ChildrenOf(
         val childrenOf: StringWithPlaceholders,
         val fullPath: Boolean = false,
-        val resultTo: String = DefaultMacroSymbols.ResultDefault.name
+        val resultTo: ExpressionString = DefaultMacroExpressions.ResultDefault.expressionString
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
@@ -344,17 +346,17 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("set")
     data class Set(
-        val set: Map<StringWithPlaceholders, StringWithPlaceholders>
+        val set: Map<ExpressionString, StringWithPlaceholders?>
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            set.forEach { (variable, value) ->
-                context[variable.evaluate()] = value.evaluate()
+            set.forEach { (expressionString, value) ->
+                context[expressionString.evaluate()] = value?.evaluate()?.let { MacroValue.Text(it) }
             }
         }
 
         companion object {
-            operator fun invoke(vararg pairs: Pair<StringWithPlaceholders, StringWithPlaceholders>) = Set(mapOf(*pairs))
+            operator fun invoke(vararg pairs: Pair<ExpressionString, StringWithPlaceholders>) = Set(mapOf(*pairs))
         }
     }
 
@@ -460,7 +462,7 @@ sealed interface MacroAction : MacroRunnable {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             if (exit) {
-                exit(atDirectory = at?.evaluateToAbsolutePathToDirectoryOrNull())
+                context.controller.exit(atDirectory = at?.evaluateToAbsolutePathToDirectoryOrNull())
             }
         }
     }

@@ -13,9 +13,11 @@ import java.net.URI
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("dev.detekt")
     id("com.codingfeline.buildkonfig")
+    id("io.kotest")
+    id("com.google.devtools.ksp")
     id("org.gradle.crypto.checksum")
+    id("dev.detekt")
     id("com.netflix.nebula.ospackage")
 }
 
@@ -117,7 +119,26 @@ kotlin {
         mingwMain.dependencies {
             implementation("io.ktor:ktor-client-winhttp:$ktorVersion")
         }
+
+        val kotestVersion = "6.2.3"
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation("io.kotest:kotest-framework-engine:$kotestVersion")
+        }
+
+        jvmTest.dependencies {
+            implementation("io.kotest:kotest-runner-junit5:$kotestVersion")
+        }
     }
+}
+
+kotest {
+    enablePowerAssert = true
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 dependencies {

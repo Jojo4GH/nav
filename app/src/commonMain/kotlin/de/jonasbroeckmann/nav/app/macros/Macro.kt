@@ -88,11 +88,11 @@ data class Macro private constructor(
         }
     }
 
-    context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+    context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
     fun available() = condition == null || condition.evaluate()
 
     private val usedSymbolsInDescriptionOrCondition by lazy {
-        description.symbols.toSet() + condition?.usedSymbols.orEmpty()
+        description.knownUsedProperties() + condition?.knownUsedProperties.orEmpty()
     }
 
     private val dependsOnEntry by lazy {
@@ -100,13 +100,11 @@ data class Macro private constructor(
             DefaultMacroProperty.EntryPath,
             DefaultMacroProperty.EntryName,
             DefaultMacroProperty.EntryType
-        ).any {
-            it.property.symbol in usedSymbolsInDescriptionOrCondition
-        }
+        ).any { it in usedSymbolsInDescriptionOrCondition }
     }
 
     private val dependsOnFilter by lazy {
-        DefaultMacroProperty.Filter.property.symbol in usedSymbolsInDescriptionOrCondition
+        DefaultMacroProperty.Filter in usedSymbolsInDescriptionOrCondition
     }
 
     context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
@@ -136,8 +134,8 @@ data class Macro private constructor(
 
     companion object {
         context(_: FullContext, _: StateProvider)
-        private fun <R> evaluationContext(block: context(MacroSymbolScope, MacroTraceContext) () -> R) = context(
-            MacroSymbolScope.Empty,
+        private fun <R> evaluationContext(block: context(MacroEvaluationScope, MacroTraceContext) () -> R) = context(
+            MacroEvaluationScope.Empty,
             MacroTraceContext.Empty,
             block
         )

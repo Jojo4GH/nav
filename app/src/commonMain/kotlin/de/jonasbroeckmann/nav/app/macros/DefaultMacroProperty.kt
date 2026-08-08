@@ -1,89 +1,72 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import de.jonasbroeckmann.nav.app.context
+import de.jonasbroeckmann.nav.app.macros.MacroPathExpression.Operator
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.utils.Paths
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
+import kotlin.collections.get
 
-sealed class DefaultMacroProperty(
-    val property: MacroProperty<MacroValue.Text?>
-) {
+// TODO rename to KnownMacroProperty
+sealed class DefaultMacroProperty : MacroProperty<MacroValue.Text?> {
     // From context
 
-    object WorkingDirectory : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "workingDirectory",
-            onGetString = { Paths.WorkingDirectory.toString() }
-        )
+    object WorkingDirectory : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "workingDirectory",
+        onGetString = { Paths.WorkingDirectory.toString() }
     )
 
-    object StartingDirectory : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "startingDirectory",
-            onGetString = { context.startingDirectory.toString() }
-        )
+    object StartingDirectory : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "startingDirectory",
+        onGetString = { context.startingDirectory.toString() }
     )
 
-    object DebugMode : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "debugMode",
-            onGetString = { context.debugMode.toString() }
-        )
+    object DebugMode : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "debugMode",
+        onGetString = { context.debugMode.toString() }
     )
 
-    object Shell : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "shell",
-            onGetString = { context.shell?.shell }
-        )
+    object Shell : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "shell",
+        onGetString = { context.shell?.shell }
     )
 
-    object Separator : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "separator",
-            onGetString = { "$RealSystemPathSeparator" }
-        )
+    object Separator : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "separator",
+        onGetString = { "$RealSystemPathSeparator" }
     )
 
     // From state
 
-    object Directory : DefaultMacroProperty(
-        MacroProperty.DelegatedMutable(
-            name = "directory",
-            onGetString = { state.directory.toString() },
-            onSetString = { newValue -> newValue.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
-        )
+    object Directory : DefaultMacroProperty(), MacroProperty.Mutable<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "directory",
+        onGetString = { state.directory.toString() },
+        onSetString = { newValue -> newValue?.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
     )
 
-    object EntryPath : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "entryPath",
-            onGetString = { state.currentItem?.path?.toString() }
-        )
+    object EntryPath : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "entryPath",
+        onGetString = { state.currentItem?.path?.toString() }
     )
 
-    object EntryName : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "entryName",
-            onGetString = { state.currentItem?.path?.name }
-        )
+    object EntryName : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "entryName",
+        onGetString = { state.currentItem?.path?.name }
     )
 
-    object EntryType : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "entryType",
-            onGetString = {
-                when (state.currentItem?.type) {
-                    Entry.Type.Directory -> Value.DIRECTORY
-                    Entry.Type.RegularFile -> Value.FILE
-                    Entry.Type.SymbolicLink -> Value.LINK
-                    Entry.Type.Unknown -> Value.UNKNOWN
-                    null -> null
-                }
+    object EntryType : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "entryType",
+        onGetString = {
+            when (state.currentItem?.type) {
+                Entry.Type.Directory -> Value.DIRECTORY
+                Entry.Type.RegularFile -> Value.FILE
+                Entry.Type.SymbolicLink -> Value.LINK
+                Entry.Type.Unknown -> Value.UNKNOWN
+                null -> null
             }
-        )
+        }
     ) {
         object Value {
             const val DIRECTORY = "directory"
@@ -93,50 +76,36 @@ sealed class DefaultMacroProperty(
         }
     }
 
-    object Filter : DefaultMacroProperty(
-        MacroProperty.DelegatedMutable(
-            name = "filter",
-            onGetString = { state.filter },
-            onSetString = { newValue -> updateState { withFilter(newValue.orEmpty()) } }
-        )
+    object Filter : DefaultMacroProperty(), MacroProperty.Mutable<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "filter",
+        onGetString = { state.filter },
+        onSetString = { newValue -> updateState { withFilter(newValue.orEmpty()) } }
     )
 
-    object FilteredEntriesCount : DefaultMacroProperty(
-        MacroProperty.DelegatedImmutable(
-            name = "filteredEntriesCount",
-            onGetString = { state.filteredItems.size.toString() }
-        )
+    object FilteredEntriesCount : DefaultMacroProperty(), MacroProperty<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "filteredEntriesCount",
+        onGetString = { state.filteredItems.size.toString() }
     )
 
-    object Command : DefaultMacroProperty(
-        MacroProperty.DelegatedMutable(
-            name = "command",
-            onGetString = { state.command },
-            onSetString = { newValue -> updateState { withCommand(newValue?.takeUnless { it.isEmpty() }) } }
-        )
+    object Command : DefaultMacroProperty(), MacroProperty.Mutable<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "command",
+        onGetString = { state.command },
+        onSetString = { newValue -> updateState { withCommand(newValue?.takeUnless { it.isEmpty() }) } }
     )
 
-    object EntryCursorPosition : DefaultMacroProperty(
-        MacroProperty.DelegatedMutable(
-            name = "entryCursorPosition",
-            onGetString = { state.cursor.toString() },
-            onSetString = { newValue -> newValue?.toIntOrNull()?.let { updateState { withCursor(it) } } }
-        )
+    object EntryCursorPosition : DefaultMacroProperty(), MacroProperty.Mutable<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "entryCursorPosition",
+        onGetString = { state.cursor.toString() },
+        onSetString = { newValue -> newValue?.toIntOrNull()?.let { updateState { withCursor(it) } } }
     )
 
-    object MenuCursorPosition : DefaultMacroProperty(
-        MacroProperty.DelegatedMutable(
-            name = "menuCursorPosition",
-            onGetString = { state.menuCursor.toString() },
-            onSetString = { newValue -> newValue?.toIntOrNull()?.let { updateState { withMenuCursor(it) } } }
-        )
+    object MenuCursorPosition : DefaultMacroProperty(), MacroProperty.Mutable<MacroValue.Text?> by MacroProperty.delegatedString(
+        name = "menuCursorPosition",
+        onGetString = { state.menuCursor.toString() },
+        onSetString = { newValue -> newValue?.toIntOrNull()?.let { updateState { withMenuCursor(it) } } }
     )
 
-    val name get() = property.name
-
-    val placeholder get() = symbol.placeholder
-
-    override fun toString() = placeholder.toString()
+    override fun toString() = templateString.toString()
 
     companion object {
         val All = listOf(
@@ -156,7 +125,13 @@ sealed class DefaultMacroProperty(
             MenuCursorPosition,
         )
         val ByName by lazy {
-            All.associate { it.name to it.property }
+            All.associateBy { it.name }
+        }
+
+        fun from(expression: MacroExpression): DefaultMacroProperty? {
+            if (expression.storageType !is Property?) return null
+            val name = (expression.path.operators.singleOrNull() as? Operator.Key)?.key
+            return ByName[name]
         }
     }
 }

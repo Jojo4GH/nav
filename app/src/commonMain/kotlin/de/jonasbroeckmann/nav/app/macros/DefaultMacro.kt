@@ -12,90 +12,86 @@ sealed class DefaultMacro(
 ) {
     object RunCommand : DefaultMacro(
         Macro(
-            id = "nav:runCommand",
+            id = "nav_runCommand",
             actions = MacroActions(
-                RunCommand(command = DefaultMacroProperty.Command.placeholder),
+                RunCommand(command = DefaultMacroProperty.Command.templateString),
                 If(
                     condition = Not(
                         Equal(
                             listOf(
-                                DefaultMacroSymbols.ExitCode.placeholder,
+                                DefaultMacroExpressions.ExitCode.templateString,
                                 StringWithPlaceholders("0")
                             )
                         )
                     ),
                     then = MacroActions(
                         Print(
-                            print = StringWithPlaceholders("Received exit code ${DefaultMacroSymbols.ExitCode.placeholder}"),
+                            print = StringWithPlaceholders("Received exit code ${DefaultMacroExpressions.ExitCode}"),
                             style = Print.Style.Error
                         )
                     )
                 ),
-                Set(
-                    set = mapOf(
-                        DefaultMacroProperty.Command.symbol.name to StringWithPlaceholders("")
-                    )
-                )
+                Set(DefaultMacroProperty.Command.expressionString to StringWithPlaceholders.Empty)
             )
         )
     )
 
     object NewFile : DefaultMacro(
         Macro(
-            id = "nav:newFile",
+            id = "nav_newFile",
             description = StringWithPlaceholders("new file: ${DefaultMacroProperty.Filter}"),
             style = Styles::file.styleString,
             menuOrder = 200,
             condition = All(
-                NotBlank(DefaultMacroProperty.Filter.placeholder),
-                NotExists(DefaultMacroProperty.Filter.placeholder)
+                NotBlank(DefaultMacroProperty.Filter.templateString),
+                NotExists(DefaultMacroProperty.Filter.templateString)
             ),
             actions = MacroActions(
-                WriteFile(writeFile = DefaultMacroProperty.Filter.placeholder),
-                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
+                WriteFile(writeFile = DefaultMacroProperty.Filter.templateString),
+                Set(DefaultMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
             )
         )
     )
 
     object NewDirectory : DefaultMacro(
         Macro(
-            id = "nav:newDirectory",
+            id = "nav_newDirectory",
             description = StringWithPlaceholders("new directory: ${DefaultMacroProperty.Filter}"),
             style = Styles::directory.styleString,
             menuOrder = 210,
             condition = All(
-                NotBlank(DefaultMacroProperty.Filter.placeholder),
-                NotExists(DefaultMacroProperty.Filter.placeholder)
+                NotBlank(DefaultMacroProperty.Filter.templateString),
+                NotExists(DefaultMacroProperty.Filter.templateString)
             ),
             actions = MacroActions(
-                CreateDirectory(createDirectory = DefaultMacroProperty.Filter.placeholder),
-                Set(DefaultMacroProperty.Filter.symbol.name to StringWithPlaceholders.Empty)
+                CreateDirectory(createDirectory = DefaultMacroProperty.Filter.templateString),
+                Set(DefaultMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
             )
         )
     )
 
     object Rename : DefaultMacro(
         Macro(
-            id = "nav:rename",
+            id = "nav_rename",
             description = StringWithPlaceholders("rename ${DefaultMacroProperty.EntryName}"),
             menuOrder = 250,
-            condition = NotEmpty(DefaultMacroProperty.EntryName.placeholder),
+            condition = NotEmpty(DefaultMacroProperty.EntryName.templateString),
             actions = run {
-                val newNameVar = MacroSymbol.Generic("nav:rename:newName")
+                val newNameVar = MacroExpression("nav_rename_newName")
                 MacroActions(
                     Prompt(
                         prompt = StringWithPlaceholders("New name:"),
                         format = Regex("""[^:*?"<>|]+"""),
-                        default = DefaultMacroProperty.EntryName.placeholder,
-                        resultTo = newNameVar.name
+                        default = DefaultMacroProperty.EntryName.templateString,
+                        resultTo = newNameVar.expressionString
                     ),
                     If(
-                        condition = Exists(newNameVar.placeholder),
+                        condition = Exists(newNameVar.templateString),
                         then = MacroActions(
                             Prompt(
                                 prompt = StringWithPlaceholders(
                                     """
-                                    ${newNameVar.placeholder} already exists.
+                                    $newNameVar already exists.
                                     Do you want to overwrite it?
                                     """.trimIndent()
                                 ),
@@ -109,15 +105,15 @@ sealed class DefaultMacro(
                                 )
                             ),
                             Move(
-                                move = DefaultMacroProperty.EntryPath.placeholder,
-                                to = newNameVar.placeholder,
+                                move = DefaultMacroProperty.EntryPath.templateString,
+                                to = newNameVar.templateString,
                                 overwrite = true,
                             )
                         ),
                         otherwise = MacroActions(
                             Move(
-                                move = DefaultMacroProperty.EntryPath.placeholder,
-                                to = newNameVar.placeholder,
+                                move = DefaultMacroProperty.EntryPath.templateString,
+                                to = newNameVar.templateString,
                             )
                         )
                     )
@@ -128,29 +124,29 @@ sealed class DefaultMacro(
 
     object Delete : DefaultMacro(
         Macro(
-            id = "nav:delete",
-            description = StringWithPlaceholders("delete ${DefaultMacroProperty.EntryName.placeholder}"),
+            id = "nav_delete",
+            description = StringWithPlaceholders("delete ${DefaultMacroProperty.EntryName}"),
             key = KeyboardEvent("Delete"),
             menuOrder = 300,
-            condition = NotEmpty(DefaultMacroProperty.EntryName.placeholder),
+            condition = NotEmpty(DefaultMacroProperty.EntryName.templateString),
             actions = run {
-                val childrenVar = MacroSymbol.Generic("nav:delete:children")
-                val promptVar = MacroSymbol.Generic("nav:delete:prompt")
+                val childrenVar = MacroExpression("nav_delete_children")
+                val promptVar = MacroExpression("nav_delete_prompt")
                 MacroActions(
                     If(
-                        condition = IsDirectory(DefaultMacroProperty.EntryPath.placeholder),
+                        condition = IsDirectory(DefaultMacroProperty.EntryPath.templateString),
                         then = MacroActions(
                             ChildrenOf(
-                                childrenOf = DefaultMacroProperty.EntryPath.placeholder,
-                                resultTo = childrenVar.name
+                                childrenOf = DefaultMacroProperty.EntryPath.templateString,
+                                resultTo = childrenVar.expressionString
                             ),
                             If(
-                                condition = NotEmpty(childrenVar.placeholder),
+                                condition = NotEmpty(childrenVar.templateString),
                                 then = MacroActions(
                                     Prompt(
                                         prompt = StringWithPlaceholders(
                                             """
-                                            The directory ${DefaultMacroProperty.EntryName.placeholder} is not empty.
+                                            The directory ${DefaultMacroProperty.EntryName} is not empty.
                                             Do you want to delete it recursively?
                                             """.trimIndent()
                                         ),
@@ -159,11 +155,11 @@ sealed class DefaultMacro(
                                             StringWithPlaceholders("Yes")
                                         ),
                                         default = StringWithPlaceholders("No"),
-                                        resultTo = promptVar.name
+                                        resultTo = promptVar.expressionString
                                     ),
                                     If(
                                         condition = NotEqual(
-                                            promptVar.placeholder,
+                                            promptVar.templateString,
                                             StringWithPlaceholders("Yes")
                                         ),
                                         then = MacroActions(
@@ -171,17 +167,17 @@ sealed class DefaultMacro(
                                         )
                                     ),
                                     Delete(
-                                        delete = DefaultMacroProperty.EntryPath.placeholder,
+                                        delete = DefaultMacroProperty.EntryPath.templateString,
                                         recursive = true
                                     )
                                 ),
                                 otherwise = MacroActions(
-                                    Delete(delete = DefaultMacroProperty.EntryPath.placeholder)
+                                    Delete(delete = DefaultMacroProperty.EntryPath.templateString)
                                 )
                             )
                         ),
                         otherwise = MacroActions(
-                            Delete(delete = DefaultMacroProperty.EntryPath.placeholder)
+                            Delete(delete = DefaultMacroProperty.EntryPath.templateString)
                         )
                     )
                 )

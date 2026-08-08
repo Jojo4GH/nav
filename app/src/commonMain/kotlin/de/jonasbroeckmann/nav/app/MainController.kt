@@ -8,9 +8,12 @@ import de.jonasbroeckmann.nav.framework.input.InputController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowController
 import kotlinx.io.files.Path
 
-interface MainController : InputController, DialogShowController, FullContext, StateProvider {
+// TODO move
+interface StateUpdater {
     fun updateState(updater: State.() -> State)
+}
 
+interface MainController : InputController, DialogShowController, FullContext, StateProvider, StateUpdater {
     fun openInEditor(file: Path): Int?
 
     fun runCommand(command: String, collectOutput: Boolean = false, collectError: Boolean = false): RunCommandResult?
@@ -30,8 +33,8 @@ interface MainController : InputController, DialogShowController, FullContext, S
     fun exit(exitCode: Int = 0, atDirectory: Path? = null): Nothing
 }
 
-context(controller: MainController)
-fun updateState(updater: State.() -> State) = controller.updateState(updater)
+context(stateUpdater: StateUpdater)
+fun updateState(updater: State.() -> State) = stateUpdater.updateState(updater)
 
 context(controller: MainController)
 fun openInEditor(file: Path): Int? = controller.openInEditor(file)

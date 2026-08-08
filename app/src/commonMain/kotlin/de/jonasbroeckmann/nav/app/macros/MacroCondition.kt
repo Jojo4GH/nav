@@ -5,7 +5,6 @@ package de.jonasbroeckmann.nav.app.macros
 import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
-import de.jonasbroeckmann.nav.app.macros.MacroSymbol.Companion.get
 import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
@@ -17,14 +16,14 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable(with = MacroCondition.Companion::class)
 sealed interface MacroCondition : MacroEvaluable<Boolean> {
-    val usedSymbols: Set<MacroSymbol>
+    val knownUsedProperties: Set<MacroProperty<*>>
 
     @Serializable
     @SerialName("any")
     data class Any(val any: List<MacroCondition>) : MacroCondition {
-        override val usedSymbols: Set<MacroSymbol> by lazy { any.flatMapTo(mutableSetOf()) { it.usedSymbols } }
+        override val knownUsedProperties: Set<MacroProperty<*>> by lazy { any.flatMapTo(mutableSetOf()) { it.knownUsedProperties } }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace {
             any.withIndex().any { (i, condition) ->
                 macroTrace({ MacroTraceElement.ConditionAtIndex(i, condition) }) {
@@ -41,9 +40,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("all")
     data class All(val all: List<MacroCondition>) : MacroCondition {
-        override val usedSymbols: Set<MacroSymbol> by lazy { all.flatMapTo(mutableSetOf()) { it.usedSymbols } }
+        override val knownUsedProperties: Set<MacroProperty<*>> by lazy { all.flatMapTo(mutableSetOf()) { it.knownUsedProperties } }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace {
             all.withIndex().all { (i, condition) ->
                 macroTrace({ MacroTraceElement.ConditionAtIndex(i, condition) }) {
@@ -60,9 +59,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("not")
     data class Not(val not: MacroCondition) : MacroCondition {
-        override val usedSymbols get() = not.usedSymbols
+        override val knownUsedProperties get() = not.knownUsedProperties
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace { !not.evaluate() }
     }
 
@@ -76,9 +75,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
             require(equal.size >= 2) { "${::equal.name} must have at least two elements to compare" }
         }
 
-        override val usedSymbols: Set<MacroSymbol> by lazy { equal.flatMapTo(mutableSetOf()) { it.symbols } }
+        override val knownUsedProperties: Set<MacroProperty<*>> by lazy { equal.flatMapTo(mutableSetOf()) { it.knownUsedProperties() } }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate(): Boolean = macroTrace {
             val toCompare = equal.map { it.evaluate() }
             return toCompare.all { it.equals(toCompare[0], ignoreCase = ignoreCase) }
@@ -122,22 +121,22 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
         val value: StringWithPlaceholders,
         val ignoreCase: Boolean = false
     ) : MacroCondition {
-        override val usedSymbols by lazy { value.symbols.toSet() }
+        override val knownUsedProperties by lazy { value.knownUsedProperties() }
 
         private val regex by lazy {
             if (ignoreCase) Regex(match.pattern, match.options + RegexOption.IGNORE_CASE) else match
         }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace { regex.matches(value.evaluate()) }
     }
 
     @Serializable
     @SerialName("empty")
     data class Empty(val empty: StringWithPlaceholders) : MacroCondition {
-        override val usedSymbols by lazy { empty.symbols.toSet() }
+        override val knownUsedProperties by lazy { empty.knownUsedProperties() }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace { empty.evaluate().isEmpty() }
     }
 
@@ -148,9 +147,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("blank")
     data class Blank(val blank: StringWithPlaceholders) : MacroCondition {
-        override val usedSymbols by lazy { blank.symbols.toSet() }
+        override val knownUsedProperties by lazy { blank.knownUsedProperties() }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace { blank.evaluate().isBlank() }
     }
 
@@ -161,9 +160,9 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("exists")
     data class Exists(val exists: StringWithPlaceholders) : MacroCondition {
-        override val usedSymbols by lazy { exists.symbols.toSet() }
+        override val knownUsedProperties by lazy { exists.knownUsedProperties() }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate() = macroTrace { exists.evaluateToAbsolutePath().exists() }
     }
 
@@ -174,13 +173,14 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("isDirectory")
     data class IsDirectory(val isDirectory: StringWithPlaceholders) : MacroCondition {
-        override val usedSymbols by lazy { isDirectory.symbols.toSet() }
+        override val knownUsedProperties by lazy { isDirectory.knownUsedProperties() }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate(): Boolean = macroTrace {
+            DefaultMacroProperty.EntryName.templateString
             when (isDirectory) {
-                DefaultMacroProperty.EntryName.placeholder, DefaultMacroProperty.EntryPath.placeholder -> {
-                    DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.DIRECTORY
+                DefaultMacroProperty.EntryName.templateString, DefaultMacroProperty.EntryPath.templateString -> {
+                    DefaultMacroProperty.EntryType.get()?.value == DefaultMacroProperty.EntryType.Value.DIRECTORY
                 }
                 else -> isDirectory.evaluateToAbsolutePath().isDirectory()
             }
@@ -194,13 +194,13 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("isFile")
     data class IsFile(val isFile: StringWithPlaceholders) : MacroCondition {
-        override val usedSymbols by lazy { isFile.symbols.toSet() }
+        override val knownUsedProperties by lazy { isFile.knownUsedProperties() }
 
-        context(scope: MacroSymbolScope, traceContext: MacroTraceContext)
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate(): Boolean = macroTrace {
             when (isFile) {
-                DefaultMacroProperty.EntryName.placeholder, DefaultMacroProperty.EntryPath.placeholder -> {
-                    DefaultMacroProperty.EntryType.symbol.get() == DefaultMacroProperty.EntryType.Value.FILE
+                DefaultMacroProperty.EntryName.templateString, DefaultMacroProperty.EntryPath.templateString -> {
+                    DefaultMacroProperty.EntryType.get()?.value == DefaultMacroProperty.EntryType.Value.FILE
                 }
                 else -> isFile.evaluateToAbsolutePath().isRegularFile()
             }

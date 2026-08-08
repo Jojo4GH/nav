@@ -4,45 +4,54 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.MainController
+import de.jonasbroeckmann.nav.app.StateUpdater
+import de.jonasbroeckmann.nav.app.macros.MacroProperty.Companion.trySet
 import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.app.ui.dialogs.macroDialogDecorator
 import de.jonasbroeckmann.nav.command.Logger
-import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.dangerThrowable
 import de.jonasbroeckmann.nav.command.infoOnDebug
 import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.decorate
 import de.jonasbroeckmann.nav.framework.utils.div
 
 class MacroRuntimeContext private constructor(
-    controller: MainController,
-    private val sessionContext: MacroSessionContext,
+    val controller: MainController,
+    sessionContext: MacroSessionContext,
     private val rootMacro: Macro
-) : MacroStorageScopeBase(sessionContext), MainController by controller {
+) : MacroStorageScopeBase(controller, sessionContext) {
+    override val localStorage: InMemoryMacroValueStorage = InMemoryMacroValueStorage()
+
     fun <R> showMacroDialog(
         options: DialogOptions = DialogOptions(),
         block: DialogShowScope.() -> R
-    ) = showDialog(options) {
+    ) = controller.showDialog(options) {
         decorate(context(MacroTraceContext.Empty) { macroDialogDecorator(rootMacro) }, block)
     }
 
     context(_: MacroTraceContext)
     fun call(
-        parameters: Map<MacroSymbol, MacroEvaluable<String>>? = emptyMap(),
-        capture: Map<MacroSymbol, MacroEvaluable<String>>? = emptyMap(),
+        parameters: Iterable<Pair<MacroExpression, MacroEvaluable<MacroValue?>>>? = emptyList(),
+        capture: Iterable<Pair<MacroExpression, MacroEvaluable<MacroValue?>>>? = emptyList(),
         returnBarrier: Boolean = true,
         runnable: MacroRunnable
     ): Unit = macroTrace(runnable) {
-        val callContext = MacroRuntimeContext(this, sessionContext, rootMacro)
+        val callContext = MacroRuntimeContext(
+            controller = controller,
+            sessionContext = sessionContext,
+            rootMacro = rootMacro
+        )
 
         val input = parameters
-            ?.mapValues { (_, evaluable) -> context(this) { evaluable.evaluate() } }
-            ?: this.localStorage
-        input.forEach { (symbol, value) ->
-            callContext[symbol] = value
+            ?.map { (expression, evaluable) ->
+                require(expression.storageType is Local?) { "'${expression}' is not in local storage" }
+                expression.path to context(this@MacroRuntimeContext) { evaluable.evaluate() }
+            }
+            ?: localStorage.toMap().asIterable().map { it.toPair() }
+        input.forEach { (path, value) ->
+            callContext.localStorage[path] = value
         }
 
         val returnEvent = interceptReturn {
@@ -50,10 +59,10 @@ class MacroRuntimeContext private constructor(
         }
 
         val output = capture
-            ?.mapValues { (_, evaluable) -> context(callContext) { evaluable.evaluate() } }
-            ?: callContext.localVariables
-        output.forEach { (symbol, value) ->
-            this[symbol] = value
+            ?.map { (expression, evaluable) -> expression to context(callContext) { evaluable.evaluate() } }
+            ?: callContext.localStorage.toMap().asIterable().map { (path, value) -> MacroExpression(Local, path) to value }
+        output.forEach { (expression, value) ->
+            this[expression] = value
         }
 
         if (!returnBarrier && returnEvent != null) {
@@ -92,7 +101,7 @@ class MacroRuntimeContext private constructor(
     }
 
     companion object {
-        context(controller: MainController)
+        context(controller: MainController, sessionContext: MacroSessionContext)
         fun run(macro: Macro) {
             MacroException.handle(
                 onException = { e ->
@@ -102,14 +111,16 @@ class MacroRuntimeContext private constructor(
                     controller.terminal.danger(e)
                 }
             ) {
-                MacroRuntimeContext(controller, rootMacro = macro).call(
-                    parameters = emptyMap(),
+                MacroRuntimeContext(
+                    controller = controller,
+                    sessionContext = sessionContext,
+                    rootMacro = macro
+                ).call(
+                    parameters = emptyList(),
                     runnable = macro
                 )
             }
         }
-
-        operator fun MacroRuntimeContext.set(symbolName: String, value: String) = set(MacroSymbol(symbolName), value)
     }
 }
 
@@ -117,11 +128,6 @@ class MacroSessionContext(
     context: FullContext,
     stateProvider: StateProvider
 ) : FullContext by context, StateProvider by stateProvider {
-    val propertyStorage: MutableMacroValueStorage = PropertyStorage(
-        context,
-        stateProvider,
-        properties = DefaultMacroProperty.All.map { it.property }
-    )
     val sessionStorage: MutableMacroValueStorage = InMemoryMacroValueStorage()
     val persistentStorage: MutableMacroValueStorage? = run init@{
         val path = (configPath ?: Config.findConfigPath(mustExist = false))
@@ -139,35 +145,87 @@ class MacroSessionContext(
         YamlFileMacroValueStorage(path)
     }
     val environmentStorage: MutableMacroValueStorage = EnvironmentMacroValueStorage(logger = context)
+
+    companion object {
+        context(context: FullContext, stateProvider: StateProvider)
+        operator fun invoke() = MacroSessionContext(context, stateProvider)
+    }
 }
 
 interface MacroEvaluationScope : FullContext, StateProvider {
     operator fun get(expression: MacroExpression): MacroValue?
+
+    companion object {
+        context(_: FullContext, _: StateProvider)
+        val Empty: MacroEvaluationScope get() = MacroEvaluationScopeBase(MacroSessionContext())
+    }
 }
 
-interface MacroStorageScope : MacroEvaluationScope {
+interface MacroStorageScope : MacroEvaluationScope, StateUpdater {
     operator fun set(expression: MacroExpression, value: MacroValue?)
+
+    companion object {
+        context(_: MacroTraceContext)
+        operator fun MacroStorageScope.set(expression: ExpressionString, value: String?) {
+            this[expression.evaluate()] = MacroValue(value)
+        }
+    }
 }
 
-open class MacroStorageScopeBase(
-    private val sessionContext: MacroSessionContext
-) : MacroStorageScope, FullContext by sessionContext, StateProvider by sessionContext {
-    protected val localStorage: MutableMacroValueStorage = InMemoryMacroValueStorage()
+open class MacroEvaluationScopeBase(
+    protected val sessionContext: MacroSessionContext,
+) : MacroEvaluationScope, FullContext by sessionContext, StateProvider by sessionContext {
+    protected open val localStorage: MutableMacroValueStorage = InMemoryMacroValueStorage()
 
     override operator fun get(expression: MacroExpression): MacroValue? {
-        val t = when (val type = expression.storageType) {
-            null -> {
-                DefaultMacroProperty.ByName
+        val property = DefaultMacroProperty.from(expression)
+        if (property != null) {
+            return property.get()
+        }
+        return when (val type = expression.storageType) {
+            Property -> {
+                warnPropertyUnknown(expression)
+                null
             }
-            Local -> localStorage[expression.path]
+            null, Local -> localStorage[expression.path]
             Session -> sessionContext.sessionStorage[expression.path]
             Persistent -> sessionContext.persistentStorage?.get(expression.path)
             Environment -> sessionContext.environmentStorage[expression.path]
             is MacroValueStorageType.Custom -> {
-                terminal.warning("Custom macro storage type '${type.key}' is currently not supported")
+                warnCustomStorageNotSupported(type)
                 null
             }
         }
     }
+}
 
+open class MacroStorageScopeBase(
+    stateUpdater: StateUpdater,
+    sessionContext: MacroSessionContext,
+) : MacroEvaluationScopeBase(sessionContext), MacroStorageScope, StateUpdater by stateUpdater {
+    override operator fun set(expression: MacroExpression, value: MacroValue?) {
+        val property = DefaultMacroProperty.from(expression)
+        if (property != null) {
+            property.trySet(value, printOnFail = true)
+            return
+        }
+        when (val type = expression.storageType) {
+            Property -> warnPropertyUnknown(expression)
+            null, Local -> localStorage[expression.path] = value
+            Session -> sessionContext.sessionStorage[expression.path] = value
+            Persistent -> sessionContext.persistentStorage?.set(expression.path, value)
+            Environment -> sessionContext.environmentStorage[expression.path] = value
+            is MacroValueStorageType.Custom -> warnCustomStorageNotSupported(type)
+        }
+    }
+}
+
+context(logger: Logger)
+private fun warnPropertyUnknown(expression: MacroExpression) {
+    logger.terminal.warning("'${expression.path}' is not a known property")
+}
+
+context(logger: Logger)
+private fun warnCustomStorageNotSupported(type: MacroValueStorageType.Custom) {
+    logger.terminal.warning("Custom macro storage type '${type.key}' is currently not supported")
 }

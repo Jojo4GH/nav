@@ -4,6 +4,7 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.DefaultMacro
 import de.jonasbroeckmann.nav.app.macros.Macro
+import de.jonasbroeckmann.nav.app.macros.MacroSessionContext
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.config.Config
@@ -51,6 +52,8 @@ abstract class MainControllerBase internal constructor() : MainController {
                 NONE -> true
             }
     }
+
+    protected val macroSessionContext by lazy { MacroSessionContext() }
 
     override val macros by lazy {
         buildList {
