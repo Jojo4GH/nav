@@ -22,6 +22,8 @@ class EnvironmentMacroValueStorage(
         }
     }
 
+    override fun value() = MacroValue.Dictionary(EnvironmentVariables.get().mapValues { (_, value) -> MacroValue.Text(value) })
+
     private fun MacroPathExpression.environmentVariable(): String? {
         val operator = operators.singleOrNull()
         if (operator !is MacroPathExpression.Operator.Key) {

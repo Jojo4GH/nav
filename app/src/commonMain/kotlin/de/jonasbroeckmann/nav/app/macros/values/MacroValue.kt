@@ -1,5 +1,12 @@
 package de.jonasbroeckmann.nav.app.macros.values
 
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Keys
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Last
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Next
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Size
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Values
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -97,6 +104,22 @@ sealed interface MacroValue {
             Representative -> "null"
             Json -> "null"
             Textual -> ""
+        }
+
+        operator fun Dictionary.get(path: MacroPathExpression) = path.operators.fold<_, MacroValue?>(this) { value, operator ->
+            when (operator) {
+                is Operator.Key if value is Dictionary -> value[operator.key]
+                is Operator.Index if value is Array -> value.getOrNull(operator.index)
+                is Operator.Function -> when (operator) {
+                    Last if value is Array -> value.lastOrNull()
+                    Next if value is Array -> null
+                    Keys if value is Dictionary -> Array(value.keys.map { Text(it) })
+                    Values if value is Dictionary -> Array(value.values.toList())
+                    Size if value is Collection -> Text("${value.size}")
+                    else -> null
+                }
+                else -> null
+            }
         }
     }
 }

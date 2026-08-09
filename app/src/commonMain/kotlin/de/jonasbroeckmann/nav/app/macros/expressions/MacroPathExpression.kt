@@ -14,6 +14,8 @@ data class MacroPathExpression(
         if (operators.first() !is Key) throw ParserException("Path expression must start with a key")
     }
 
+    val key get() = operators.first() as Operator.Key
+
     sealed interface Operator {
         fun unparse(base: String?): String
         data class Key(val key: String) : Operator {

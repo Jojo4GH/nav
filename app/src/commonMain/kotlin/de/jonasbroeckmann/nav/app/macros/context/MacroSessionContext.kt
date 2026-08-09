@@ -28,7 +28,7 @@ class MacroSessionContext(
                 )
                 return@init null
             }
-        YamlFileMacroValueStorage(path)
+        YamlFileMacroValueStorage(path, logger = context)
     }
     val environmentStorage: MutableMacroValueStorage = EnvironmentMacroValueStorage(logger = context)
 

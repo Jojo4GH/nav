@@ -9,6 +9,7 @@ import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.components.MacroRunnable
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
 import de.jonasbroeckmann.nav.app.macros.macroTrace
 import de.jonasbroeckmann.nav.app.macros.values.InMemoryMacroValueStorage
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
@@ -51,7 +52,7 @@ class MacroRuntimeContext private constructor(
                 require(expression.storageType is Local?) { "'${expression}' is not in local storage" }
                 expression.path to context(this@MacroRuntimeContext) { evaluable.evaluate() }
             }
-            ?: localStorage.toMap().asIterable().map { it.toPair() }
+            ?: localStorage.value().map { (key, value) -> MacroPathExpression(key) to value }
         input.forEach { (path, value) ->
             callContext.localStorage[path] = value
         }
@@ -62,7 +63,7 @@ class MacroRuntimeContext private constructor(
 
         val output = capture
             ?.map { (expression, evaluable) -> expression to context(callContext) { evaluable.evaluate() } }
-            ?: callContext.localStorage.toMap().asIterable().map { (path, value) -> MacroExpression(Local, path) to value }
+            ?: callContext.localStorage.value().map { (path, value) -> MacroExpression(Local, path) to value }
         output.forEach { (expression, value) ->
             this[expression] = value
         }
