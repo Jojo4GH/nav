@@ -1,6 +1,8 @@
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.expressions
 
-import de.jonasbroeckmann.nav.app.macros.MacroPathExpression.Operator
+import de.jonasbroeckmann.nav.app.macros.ParserException
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator
+import de.jonasbroeckmann.nav.app.macros.values.MacroValueStorageType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull

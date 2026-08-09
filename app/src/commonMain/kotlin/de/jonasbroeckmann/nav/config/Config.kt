@@ -11,7 +11,7 @@ import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.app.macros.Macro
+import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.EntryColumn

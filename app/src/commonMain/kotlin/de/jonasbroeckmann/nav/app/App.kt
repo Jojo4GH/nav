@@ -13,8 +13,8 @@ import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.app.actions.MenuActions
 import de.jonasbroeckmann.nav.app.actions.NormalModeActions
 import de.jonasbroeckmann.nav.app.actions.QuickMacroModeActions
-import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
+import de.jonasbroeckmann.nav.app.macros.components.Macro
+import de.jonasbroeckmann.nav.app.macros.context.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.buildUI
 import de.jonasbroeckmann.nav.command.*

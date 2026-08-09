@@ -1,10 +1,14 @@
 @file:UseSerializers(KeyboardEventAsStringSerializer::class)
 
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.components
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
+import de.jonasbroeckmann.nav.app.macros.context.MacroRuntimeContext
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.ui.style
@@ -44,7 +48,7 @@ data class Macro private constructor(
     private val initializerRecorder: PropertyInitializerRecorder<Macro> = PropertyInitializerRecorder(),
     val id: String? = initializerRecorder.record(Macro::id, null),
     val enabled: Boolean = initializerRecorder.record(Macro::enabled, true),
-    val description: StringWithPlaceholders = initializerRecorder.record(Macro::description, Empty),
+    val description: TemplateString = initializerRecorder.record(Macro::description, Empty),
     val style: StyleString? = initializerRecorder.record(Macro::style, null),
     val key: KeyboardEvent? = initializerRecorder.record(Macro::key, null),
     val hideKey: Boolean = initializerRecorder.record(Macro::hideKey, false),
@@ -58,7 +62,7 @@ data class Macro private constructor(
     constructor(
         id: String? = null,
         enabled: Boolean = true,
-        description: StringWithPlaceholders = Empty,
+        description: TemplateString = Empty,
         style: StyleString? = null,
         key: KeyboardEvent? = null,
         hideKey: Boolean = false,

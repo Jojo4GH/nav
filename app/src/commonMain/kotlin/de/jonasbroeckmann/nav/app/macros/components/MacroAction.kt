@@ -1,6 +1,6 @@
 @file:UseSerializers(RegexAsStringSerializer::class)
 
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.components
 
 import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
@@ -9,9 +9,17 @@ import com.github.ajalt.mordant.terminal.danger
 import com.github.ajalt.mordant.terminal.info
 import com.github.ajalt.mordant.terminal.success
 import com.github.ajalt.mordant.terminal.warning
-import de.jonasbroeckmann.nav.app.macros.MacroStorageScope.Companion.set
-import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
-import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePathToDirectoryOrNull
+import de.jonasbroeckmann.nav.app.macros.MacroException
+import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
+import de.jonasbroeckmann.nav.app.macros.contains
+import de.jonasbroeckmann.nav.app.macros.context.MacroRuntimeContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroStorageScope.Companion.set
+import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
+import de.jonasbroeckmann.nav.app.macros.macroTrace
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePathToDirectoryOrNull
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
@@ -40,13 +48,13 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("prompt")
     data class Prompt(
-        val prompt: StringWithPlaceholders,
+        val prompt: TemplateString,
         val format: Regex? = null,
-        val default: StringWithPlaceholders? = null,
-        val choices: List<StringWithPlaceholders> = emptyList(),
+        val default: TemplateString? = null,
+        val choices: List<TemplateString> = emptyList(),
         val hideMainTable: Boolean = false,
         val resultTo: ExpressionString = DefaultMacroExpressions.ResultDefault.expressionString,
-        val onChoice: Map<StringWithPlaceholders, MacroActions> = emptyMap()
+        val onChoice: Map<TemplateString, MacroActions> = emptyMap()
     ) : MacroAction {
         init {
             require(listOfNotNull(format, choices.takeIf { it.isNotEmpty() }).size <= 1) {
@@ -92,10 +100,10 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("macro")
     data class RunMacro(
-        val macro: StringWithPlaceholders,
+        val macro: TemplateString,
         val ignoreCondition: Boolean = false,
-        val parameters: Map<ExpressionString, StringWithPlaceholders>? = null,
-        val capture: Map<ExpressionString, StringWithPlaceholders>? = null,
+        val parameters: Map<ExpressionString, TemplateString>? = null,
+        val capture: Map<ExpressionString, TemplateString>? = null,
         val continueOnReturn: Boolean = true
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
@@ -138,7 +146,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("command")
     data class RunCommand(
-        val command: StringWithPlaceholders,
+        val command: TemplateString,
         val exitCodeTo: ExpressionString = DefaultMacroExpressions.ExitCode.expressionString,
         val outputTo: ExpressionString? = null,
         val errorTo: ExpressionString? = null,
@@ -177,7 +185,7 @@ sealed interface MacroAction : MacroRunnable {
     data class Match(
         val match: Regex,
         @SerialName("in")
-        val value: StringWithPlaceholders,
+        val value: TemplateString,
         val ignoreCase: Boolean = false,
         val groupsTo: List<ExpressionString> = emptyList()
     ) : MacroAction {
@@ -199,7 +207,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("open")
     data class OpenFile(
-        val open: StringWithPlaceholders,
+        val open: TemplateString,
         val exitCodeTo: ExpressionString = DefaultMacroExpressions.ExitCode.expressionString
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
@@ -212,8 +220,8 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("writeFile")
     data class WriteFile(
-        val writeFile: StringWithPlaceholders,
-        val content: StringWithPlaceholders? = null,
+        val writeFile: TemplateString,
+        val content: TemplateString? = null,
         val append: Boolean = false,
         val overwrite: Boolean = false,
         val silent: Boolean = false
@@ -251,7 +259,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("createDirectory")
     data class CreateDirectory(
-        val createDirectory: StringWithPlaceholders,
+        val createDirectory: TemplateString,
         val createParents: Boolean = true,
         val silent: Boolean = false
     ) : MacroAction {
@@ -274,8 +282,8 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("move")
     data class Move(
-        val move: StringWithPlaceholders,
-        val to: StringWithPlaceholders,
+        val move: TemplateString,
+        val to: TemplateString,
         val createParents: Boolean = true,
         val overwrite: Boolean = false,
         val silent: Boolean = false
@@ -299,7 +307,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("delete")
     data class Delete(
-        val delete: StringWithPlaceholders,
+        val delete: TemplateString,
         val recursive: Boolean = false,
         val silent: Boolean = false
     ) : MacroAction {
@@ -326,7 +334,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("childrenOf")
     data class ChildrenOf(
-        val childrenOf: StringWithPlaceholders,
+        val childrenOf: TemplateString,
         val fullPath: Boolean = false,
         val resultTo: ExpressionString = DefaultMacroExpressions.ResultDefault.expressionString
     ) : MacroAction {
@@ -346,7 +354,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("set")
     data class Set(
-        val set: Map<ExpressionString, StringWithPlaceholders?>
+        val set: Map<ExpressionString, TemplateString?>
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
@@ -356,7 +364,7 @@ sealed interface MacroAction : MacroRunnable {
         }
 
         companion object {
-            operator fun invoke(vararg pairs: Pair<ExpressionString, StringWithPlaceholders>) = Set(mapOf(*pairs))
+            operator fun invoke(vararg pairs: Pair<ExpressionString, TemplateString>) = Set(mapOf(*pairs))
         }
     }
 
@@ -383,10 +391,10 @@ sealed interface MacroAction : MacroRunnable {
     @SerialName("when")
     data class When(
         @SerialName("when")
-        val switch: StringWithPlaceholders,
+        val switch: TemplateString,
         val ignoreCase: Boolean = false,
         @SerialName("is")
-        val cases: Map<StringWithPlaceholders, MacroActions> = emptyMap(),
+        val cases: Map<TemplateString, MacroActions> = emptyMap(),
         @SerialName("else")
         val otherwise: MacroActions = MacroActions()
     ) : MacroAction {
@@ -404,7 +412,7 @@ sealed interface MacroAction : MacroRunnable {
     @Serializable
     @SerialName("print")
     data class Print(
-        val print: StringWithPlaceholders,
+        val print: TemplateString,
         val style: Style? = null, // TODO convert to StyleString
         val debug: Boolean = false
     ) : MacroAction {
@@ -457,7 +465,7 @@ sealed interface MacroAction : MacroRunnable {
     data class Exit(
         @EncodeDefault(ALWAYS)
         val exit: Boolean = true,
-        val at: StringWithPlaceholders? = null
+        val at: TemplateString? = null
     ) : MacroAction {
         context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
         override fun run() = macroTrace {

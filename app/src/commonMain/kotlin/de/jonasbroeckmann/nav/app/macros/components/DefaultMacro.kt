@@ -1,9 +1,12 @@
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.components
 
 import com.github.ajalt.mordant.input.KeyboardEvent
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.macros.MacroAction.*
-import de.jonasbroeckmann.nav.app.macros.MacroCondition.*
+import de.jonasbroeckmann.nav.app.macros.MacroProvider
+import de.jonasbroeckmann.nav.app.macros.components.MacroAction.*
+import de.jonasbroeckmann.nav.app.macros.components.MacroCondition.*
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.config.StyleString.Companion.styleString
 import de.jonasbroeckmann.nav.config.Styles
 
@@ -16,22 +19,18 @@ sealed class DefaultMacro(
             actions = MacroActions(
                 RunCommand(command = KnownMacroProperty.Command.templateString),
                 If(
-                    condition = Not(
-                        Equal(
-                            listOf(
-                                DefaultMacroExpressions.ExitCode.templateString,
-                                StringWithPlaceholders("0")
-                            )
-                        )
+                    condition = NotEqual(
+                        DefaultMacroExpressions.ExitCode.templateString,
+                        TemplateString("0")
                     ),
                     then = MacroActions(
                         Print(
-                            print = StringWithPlaceholders("Received exit code ${DefaultMacroExpressions.ExitCode}"),
+                            print = TemplateString("Received exit code ${DefaultMacroExpressions.ExitCode}"),
                             style = Print.Style.Error
                         )
                     )
                 ),
-                Set(KnownMacroProperty.Command.expressionString to StringWithPlaceholders.Empty)
+                Set(KnownMacroProperty.Command.expressionString to TemplateString.Empty)
             )
         )
     )
@@ -39,7 +38,7 @@ sealed class DefaultMacro(
     object NewFile : DefaultMacro(
         Macro(
             id = "nav_newFile",
-            description = StringWithPlaceholders("new file: ${KnownMacroProperty.Filter}"),
+            description = TemplateString("new file: ${KnownMacroProperty.Filter}"),
             style = Styles::file.styleString,
             menuOrder = 200,
             condition = All(
@@ -48,7 +47,7 @@ sealed class DefaultMacro(
             ),
             actions = MacroActions(
                 WriteFile(writeFile = KnownMacroProperty.Filter.templateString),
-                Set(KnownMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
+                Set(KnownMacroProperty.Filter.expressionString to TemplateString.Empty)
             )
         )
     )
@@ -56,7 +55,7 @@ sealed class DefaultMacro(
     object NewDirectory : DefaultMacro(
         Macro(
             id = "nav_newDirectory",
-            description = StringWithPlaceholders("new directory: ${KnownMacroProperty.Filter}"),
+            description = TemplateString("new directory: ${KnownMacroProperty.Filter}"),
             style = Styles::directory.styleString,
             menuOrder = 210,
             condition = All(
@@ -65,7 +64,7 @@ sealed class DefaultMacro(
             ),
             actions = MacroActions(
                 CreateDirectory(createDirectory = KnownMacroProperty.Filter.templateString),
-                Set(KnownMacroProperty.Filter.expressionString to StringWithPlaceholders.Empty)
+                Set(KnownMacroProperty.Filter.expressionString to TemplateString.Empty)
             )
         )
     )
@@ -73,14 +72,14 @@ sealed class DefaultMacro(
     object Rename : DefaultMacro(
         Macro(
             id = "nav_rename",
-            description = StringWithPlaceholders("rename ${KnownMacroProperty.EntryName}"),
+            description = TemplateString("rename ${KnownMacroProperty.EntryName}"),
             menuOrder = 250,
             condition = NotEmpty(KnownMacroProperty.EntryName.templateString),
             actions = run {
                 val newNameVar = MacroExpression("nav_rename_newName")
                 MacroActions(
                     Prompt(
-                        prompt = StringWithPlaceholders("New name:"),
+                        prompt = TemplateString("New name:"),
                         format = Regex("""[^:*?"<>|]+"""),
                         default = KnownMacroProperty.EntryName.templateString,
                         resultTo = newNameVar.expressionString
@@ -89,19 +88,19 @@ sealed class DefaultMacro(
                         condition = Exists(newNameVar.templateString),
                         then = MacroActions(
                             Prompt(
-                                prompt = StringWithPlaceholders(
+                                prompt = TemplateString(
                                     """
                                     $newNameVar already exists.
                                     Do you want to overwrite it?
                                     """.trimIndent()
                                 ),
                                 choices = listOf(
-                                    StringWithPlaceholders("No"),
-                                    StringWithPlaceholders("Yes")
+                                    TemplateString("No"),
+                                    TemplateString("Yes")
                                 ),
-                                default = StringWithPlaceholders("No"),
+                                default = TemplateString("No"),
                                 onChoice = mapOf(
-                                    StringWithPlaceholders("No") to MacroActions(Return())
+                                    TemplateString("No") to MacroActions(Return())
                                 )
                             ),
                             Move(
@@ -125,7 +124,7 @@ sealed class DefaultMacro(
     object Delete : DefaultMacro(
         Macro(
             id = "nav_delete",
-            description = StringWithPlaceholders("delete ${KnownMacroProperty.EntryName}"),
+            description = TemplateString("delete ${KnownMacroProperty.EntryName}"),
             key = KeyboardEvent("Delete"),
             menuOrder = 300,
             condition = NotEmpty(KnownMacroProperty.EntryName.templateString),
@@ -144,23 +143,23 @@ sealed class DefaultMacro(
                                 condition = NotEmpty(childrenVar.templateString),
                                 then = MacroActions(
                                     Prompt(
-                                        prompt = StringWithPlaceholders(
+                                        prompt = TemplateString(
                                             """
                                             The directory ${KnownMacroProperty.EntryName} is not empty.
                                             Do you want to delete it recursively?
                                             """.trimIndent()
                                         ),
                                         choices = listOf(
-                                            StringWithPlaceholders("No"),
-                                            StringWithPlaceholders("Yes")
+                                            TemplateString("No"),
+                                            TemplateString("Yes")
                                         ),
-                                        default = StringWithPlaceholders("No"),
+                                        default = TemplateString("No"),
                                         resultTo = promptVar.expressionString
                                     ),
                                     If(
                                         condition = NotEqual(
                                             promptVar.templateString,
-                                            StringWithPlaceholders("Yes")
+                                            TemplateString("Yes")
                                         ),
                                         then = MacroActions(
                                             Return()

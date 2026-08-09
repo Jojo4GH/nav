@@ -2,9 +2,9 @@ package de.jonasbroeckmann.nav.app.actions
 
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.MainController
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeQuickModeKeyDescription
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeStyle
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeCondition
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeQuickModeKeyDescription
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.runEntryMacro
 import de.jonasbroeckmann.nav.app.runMacro
 import de.jonasbroeckmann.nav.app.state.State

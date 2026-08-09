@@ -1,7 +1,10 @@
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.components
 
 import de.jonasbroeckmann.nav.app.context
-import de.jonasbroeckmann.nav.app.macros.MacroPathExpression.Operator
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
+import de.jonasbroeckmann.nav.app.macros.parseToAbsolutePathToDirectoryOrNull
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.updateState
@@ -129,7 +132,7 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
 
         fun from(expression: MacroExpression): KnownMacroProperty? {
             if (expression.storageType !is Property?) return null
-            val name = (expression.path.operators.singleOrNull() as? Operator.Key)?.key
+            val name = (expression.path.operators.singleOrNull() as? MacroPathExpression.Operator.Key)?.key
             return ByName[name]
         }
     }

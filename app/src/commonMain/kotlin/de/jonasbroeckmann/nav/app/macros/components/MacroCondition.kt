@@ -1,11 +1,18 @@
 @file:UseSerializers(RegexAsStringSerializer::class)
 
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.components
 
 import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
-import de.jonasbroeckmann.nav.app.macros.StringWithPlaceholders.Companion.evaluateToAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.MacroEvaluable
+import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
+import de.jonasbroeckmann.nav.app.macros.MacroTraceElement
+import de.jonasbroeckmann.nav.app.macros.contains
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
+import de.jonasbroeckmann.nav.app.macros.macroTrace
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePath
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.framework.utils.isRegularFile
@@ -68,7 +75,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("equal")
     data class Equal(
-        val equal: List<StringWithPlaceholders>,
+        val equal: List<TemplateString>,
         val ignoreCase: Boolean = false
     ) : MacroCondition {
         init {
@@ -85,7 +92,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
         companion object {
             @Suppress("detekt:AnnotationOnSeparateLine")
-            operator fun <@Suppress("FINAL_UPPER_BOUND") T : StringWithPlaceholders> invoke(
+            operator fun <@Suppress("FINAL_UPPER_BOUND") T : TemplateString> invoke(
                 vararg equal: T,
                 ignoreCase: Boolean = false
             ) = Equal(
@@ -98,12 +105,12 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("notEqual")
     data class NotEqual(
-        val notEqual: List<StringWithPlaceholders>,
+        val notEqual: List<TemplateString>,
         val ignoreCase: Boolean = false
     ) : MacroCondition by Not(Equal(notEqual, ignoreCase)) {
         companion object {
             @Suppress("detekt:AnnotationOnSeparateLine")
-            operator fun <@Suppress("FINAL_UPPER_BOUND") T : StringWithPlaceholders> invoke(
+            operator fun <@Suppress("FINAL_UPPER_BOUND") T : TemplateString> invoke(
                 vararg notEqual: T,
                 ignoreCase: Boolean = false
             ) = NotEqual(
@@ -118,7 +125,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     data class Match(
         val match: Regex,
         @SerialName("in")
-        val value: StringWithPlaceholders,
+        val value: TemplateString,
         val ignoreCase: Boolean = false
     ) : MacroCondition {
         override val knownUsedProperties by lazy { value.knownUsedProperties() }
@@ -133,7 +140,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("empty")
-    data class Empty(val empty: StringWithPlaceholders) : MacroCondition {
+    data class Empty(val empty: TemplateString) : MacroCondition {
         override val knownUsedProperties by lazy { empty.knownUsedProperties() }
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
@@ -142,11 +149,11 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("notEmpty")
-    data class NotEmpty(val notEmpty: StringWithPlaceholders) : MacroCondition by Not(Empty(notEmpty))
+    data class NotEmpty(val notEmpty: TemplateString) : MacroCondition by Not(Empty(notEmpty))
 
     @Serializable
     @SerialName("blank")
-    data class Blank(val blank: StringWithPlaceholders) : MacroCondition {
+    data class Blank(val blank: TemplateString) : MacroCondition {
         override val knownUsedProperties by lazy { blank.knownUsedProperties() }
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
@@ -155,11 +162,11 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("notBlank")
-    data class NotBlank(val notBlank: StringWithPlaceholders) : MacroCondition by Not(Blank(notBlank))
+    data class NotBlank(val notBlank: TemplateString) : MacroCondition by Not(Blank(notBlank))
 
     @Serializable
     @SerialName("exists")
-    data class Exists(val exists: StringWithPlaceholders) : MacroCondition {
+    data class Exists(val exists: TemplateString) : MacroCondition {
         override val knownUsedProperties by lazy { exists.knownUsedProperties() }
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
@@ -168,11 +175,11 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("notExists")
-    data class NotExists(val notExists: StringWithPlaceholders) : MacroCondition by Not(Exists(notExists))
+    data class NotExists(val notExists: TemplateString) : MacroCondition by Not(Exists(notExists))
 
     @Serializable
     @SerialName("isDirectory")
-    data class IsDirectory(val isDirectory: StringWithPlaceholders) : MacroCondition {
+    data class IsDirectory(val isDirectory: TemplateString) : MacroCondition {
         override val knownUsedProperties by lazy { isDirectory.knownUsedProperties() }
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
@@ -189,11 +196,11 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("isNotDirectory")
-    data class IsNotDirectory(val isNotDirectory: StringWithPlaceholders) : MacroCondition by Not(IsDirectory(isNotDirectory))
+    data class IsNotDirectory(val isNotDirectory: TemplateString) : MacroCondition by Not(IsDirectory(isNotDirectory))
 
     @Serializable
     @SerialName("isFile")
-    data class IsFile(val isFile: StringWithPlaceholders) : MacroCondition {
+    data class IsFile(val isFile: TemplateString) : MacroCondition {
         override val knownUsedProperties by lazy { isFile.knownUsedProperties() }
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
@@ -209,7 +216,7 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("isNotFile")
-    data class IsNotFile(val isNotFile: StringWithPlaceholders) : MacroCondition by Not(IsFile(isNotFile))
+    data class IsNotFile(val isNotFile: TemplateString) : MacroCondition by Not(IsFile(isNotFile))
 
     companion object : YamlContentPolymorphicSerializer<MacroCondition>(MacroCondition::class) {
         override fun selectDeserializer(node: YamlNode) = when (node) {

@@ -210,7 +210,7 @@ private fun buildTitle(
     align = TextAlign.LEFT
     width = ColumnWidth.Expand()
     overflowWrap = ELLIPSES
-    cell(buildPathWithFilter(directory, maxVisiblePathElements, debugMode, filterElement),)
+    cell(buildPathWithFilter(directory, maxVisiblePathElements, debugMode, filterElement))
 }
 
 context(_: StylesProvider)

@@ -1,6 +1,8 @@
 package de.jonasbroeckmann.nav.app.macros
 
 import com.charleskorn.kaml.YamlMap
+import de.jonasbroeckmann.nav.app.macros.components.KnownMacroProperty
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.framework.utils.div
 import de.jonasbroeckmann.nav.framework.utils.metadataOrNull

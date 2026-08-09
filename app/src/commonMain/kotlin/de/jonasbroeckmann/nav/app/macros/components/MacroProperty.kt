@@ -1,6 +1,14 @@
-package de.jonasbroeckmann.nav.app.macros
+package de.jonasbroeckmann.nav.app.macros.components
 
 import com.github.ajalt.mordant.terminal.danger
+import de.jonasbroeckmann.nav.app.macros.MacroEvaluable
+import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
+import de.jonasbroeckmann.nav.app.macros.context.MacroStorageScope
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
+import de.jonasbroeckmann.nav.app.macros.templates.MacroTemplate
+import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 
 interface MacroProperty<out T : MacroValue?> : MacroEvaluable<T> {
     val name: String
@@ -9,7 +17,7 @@ interface MacroProperty<out T : MacroValue?> : MacroEvaluable<T> {
 
     val expressionString get() = expression.expressionString
 
-    val templateString: StringWithPlaceholders
+    val templateString: TemplateString
 
     context(_: MacroEvaluationScope)
     fun get(): T

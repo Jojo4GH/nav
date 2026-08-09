@@ -1,9 +1,9 @@
 package de.jonasbroeckmann.nav.app.actions
 
 import de.jonasbroeckmann.nav.app.*
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeKeyDescription
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeStyle
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeCondition
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeKeyDescription
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.State

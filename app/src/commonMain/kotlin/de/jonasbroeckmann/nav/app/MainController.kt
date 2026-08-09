@@ -1,6 +1,6 @@
 package de.jonasbroeckmann.nav.app
 
-import de.jonasbroeckmann.nav.app.macros.Macro
+import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.config.Config
