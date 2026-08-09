@@ -341,7 +341,7 @@ data class Config private constructor(
         ) = findFilePath(
             explicitPaths = listOfNotNull(
                 context.command.configurationOptions.configPath?.let { Path(it) },
-                getEnvironmentVariable(ENV_VAR_NAME)?.takeUnless { it.isBlank() }?.let { Path(it) }
+                EnvironmentVariables[ENV_VAR_NAME]?.takeUnless { it.isBlank() }?.let { Path(it) }
             ),
             defaultPaths = DefaultPaths,
             mustExist = mustExist,

@@ -8,7 +8,7 @@ import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
+import de.jonasbroeckmann.nav.utils.EnvironmentVariables
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.serialization.encodeToString
 
@@ -92,7 +92,7 @@ abstract class MainControllerBase internal constructor() : MainController {
             context.printlnOnDebug { "Searching for default editor:" }
 
             fun checkEnvVar(name: String): String? {
-                val value = getEnvironmentVariable(name)?.trim() ?: run {
+                val value = EnvironmentVariables[name]?.trim() ?: run {
                     context.printlnOnDebug { $$"  $$$name not set" }
                     return null
                 }

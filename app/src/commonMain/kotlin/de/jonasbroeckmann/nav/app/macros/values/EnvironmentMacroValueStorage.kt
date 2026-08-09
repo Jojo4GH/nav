@@ -3,14 +3,13 @@ package de.jonasbroeckmann.nav.app.macros.values
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
 import de.jonasbroeckmann.nav.command.Logger
 import de.jonasbroeckmann.nav.command.warningOnDebug
-import de.jonasbroeckmann.nav.utils.getEnvironmentVariable
-import de.jonasbroeckmann.nav.utils.setEnvironmentVariable
+import de.jonasbroeckmann.nav.utils.EnvironmentVariables
 
 class EnvironmentMacroValueStorage(
     private val logger: Logger
 ) : MutableMacroValueStorage {
     override fun get(path: MacroPathExpression): MacroValue.Text? = path.environmentVariable()
-        ?.let { getEnvironmentVariable(it) }
+        ?.let { EnvironmentVariables[it] }
         ?.let { MacroValue.Text(it) }
 
     override fun set(path: MacroPathExpression, newValue: MacroValue?) {
@@ -19,7 +18,7 @@ class EnvironmentMacroValueStorage(
                 logger.warningOnDebug { "Invalid non-text value for environment variable: ${newValue.stringify()}" }
                 return
             }
-            setEnvironmentVariable(variable, newValue?.value)
+            EnvironmentVariables[variable] = newValue?.value
         }
     }
 
