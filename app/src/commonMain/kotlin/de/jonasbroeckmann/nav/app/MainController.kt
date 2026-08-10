@@ -9,7 +9,7 @@ import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowController
 import kotlinx.io.files.Path
 
 // TODO move
-interface StateUpdater {
+interface StateUpdater : StateProvider {
     fun updateState(updater: State.() -> State)
 }
 

@@ -1114,7 +1114,7 @@ quickMacroKey = "..."
 
 </details>
 
-There are several placeholders available for `description` and `command`:
+There are several placeholders available for `name` and `command`:
 - `{initialDir}`: The initial directory where nav was started
 - `{dir}`: The current directory inside nav
 - `{entryPath}`: The path of the currently highlighted entry

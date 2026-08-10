@@ -5,14 +5,12 @@ package de.jonasbroeckmann.nav.app.macros.components
 import com.charleskorn.kaml.YamlContentPolymorphicSerializer
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
-import com.github.ajalt.mordant.terminal.success
-import com.github.ajalt.mordant.terminal.warning
+import de.jonasbroeckmann.nav.Logger
 import de.jonasbroeckmann.nav.app.macros.MacroException
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
 import de.jonasbroeckmann.nav.app.macros.contains
-import de.jonasbroeckmann.nav.app.macros.context.MacroRuntimeContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroCallScope
+import de.jonasbroeckmann.nav.app.macros.context.MacroRunContext
 import de.jonasbroeckmann.nav.app.macros.context.MacroStorageScope.Companion.set
 import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
 import de.jonasbroeckmann.nav.app.macros.macroTrace
@@ -23,7 +21,6 @@ import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
 import de.jonasbroeckmann.nav.app.updateState
-import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.utils.atomicMove
 import de.jonasbroeckmann.nav.framework.utils.children
@@ -33,6 +30,7 @@ import de.jonasbroeckmann.nav.framework.utils.deleteRecursively
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.framework.utils.sink
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.io.RawSink
 import kotlinx.io.buffered
@@ -62,12 +60,12 @@ sealed interface MacroAction : MacroRunnable {
             }
         }
 
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             val dialogOptions = DialogOptions(hideMainTable = hideMainTable)
             val result = if (choices.isNotEmpty()) {
                 val evaluatedChoices = choices.map { it.evaluate() }
-                context.showMacroDialog(dialogOptions) {
+                scope.showMacroDialog(dialogOptions) {
                     defaultChoicePrompt(
                         title = prompt.evaluate(),
                         choices = evaluatedChoices,
@@ -75,7 +73,7 @@ sealed interface MacroAction : MacroRunnable {
                     )
                 }
             } else {
-                context.showMacroDialog(dialogOptions) {
+                scope.showMacroDialog(dialogOptions) {
                     defaultTextPrompt(
                         title = prompt.evaluate(),
                         initialText = default?.evaluate() ?: "",
@@ -85,10 +83,10 @@ sealed interface MacroAction : MacroRunnable {
                 }
             }
             if (result == null) {
-                context.reportDebug { "Aborting macro because prompt was cancelled." }
-                context.doReturn()
+                scope.reportDebug { "Aborting macro because prompt was cancelled." }
+                scope.doReturn()
             }
-            context[resultTo] = result
+            scope[resultTo] = result
             onChoice.forEach { (case, actions) ->
                 if (case.evaluate() == result) {
                     actions.run()
@@ -106,40 +104,29 @@ sealed interface MacroAction : MacroRunnable {
         val capture: Map<ExpressionString, TemplateString>? = null,
         val continueOnReturn: Boolean = true
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             val macroId = macro.evaluate()
-            val macro = context.identifiedMacros[macroId]
+            val macro = scope.identifiedMacros[macroId]
                 ?: throw MacroException("No macro with ${Macro::id.name} '$macroId' found")
-            context.call(
+            scope.call(
                 parameters = parameters?.map { (expressionString, value) ->
                     expressionString.evaluate() to value.asMacroValueEvaluable()
                 },
                 capture = capture?.map { (expressionString, value) ->
                     expressionString.evaluate() to value.asMacroValueEvaluable()
                 },
-                returnBarrier = continueOnReturn,
-                runnable = Delegate(
-                    macro = macro,
-                    ignoreCondition = ignoreCondition
-                )
-            )
-        }
-
-        data class Delegate(
-            val macro: Macro,
-            val ignoreCondition: Boolean,
-        ) : MacroRunnable {
-            context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
-            override fun run() {
-                if (ignoreCondition || macro.available()) {
-                    macro.run()
-                } else {
-                    context.printlnOnDebug {
-                        "Skipping macro '${macro.id}' because its condition was not met."
+                returnToRoot = !continueOnReturn,
+                callable = CallableMacro(macro = macro) {
+                    if (ignoreCondition || macro.available()) {
+                        macro.run()
+                    } else {
+                        contextOf<Logger>().printlnOnDebug {
+                            "Skipping macro '${macro.id}' because its condition was not met."
+                        }
                     }
                 }
-            }
+            )
         }
     }
 
@@ -152,16 +139,16 @@ sealed interface MacroAction : MacroRunnable {
         val errorTo: ExpressionString? = null,
         val trimTrailingNewline: Boolean = true
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val result = context.controller.runCommand(
+            val result = scope.controller.runCommand(
                 command = command.evaluate(),
                 collectOutput = outputTo != null,
                 collectError = errorTo != null
             )
-            context[exitCodeTo] = result?.exitCode?.toString().orEmpty()
+            scope[exitCodeTo] = result?.exitCode?.toString().orEmpty()
             if (outputTo != null) {
-                context[outputTo] = result?.stdout.orEmpty().let {
+                scope[outputTo] = result?.stdout.orEmpty().let {
                     if (trimTrailingNewline) {
                         when {
                             it.endsWith("\r\n") -> it.dropLast(2)
@@ -175,7 +162,7 @@ sealed interface MacroAction : MacroRunnable {
                 }
             }
             if (errorTo != null) {
-                context[errorTo] = result?.stderr.orEmpty()
+                scope[errorTo] = result?.stderr.orEmpty()
             }
         }
     }
@@ -193,13 +180,13 @@ sealed interface MacroAction : MacroRunnable {
             if (ignoreCase) Regex(match.pattern, match.options + RegexOption.IGNORE_CASE) else match
         }
 
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
             val toMatch = value.evaluate()
             val result = regex.matchEntire(toMatch)
             result?.groupValues?.forEachIndexed { index, string ->
                 val destination = groupsTo.getOrNull(index - 1) ?: return@forEachIndexed
-                context[destination] = string
+                scope[destination] = string
             }
         }
     }
@@ -210,10 +197,10 @@ sealed interface MacroAction : MacroRunnable {
         val open: TemplateString,
         val exitCodeTo: ExpressionString = DefaultMacroExpressions.ExitCode.expressionString
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val exitCode = context.controller.openInEditor(open.evaluateToAbsolutePath())
-            context[exitCodeTo] = exitCode?.toString().orEmpty()
+            val exitCode = scope.controller.openInEditor(open.evaluateToAbsolutePath())
+            scope[exitCodeTo] = exitCode?.toString().orEmpty()
         }
     }
 
@@ -226,11 +213,11 @@ sealed interface MacroAction : MacroRunnable {
         val overwrite: Boolean = false,
         val silent: Boolean = false
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
             val path = writeFile.evaluateToAbsolutePath()
             if (path.isDirectory()) {
-                if (!silent) context.reportWarning("Cannot write file because it is a directory: $path")
+                if (!silent) scope.reportWarning { "Cannot write file because it is a directory: $path" }
                 return
             }
 
@@ -246,7 +233,7 @@ sealed interface MacroAction : MacroRunnable {
                 overwrite -> path.sink(append = false).writeAndClose()
                 !overwrite -> {
                     if (path.exists()) {
-                        if (!silent) context.reportWarning("Cannot write file because it already exists: $path")
+                        if (!silent) scope.reportWarning { "Cannot write file because it already exists: $path" }
                         return
                     }
                     path.sink(append = false).writeAndClose()
@@ -263,14 +250,14 @@ sealed interface MacroAction : MacroRunnable {
         val createParents: Boolean = true,
         val silent: Boolean = false
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
             val path = createDirectory.evaluateToAbsolutePath()
             if (createParents) {
                 path.createDirectories()
             } else {
                 if (path.parent?.exists() == false) {
-                    if (!silent) context.reportWarning("Cannot create directory because its parents do not exist: $path")
+                    if (!silent) scope.reportWarning { "Cannot create directory because its parents do not exist: $path" }
                     return
                 }
                 path.createDirectories()
@@ -288,12 +275,12 @@ sealed interface MacroAction : MacroRunnable {
         val overwrite: Boolean = false,
         val silent: Boolean = false
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() {
             val source = move.evaluateToAbsolutePath()
             val destination = to.evaluateToAbsolutePath()
             if (destination.exists() && !overwrite) {
-                if (!silent) context.reportWarning("Cannot move item because destination already exists: $destination")
+                if (!silent) scope.reportWarning { "Cannot move item because destination already exists: $destination" }
                 return
             }
             if (createParents) {
@@ -311,15 +298,15 @@ sealed interface MacroAction : MacroRunnable {
         val recursive: Boolean = false,
         val silent: Boolean = false
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
             val path = delete.evaluateToAbsolutePath()
             if (!path.exists()) {
-                if (!silent) context.reportWarning("Cannot delete item because it does not exist: $path")
+                if (!silent) scope.reportWarning { "Cannot delete item because it does not exist: $path" }
                 return
             }
             if (path.isDirectory() && !recursive && path.children().isNotEmpty()) {
-                if (!silent) context.reportWarning("Cannot delete directory non-recursively because it is not empty: $path")
+                if (!silent) scope.reportWarning { "Cannot delete directory non-recursively because it is not empty: $path" }
                 return
             }
             if (recursive) {
@@ -338,10 +325,10 @@ sealed interface MacroAction : MacroRunnable {
         val fullPath: Boolean = false,
         val resultTo: ExpressionString = DefaultMacroExpressions.ResultDefault.expressionString
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             val path = childrenOf.evaluateToAbsolutePath()
-            context[resultTo] = when {
+            scope[resultTo] = when {
                 path.isDirectory() -> when {
                     fullPath -> path.children().joinToString("\n")
                     else -> path.children().joinToString("\n") { it.name }
@@ -356,10 +343,10 @@ sealed interface MacroAction : MacroRunnable {
     data class Set(
         val set: Map<ExpressionString, TemplateString?>
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             set.forEach { (expressionString, value) ->
-                context[expressionString.evaluate()] = value?.evaluate()?.let { MacroValue.Text(it) }
+                scope[expressionString.evaluate()] = value?.evaluate()?.let { MacroValue.Text(it) }
             }
         }
 
@@ -377,7 +364,7 @@ sealed interface MacroAction : MacroRunnable {
         @SerialName("else")
         val otherwise: MacroActions = MacroActions()
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             if (condition.evaluate()) {
                 then.run()
@@ -398,7 +385,7 @@ sealed interface MacroAction : MacroRunnable {
         @SerialName("else")
         val otherwise: MacroActions = MacroActions()
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
             val switchValue = switch.evaluate()
             val actions = cases.asSequence().firstOrNull { (case, _) ->
@@ -431,16 +418,16 @@ sealed interface MacroAction : MacroRunnable {
             Error,
         }
 
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run(): Unit = macroTrace {
-            if (debug && !context.debugMode) return
+            if (debug && !scope.debugMode) return
             val message = print.evaluate()
             when (style) {
-                null -> context.terminal.println(message)
-                Style.Info -> context.terminal.info(message)
-                Style.Success -> context.terminal.success(message)
-                Style.Warning -> context.terminal.warning(message)
-                Style.Error -> context.terminal.danger(message)
+                null -> scope.println(message)
+                Style.Info -> scope.info(message)
+                Style.Success -> scope.success(message)
+                Style.Warning -> scope.warning(message)
+                Style.Error -> scope.danger(message)
             }
         }
     }
@@ -452,10 +439,10 @@ sealed interface MacroAction : MacroRunnable {
         @EncodeDefault(ALWAYS)
         val doReturn: Boolean = true,
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             if (doReturn) {
-                context.doReturn()
+                scope.doReturn()
             }
         }
     }
@@ -467,10 +454,10 @@ sealed interface MacroAction : MacroRunnable {
         val exit: Boolean = true,
         val at: TemplateString? = null
     ) : MacroAction {
-        context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+        context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
             if (exit) {
-                context.controller.exit(atDirectory = at?.evaluateToAbsolutePathToDirectoryOrNull())
+                scope.controller.exit(atDirectory = at?.evaluateToAbsolutePathToDirectoryOrNull())
             }
         }
     }

@@ -88,7 +88,7 @@ interface MacroProperty<out T : MacroValue?> : MacroEvaluable<T> {
                 set(value)
             } else {
                 if (printOnFail) {
-                    scope.terminal.danger("Cannot modify $name as it is not mutable.")
+                    scope.danger("Cannot modify $name as it is not mutable.")
                 }
             }
         }

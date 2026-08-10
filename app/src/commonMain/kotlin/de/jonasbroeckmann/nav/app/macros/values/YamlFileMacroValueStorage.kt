@@ -1,10 +1,10 @@
 package de.jonasbroeckmann.nav.app.macros.values
 
-import de.jonasbroeckmann.nav.command.Logger
-import de.jonasbroeckmann.nav.command.infoOnDebug
+import de.jonasbroeckmann.nav.Logger
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.framework.utils.sink
 import de.jonasbroeckmann.nav.framework.utils.source
+import de.jonasbroeckmann.nav.infoOnDebug
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSink
 import kotlinx.io.okio.asOkioSource
@@ -13,8 +13,8 @@ import okio.use
 
 class YamlFileMacroValueStorage(
     private val file: Path,
-    private val logger: Logger
-) : MutableMacroValueStorageBase() {
+    logger: Logger
+) : MutableMacroValueStorageBase(logger) {
     private var cached: MacroValue.Dictionary? = null
 
     override fun value(): MacroValue.Dictionary {

@@ -1,8 +1,11 @@
 package de.jonasbroeckmann.nav.app.macros.values
 
+import de.jonasbroeckmann.nav.Logger
+
 class InMemoryMacroValueStorage(
+    logger: Logger,
     initial: Map<String, MacroValue> = emptyMap()
-) : MutableMacroValueStorageBase() {
+) : MutableMacroValueStorageBase(logger) {
     private var value = MacroValue.Dictionary(initial)
 
     override fun value() = value
@@ -19,5 +22,10 @@ class InMemoryMacroValueStorage(
         }
     }
 
-    fun copy() = InMemoryMacroValueStorage(value)
+    fun copy() = InMemoryMacroValueStorage(logger, value)
+
+    companion object {
+        context(logger: Logger)
+        operator fun invoke(initial: Map<String, MacroValue> = emptyMap()) = InMemoryMacroValueStorage(logger, initial)
+    }
 }

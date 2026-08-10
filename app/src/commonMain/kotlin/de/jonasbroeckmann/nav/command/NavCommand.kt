@@ -29,21 +29,22 @@ import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Theme
 import com.github.ajalt.mordant.terminal.Terminal
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
-import com.github.ajalt.mordant.terminal.success
 import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
 import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.catchAllDebug
+import de.jonasbroeckmann.nav.catchAllFatal
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.dangerOnDebug
 import de.jonasbroeckmann.nav.framework.utils.absolute
 import de.jonasbroeckmann.nav.framework.utils.createDirectories
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
 import de.jonasbroeckmann.nav.framework.utils.sink
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.update.checkForUpdatesAnimated
@@ -301,7 +302,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         printlnOnDebug { "${terminal.terminalInfo}" }
 
         if (version) {
-            terminal.println("$BinaryName ${Constants.Version}")
+            println("$BinaryName ${Constants.Version}")
             return
         }
 
@@ -347,11 +348,11 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     private suspend fun doCheckForUpdates() {
         when (val result = checkForUpdatesAnimated()) {
             is CheckForUpdatesResult.NoUpdates -> {
-                terminal.success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
+                success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
             }
             is CheckForUpdatesResult.UpdateAvailable -> result.print()
             is CheckForUpdatesResult.Error -> {
-                terminal.danger("✗ Failed to check for updates: ${result.message}")
+                danger("✗ Failed to check for updates: ${result.message}")
             }
         }
     }
@@ -379,25 +380,25 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     }
 
     private fun warnIncompleteInit() {
-        terminal.danger("The installation is not complete and some feature will not work.")
-        terminal.info("Use --init-help to get more information.")
+        danger("The installation is not complete and some feature will not work.")
+        info("Use --init-help to get more information.")
     }
 
     private fun App.doEditConfig(currentConfigPath: Path?): Nothing {
         val configPath = currentConfigPath
             ?: Config.findConfigPath(mustExist = false)
             ?: run {
-                terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
+                danger("Can not use any of ${Config.DefaultPaths} as config file.")
                 exit(1)
             }
         if (!configPath.exists()) {
-            terminal.info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
+            info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
             configPath.parent?.createDirectories(mustCreate = false)
             configPath.sink().buffered().use {
                 it.writeString("# $BinaryName configuration file\n\n")
             }
         }
-        terminal.info("""Opening config file at "$configPath" ...""")
+        info("""Opening config file at "$configPath" ...""")
         val exitCode = openInEditor(configPath)
         exit(exitCode ?: 1)
     }

@@ -6,11 +6,13 @@ import de.jonasbroeckmann.nav.app.macros.components.MacroProperty.Companion.tryS
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.macros.values.MacroValueStorageType
+import de.jonasbroeckmann.nav.app.macros.values.MutableMacroValueStorage
 
 open class MacroStorageScopeBase(
     stateUpdater: StateUpdater,
     sessionContext: MacroSessionContext,
-) : MacroEvaluationScopeBase(sessionContext), MacroStorageScope, StateUpdater by stateUpdater {
+    override val sharedLocalStorage: MutableMacroValueStorage
+) : MacroEvaluationScopeBase(sessionContext, sharedLocalStorage), MacroStorageScope, StateUpdater by stateUpdater {
     override operator fun set(expression: MacroExpression, value: MacroValue?) {
         val property = KnownMacroProperty.from(expression)
         if (property != null) {

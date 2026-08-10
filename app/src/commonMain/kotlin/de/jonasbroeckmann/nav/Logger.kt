@@ -1,35 +1,36 @@
-package de.jonasbroeckmann.nav.command
+package de.jonasbroeckmann.nav
 
-import com.github.ajalt.mordant.terminal.Terminal
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
-import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.utils.exitProcess
 
 interface Logger {
-    val terminal: Terminal
     val debugMode: Boolean
+
+    fun println(message: Any?)
+    fun info(message: Any?)
+    fun success(message: Any?)
+    fun warning(message: Any?)
+    fun danger(message: Any?)
 }
 
 fun Logger.dangerThrowable(e: Throwable, message: Any?, includeStackTrace: Boolean = debugMode) {
-    terminal.danger(message)
-    if (includeStackTrace) terminal.danger(e.stackTraceToString())
+    danger(message)
+    if (includeStackTrace) danger(e.stackTraceToString())
 }
 
 inline fun Logger.printlnOnDebug(lazyMessage: () -> Any?) {
-    if (debugMode) terminal.println(lazyMessage())
+    if (debugMode) println(lazyMessage())
 }
 
 inline fun Logger.infoOnDebug(lazyMessage: () -> Any?) {
-    if (debugMode) terminal.info(lazyMessage())
+    if (debugMode) info(lazyMessage())
 }
 
 inline fun Logger.warningOnDebug(lazyMessage: () -> Any?) {
-    if (debugMode) terminal.info(lazyMessage())
+    if (debugMode) info(lazyMessage())
 }
 
 inline fun Logger.dangerOnDebug(lazyMessage: () -> Any?) {
-    if (debugMode) terminal.danger(lazyMessage())
+    if (debugMode) danger(lazyMessage())
 }
 
 inline fun <R> Logger.catchAllFatal(
@@ -40,7 +41,7 @@ inline fun <R> Logger.catchAllFatal(
 } catch (e: Throwable) {
     cleanupOnError(e)
     dangerThrowable(e, "An unexpected error occurred: ${e.message}", includeStackTrace = true)
-    terminal.info("Please report this issue at: ${Constants.IssuesUrl}")
+    info("Please report this issue at: ${Constants.IssuesUrl}")
     exitProcess(1)
 }
 

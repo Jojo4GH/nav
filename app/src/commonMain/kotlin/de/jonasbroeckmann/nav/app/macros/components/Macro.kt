@@ -6,8 +6,8 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.TextStyle
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroCallScope
 import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
-import de.jonasbroeckmann.nav.app.macros.context.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.app.state.StateProvider
 import de.jonasbroeckmann.nav.app.state.state
@@ -111,7 +111,7 @@ data class Macro private constructor(
         KnownMacroProperty.Filter in usedSymbolsInDescriptionOrCondition
     }
 
-    context(context: MacroRuntimeContext, traceContext: MacroTraceContext)
+    context(scope: MacroCallScope, traceContext: MacroTraceContext)
     override fun run() = actions.run()
 
     fun replaceFrom(other: Macro): Macro {

@@ -1,13 +1,11 @@
 package de.jonasbroeckmann.nav.app
 
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.components.DefaultMacro
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.command.PartialContext
-import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.config.Config
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.EnvironmentVariables
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.serialization.encodeToString
@@ -121,8 +119,8 @@ abstract class MainControllerBase internal constructor() : MainController {
                 }
             }.filterNotNull().firstOrNull().also {
                 if (it == null) {
-                    context.terminal.danger("Could not find a default editor")
-                    context.terminal.warning(specifyEditorMessage)
+                    context.danger("Could not find a default editor")
+                    context.warning(specifyEditorMessage)
                 }
             }
         }

@@ -9,15 +9,12 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.EntryColumn
 import de.jonasbroeckmann.nav.command.PartialContext
-import de.jonasbroeckmann.nav.command.dangerThrowable
-import de.jonasbroeckmann.nav.command.printlnOnDebug
+import de.jonasbroeckmann.nav.dangerThrowable
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteAutoNavigation
 import de.jonasbroeckmann.nav.framework.semantics.AutocompleteStyle
 import de.jonasbroeckmann.nav.framework.utils.absolute
@@ -26,6 +23,7 @@ import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isRegularFile
 import de.jonasbroeckmann.nav.framework.utils.nameAndExtension
 import de.jonasbroeckmann.nav.framework.utils.source
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.*
 import kotlinx.io.files.Path
 import kotlinx.io.okio.asOkioSource
@@ -353,7 +351,7 @@ data class Config private constructor(
         fun load(): Pair<Config, Path?> {
             fun errorOnLoad(e: Exception, message: Any?): Config {
                 context.dangerThrowable(e, "Could not load config: $message")
-                context.terminal.warning("Using default config")
+                context.warning("Using default config")
                 return Config()
             }
             try {
@@ -373,8 +371,8 @@ data class Config private constructor(
                     "yaml", "yml" -> loadFromYaml(path)
                     "toml" -> loadFromToml(path)
                     else -> {
-                        context.terminal.danger("Could not determine type of config file for: $path")
-                        context.terminal.warning("Using default config")
+                        context.danger("Could not determine type of config file for: $path")
+                        context.warning("Using default config")
                         Config()
                     }
                 }

@@ -1,6 +1,5 @@
 package de.jonasbroeckmann.nav.app.macros.context
 
-import com.github.ajalt.mordant.terminal.warning
 import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.values.EnvironmentMacroValueStorage
 import de.jonasbroeckmann.nav.app.macros.values.InMemoryMacroValueStorage
@@ -20,7 +19,7 @@ class MacroSessionContext(
             ?.parent
             ?.let { it / "nav-storage.yaml" }
             ?: run {
-                terminal.warning(
+                warning(
                     """
                     Could not find path for persistent macro storage.
                     Persistent macro storage will be unavailable.

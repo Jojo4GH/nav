@@ -12,19 +12,27 @@ import kotlin.jvm.JvmInline
 
 @Serializable
 sealed interface MacroValue {
-    val description: String
+    val type: Type<*>
 
     fun stringify(format: StringificationFormat = Representative): String
 
     @Serializable
     @JvmInline
     value class Text(val value: String = "") : MacroValue, CharSequence by value {
-        override val description get() = "text"
+        override val type get() = Text
 
         override fun stringify(format: StringificationFormat) = when (format) {
             Representative -> value
             Json -> "\"$value\""
             Textual -> value
+        }
+
+        companion object : Type<Text> {
+            override val name = "text"
+
+            override val default = Text()
+
+            override fun safeCast(value: MacroValue) = value as? Text
         }
     }
 
@@ -35,7 +43,9 @@ sealed interface MacroValue {
     @Serializable
     @JvmInline
     value class Dictionary(val value: Map<String, MacroValue> = emptyMap()) : Collection, Map<String, MacroValue> by value {
-        override val description get() = "dictionary"
+        constructor(vararg pairs: Pair<String, MacroValue>) : this(mapOf(*pairs))
+
+        override val type get() = Dictionary
 
         fun updated(key: String, update: (MacroValue?) -> MacroValue?): Dictionary {
             val newValue = update(this[key])
@@ -59,12 +69,22 @@ sealed interface MacroValue {
         operator fun plus(pair: Pair<String, MacroValue>) = Dictionary(value + pair)
 
         operator fun minus(key: String) = Dictionary(value - key)
+
+        companion object : Type<Dictionary> {
+            override val name = "dictionary"
+
+            override val default = Dictionary()
+
+            override fun safeCast(value: MacroValue) = value as? Dictionary
+        }
     }
 
     @Serializable
     @JvmInline
     value class Array(val value: List<MacroValue?> = emptyList()) : Collection, List<MacroValue?> by value {
-        override val description get() = "array"
+        constructor(vararg values: MacroValue?) : this(listOf(*values))
+
+        override val type get() = Array
 
         fun updated(index: Int, update: (MacroValue?) -> MacroValue?): Array {
             val newValue = update(this.getOrNull(index))
@@ -87,6 +107,22 @@ sealed interface MacroValue {
             ) { it?.stringify(format) ?: "null" }
             Textual -> ""
         }
+
+        companion object : Type<Array> {
+            override val name = "array"
+
+            override val default = Array()
+
+            override fun safeCast(value: MacroValue) = value as? Array
+        }
+    }
+
+    sealed interface Type<out T : MacroValue> {
+        val name: String
+
+        val default: T
+
+        fun safeCast(value: MacroValue): T?
     }
 
     enum class StringificationFormat {
