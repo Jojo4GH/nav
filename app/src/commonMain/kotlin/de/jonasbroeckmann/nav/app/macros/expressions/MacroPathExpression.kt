@@ -59,4 +59,8 @@ data class MacroPathExpression(
     operator fun plus(operator: Operator) = MacroPathExpression(operators + operator)
 
     override fun toString() = unparsed.raw
+
+    companion object {
+        operator fun Operator.Key.plus(path: MacroPathExpression) = MacroPathExpression(listOf(this) + path.operators)
+    }
 }

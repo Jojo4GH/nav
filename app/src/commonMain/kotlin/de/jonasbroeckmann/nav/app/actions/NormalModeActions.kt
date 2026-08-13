@@ -7,6 +7,7 @@ import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.state.Entry.Type.Directory
 import de.jonasbroeckmann.nav.app.state.Entry.Type.RegularFile
 import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.state.updateState
 import de.jonasbroeckmann.nav.framework.action.KeyAction
 import de.jonasbroeckmann.nav.framework.action.KeyActions
 import de.jonasbroeckmann.nav.framework.input.InputMode

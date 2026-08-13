@@ -37,4 +37,9 @@ class YamlFileMacroValueStorage(
             }
         }
     }
+
+    companion object {
+        context(logger: Logger)
+        operator fun invoke(file: Path) = YamlFileMacroValueStorage(file, logger)
+    }
 }

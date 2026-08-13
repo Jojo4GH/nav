@@ -58,7 +58,7 @@ data class Macro private constructor(
     private val condition: MacroCondition? = initializerRecorder.record(Macro::condition, null),
     @SerialName("run")
     private val actions: MacroActions = initializerRecorder.record(Macro::actions, MacroActions())
-) : MacroRunnable {
+) : MacroCallable {
     constructor(
         id: String? = null,
         enabled: Boolean = true,
@@ -91,6 +91,8 @@ data class Macro private constructor(
             "Macros shown in the menu must have a ${::description.name}"
         }
     }
+
+    override val macro get() = this
 
     context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
     fun available() = condition == null || condition.evaluate()

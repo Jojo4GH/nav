@@ -1,8 +1,6 @@
 package de.jonasbroeckmann.nav
 
-object TestLogger : Logger {
-    override val debugMode = true
-
+class TestLogger(override val debugMode: Boolean = true) : Logger {
     override fun println(message: Any?) = kotlin.io.println(message)
 
     override fun info(message: Any?) = println("INFO: $message")

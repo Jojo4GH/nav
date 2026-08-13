@@ -5,23 +5,27 @@ import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.config.Config
+import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.EnvironmentVariables
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.serialization.encodeToString
 
-abstract class MainControllerBase internal constructor() : MainController {
+abstract class FullContextBase internal constructor(
+    partialContext: PartialContext,
+    configProvider: ConfigProvider
+) : FullContext, PartialContext by partialContext, ConfigProvider by configProvider {
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
-        context.command.configurationOptions.editor
-            ?.also { context.printlnOnDebug { "Using editor from command line argument: $it" } }
+        commandOptions.editor
+            ?.also { printlnOnDebug { "Using editor from command line argument: $it" } }
             ?: config.editor
             ?: findDefaultEditorCommand()
     }
 
     override val styles by lazy {
         // override from command line argument or config or fill in based on terminal capabilities
-        val useSimpleColors = command.configurationOptions.renderMode.accessibility.simpleColors
+        val useSimpleColors = commandOptions.renderMode.accessibility.simpleColors
             ?: config.accessibility.simpleColors
             ?: when (terminal.terminalInfo.ansiLevel) {
                 TRUECOLOR, ANSI256 -> false
@@ -34,7 +38,7 @@ abstract class MainControllerBase internal constructor() : MainController {
     }
 
     override val accessibilitySimpleColors by lazy {
-        command.configurationOptions.renderMode.accessibility.simpleColors
+        commandOptions.renderMode.accessibility.simpleColors
             ?: config.accessibility.simpleColors
             ?: when (terminal.terminalInfo.ansiLevel) {
                 TRUECOLOR, ANSI256 -> false
@@ -43,15 +47,13 @@ abstract class MainControllerBase internal constructor() : MainController {
     }
 
     override val accessibilityDecorations by lazy {
-        command.configurationOptions.renderMode.accessibility.decorations
+        commandOptions.renderMode.accessibility.decorations
             ?: config.accessibility.decorations
             ?: when (terminal.terminalInfo.ansiLevel) {
                 TRUECOLOR, ANSI256, ANSI16 -> false
                 NONE -> true
             }
     }
-
-    protected val macroSessionContext by lazy { MacroSessionContext() }
 
     override val macros by lazy {
         buildList {

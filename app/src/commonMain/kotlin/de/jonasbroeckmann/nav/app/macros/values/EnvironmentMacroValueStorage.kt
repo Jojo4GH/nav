@@ -32,4 +32,9 @@ class EnvironmentMacroValueStorage(
         }
         return operator.key
     }
+
+    companion object {
+        context(logger: Logger)
+        operator fun invoke() = EnvironmentMacroValueStorage(logger)
+    }
 }

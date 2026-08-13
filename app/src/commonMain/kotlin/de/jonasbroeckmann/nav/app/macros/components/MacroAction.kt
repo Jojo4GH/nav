@@ -10,7 +10,6 @@ import de.jonasbroeckmann.nav.app.macros.MacroException
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
 import de.jonasbroeckmann.nav.app.macros.contains
 import de.jonasbroeckmann.nav.app.macros.context.MacroCallScope
-import de.jonasbroeckmann.nav.app.macros.context.MacroRunContext
 import de.jonasbroeckmann.nav.app.macros.context.MacroStorageScope.Companion.set
 import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
 import de.jonasbroeckmann.nav.app.macros.macroTrace
@@ -18,9 +17,9 @@ import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePath
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePathToDirectoryOrNull
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
+import de.jonasbroeckmann.nav.app.state.updateState
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultChoicePrompt
 import de.jonasbroeckmann.nav.app.ui.dialogs.defaultTextPrompt
-import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.utils.atomicMove
 import de.jonasbroeckmann.nav.framework.utils.children
@@ -117,7 +116,7 @@ sealed interface MacroAction : MacroRunnable {
                     expressionString.evaluate() to value.asMacroValueEvaluable()
                 },
                 returnToRoot = !continueOnReturn,
-                callable = CallableMacro(macro = macro) {
+                callable = MacroCallable(macro = macro) {
                     if (ignoreCondition || macro.available()) {
                         macro.run()
                     } else {

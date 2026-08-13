@@ -1,5 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros
 
+import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.components.MacroAction
 import de.jonasbroeckmann.nav.app.macros.components.MacroActions
@@ -40,7 +41,7 @@ inline fun <R> macroTrace(runnable: MacroRunnable, block: context(MacroTraceCont
     traceElement = {
         when (runnable) {
             is Macro -> MacroTraceElement.Call(runnable)
-            is MacroAction.RunMacro.Delegate -> MacroTraceElement.Call(runnable.macro)
+            is MacroCallable -> MacroTraceElement.Call(runnable.macro)
             is MacroAction -> null
             is MacroActions -> null
         }

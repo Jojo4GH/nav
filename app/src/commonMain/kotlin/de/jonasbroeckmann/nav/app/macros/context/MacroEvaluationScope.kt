@@ -10,9 +10,12 @@ interface MacroEvaluationScope : FullContext, StateProvider {
     operator fun get(expression: MacroExpression): MacroValue?
 
     companion object {
-        context(_: FullContext, _: StateProvider)
+        context(fullContext: FullContext, stateProvider: StateProvider)
         val Empty: MacroEvaluationScope get() = MacroEvaluationScopeBase(
+            fullContext = fullContext,
+            stateProvider = stateProvider,
             sessionContext = MacroSessionContext(),
+            macro = null,
             sharedLocalStorage = InMemoryMacroValueStorage()
         )
     }

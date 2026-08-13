@@ -7,7 +7,7 @@ import de.jonasbroeckmann.nav.app.macros.parseToAbsolutePathToDirectoryOrNull
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.state
-import de.jonasbroeckmann.nav.app.updateState
+import de.jonasbroeckmann.nav.app.state.updateState
 import de.jonasbroeckmann.nav.utils.Paths
 import de.jonasbroeckmann.nav.utils.RealSystemPathSeparator
 import kotlin.collections.get
@@ -32,7 +32,7 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
 
     object Shell : KnownMacroProperty(), MacroProperty<MacroValue.Text> by MacroProperty.delegatedString(
         name = "shell",
-        onGetString = { context.shell?.shell.orEmpty() }
+        onGetString = { context.commandOptions.shell?.shell.orEmpty() }
     )
 
     object Separator : KnownMacroProperty(), MacroProperty<MacroValue.Text> by MacroProperty.delegatedString(
@@ -45,7 +45,8 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
     object Directory : KnownMacroProperty(), MacroProperty.Mutable<MacroValue.Text> by MacroProperty.delegatedString(
         name = "directory",
         onGetString = { state.directory.toString() },
-        onSetString = { newValue -> newValue.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
+        onSetString = { newValue ->
+            newValue.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
     )
 
     object EntryPath : KnownMacroProperty(), MacroProperty<MacroValue.Text> by MacroProperty.delegatedString(
@@ -110,22 +111,24 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
     override fun toString() = templateString.toString()
 
     companion object {
-        val All = listOf(
-            WorkingDirectory,
-            StartingDirectory,
-            DebugMode,
-            Shell,
-            Separator,
-            Directory,
-            EntryPath,
-            EntryName,
-            EntryType,
-            Filter,
-            FilteredEntriesCount,
-            Command,
-            EntryCursorPosition,
-            MenuCursorPosition,
-        )
+        val All by lazy {
+            listOf(
+                WorkingDirectory,
+                StartingDirectory,
+                DebugMode,
+                Shell,
+                Separator,
+                Directory,
+                EntryPath,
+                EntryName,
+                EntryType,
+                Filter,
+                FilteredEntriesCount,
+                Command,
+                EntryCursorPosition,
+                MenuCursorPosition,
+            )
+        }
         val ByName by lazy {
             All.associateBy { it.name }
         }

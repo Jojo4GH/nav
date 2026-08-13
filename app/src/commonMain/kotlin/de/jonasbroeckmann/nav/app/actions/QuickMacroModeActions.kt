@@ -8,8 +8,8 @@ import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.runEntryMacro
 import de.jonasbroeckmann.nav.app.runMacro
 import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.state.updateState
 import de.jonasbroeckmann.nav.app.ui.style
-import de.jonasbroeckmann.nav.app.updateState
 import de.jonasbroeckmann.nav.framework.action.KeyActions
 import de.jonasbroeckmann.nav.framework.input.InputMode
 

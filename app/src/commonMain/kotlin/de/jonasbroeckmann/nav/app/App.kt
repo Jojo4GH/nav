@@ -3,8 +3,6 @@ package de.jonasbroeckmann.nav.app
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio.Inherit
@@ -15,11 +13,13 @@ import de.jonasbroeckmann.nav.app.actions.NormalModeActions
 import de.jonasbroeckmann.nav.app.actions.QuickMacroModeActions
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.context.MacroRunContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.buildUI
 import de.jonasbroeckmann.nav.catchAllFatal
 import de.jonasbroeckmann.nav.command.*
 import de.jonasbroeckmann.nav.config.Config
+import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.dangerThrowable
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.input.*
@@ -39,14 +39,19 @@ import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 
 class App private constructor(
-    context: PartialContext,
-    override val config: Config,
-    override val configPath: Path?,
-) : MainControllerBase(), PartialContext by context {
+    partialContext: PartialContext,
+    configProvider: ConfigProvider
+) : FullContextBase(partialContext, configProvider),
+    MainController,
+    MacroSessionContext by MacroSessionContext(
+        partialContext = partialContext,
+        configProvider = configProvider
+    )
+{
     private val stateManager = StateManager(
         initial = State.initial(
             startingDirectory = startingDirectory,
-            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+            showHiddenEntries = commandOptions.showHiddenEntries ?: config.showHiddenEntries,
             normalModeActions = NormalModeActions(this),
             quickMacroModeActions = QuickMacroModeActions(this),
             menuActions = MenuActions(this)
@@ -252,9 +257,7 @@ class App private constructor(
         }
     }
 
-    override fun runMacro(macro: Macro) {
-        context(macroSessionContext) { MacroRunContext.run(macro) }
-    }
+    override fun runMacro(macro: Macro) = MacroRunContext.run(macro)
 
     override fun exit(exitCode: Int, atDirectory: Path?): Nothing {
         atDirectory?.let {
@@ -290,7 +293,7 @@ class App private constructor(
         collectError: Boolean = false,
         configuration: Command.() -> Command = { this }
     ): MainController.RunCommandResult? {
-        val (exe, args) = when (val shell = shell) {
+        val (exe, args) = when (val shell = commandOptions.shell) {
             null -> {
                 danger("I do not know how to interpret the command without a shell: $command")
                 info("Use --init-help to get more information or use --shell to force a shell.")
@@ -353,9 +356,8 @@ class App private constructor(
             configPath: Path?,
             block: App.() -> Unit
         ): Nothing = App(
-            context = context,
-            config = config,
-            configPath = configPath
+            partialContext = context,
+            configProvider = ConfigProvider(config, configPath)
         ).execute(block)
     }
 }

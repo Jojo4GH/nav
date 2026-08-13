@@ -5,7 +5,7 @@ import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroEvaluable
 import de.jonasbroeckmann.nav.app.macros.MacroException
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
-import de.jonasbroeckmann.nav.app.macros.components.CallableMacro
+import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
@@ -24,18 +24,17 @@ interface MacroRunContext {
     val rootMacro: Macro
 
     companion object {
-        context(controller: MainController, sessionContext: MacroSessionContext)
-        fun run(macro: Macro) {
-            MacroRunContextImpl(controller, sessionContext, macro).run()
-        }
+        context(controller: MainController)
+        fun run(callable: MacroCallable) = MacroRunContextImpl(controller, callable).run()
     }
 }
 
 private class MacroRunContextImpl(
     override val controller: MainController,
-    val sessionContext: MacroSessionContext,
-    override val rootMacro: Macro
+    private val callable: MacroCallable
 ) : MacroRunContext, Logger by controller {
+    override val rootMacro get() = callable.macro
+
     val runStorage = InMemoryMacroValueStorage()
 
     fun run() = MacroException.handle(
@@ -56,7 +55,7 @@ private class MacroRunContextImpl(
             )
 
             interceptReturnEvent {
-                context(callContext) { rootMacro.run() }
+                context(callContext) { callable.run() }
             }
         }
     }
@@ -70,8 +69,11 @@ private class MacroCallScopeImpl private constructor(
 ) : MacroCallScope,
     MacroRunContext by rootContext,
     MacroStorageScope by MacroStorageScopeBase(
+        fullContext = rootContext.controller,
+        stateProvider = rootContext.controller,
         stateUpdater = rootContext.controller,
-        sessionContext = rootContext.sessionContext,
+        sessionContext = rootContext.controller,
+        macro = currentMacro,
         sharedLocalStorage = rootContext.runStorage
     ),
     MacroReportContext by MacroReportContextImpl(logger = rootContext.controller)
@@ -95,7 +97,7 @@ private class MacroCallScopeImpl private constructor(
         parameters: Iterable<Pair<MacroExpression, MacroEvaluable<MacroValue?>>>?,
         capture: Iterable<Pair<MacroExpression, MacroEvaluable<MacroValue?>>>?,
         returnToRoot: Boolean,
-        callable: CallableMacro
+        callable: MacroCallable
     ): Unit = macroTrace(callable) {
         val subCallContext = MacroCallScopeImpl(
             parentCall = this,
@@ -111,7 +113,7 @@ private class MacroCallScopeImpl private constructor(
 
         val input = parameters
             ?.map { (expression, evaluable) ->
-                require(expression.storageType is Local?) { "'${expression}' is not in local storage" }
+                require(expression.storageType is PrivateLocal?) { "'${expression}' is not in local storage" }
                 expression.path to context(this@MacroCallScopeImpl) { evaluable.evaluate() }
             }
             ?: localStorage.value().map { (key, value) -> MacroPathExpression(key) to value }
@@ -125,7 +127,7 @@ private class MacroCallScopeImpl private constructor(
 
         val output = capture
             ?.map { (expression, evaluable) -> expression to context(subCallContext) { evaluable.evaluate() } }
-            ?: subCallContext.localStorage.value().map { (path, value) -> MacroExpression(Local, path) to value }
+            ?: subCallContext.localStorage.value().map { (path, value) -> MacroExpression(PrivateLocal, path) to value }
         output.forEach { (expression, value) ->
             this[expression] = value
         }

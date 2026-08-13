@@ -297,6 +297,8 @@ data class Config private constructor(
     }
 
     companion object {
+        val Default = Config()
+
         val DefaultPaths by lazy {
             listOf(
                 Paths.UserHome / ".config" / "nav.yaml",
@@ -338,7 +340,7 @@ data class Config private constructor(
             onInvalidExplicitPath: ((Path) -> Nothing)? = null
         ) = findFilePath(
             explicitPaths = listOfNotNull(
-                context.command.configurationOptions.configPath?.let { Path(it) },
+                context.commandOptions.configPath?.let { Path(it) },
                 EnvironmentVariables[ENV_VAR_NAME]?.takeUnless { it.isBlank() }?.let { Path(it) }
             ),
             defaultPaths = DefaultPaths,
@@ -352,7 +354,7 @@ data class Config private constructor(
             fun errorOnLoad(e: Exception, message: Any?): Config {
                 context.dangerThrowable(e, "Could not load config: $message")
                 context.warning("Using default config")
-                return Config()
+                return Default
             }
             try {
                 val path = findConfigPath(
@@ -364,7 +366,7 @@ data class Config private constructor(
                     }
                 ) ?: run {
                     context.printlnOnDebug { "Could not find config, using default" }
-                    return Config() to null
+                    return Default to null
                 }
                 val (_, extension) = path.nameAndExtension
                 val config = when (extension?.lowercase()) {
@@ -373,7 +375,7 @@ data class Config private constructor(
                     else -> {
                         context.danger("Could not determine type of config file for: $path")
                         context.warning("Using default config")
-                        Config()
+                        Default
                     }
                 }
                 return config to path

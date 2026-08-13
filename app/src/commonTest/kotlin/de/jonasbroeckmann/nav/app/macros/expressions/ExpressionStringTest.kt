@@ -58,7 +58,7 @@ class ExpressionStringTest : FunSpec({
     }
     test("known storage type") {
         val expression = ExpressionString("local:foo.bar").tryEvaluateScopeless().shouldNotBeNull()
-        expression shouldBe MacroExpression(MacroValueStorageType.Local, Operator.Key("foo"), Operator.Key("bar"))
+        expression shouldBe MacroExpression(MacroValueStorageType.PrivateLocal, Operator.Key("foo"), Operator.Key("bar"))
     }
     test("custom storage type") {
         val expression = ExpressionString("storage:foo").tryEvaluateScopeless().shouldNotBeNull()
