@@ -70,7 +70,8 @@ object MacroExpressionGrammar : Grammar<MacroExpression>() {
 
     private val keyOrFunctionApplication by functionApplication or (key map { listOf(it) })
 
-    private val macroPathOperators: Parser<List<MacroPathExpression.Operator>> by keyOrFunctionApplication and propertyOrIndexAccesses map { (a, b) -> a + b }
+    private val macroPathOperators: Parser<List<MacroPathExpression.Operator>>
+        by keyOrFunctionApplication and propertyOrIndexAccesses map { (a, b) -> a + b }
 
     val macroPathExpression: Parser<MacroPathExpression> by macroPathOperators map { MacroPathExpression(it) }
 

@@ -6,9 +6,13 @@ interface Logger {
     val debugMode: Boolean
 
     fun println(message: Any?)
+
     fun info(message: Any?)
+
     fun success(message: Any?)
+
     fun warning(message: Any?)
+
     fun danger(message: Any?)
 }
 

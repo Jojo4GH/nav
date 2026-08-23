@@ -18,13 +18,16 @@ open class MacroStorageScopeBase(
     sessionContext: MacroSessionContext,
     macroId: Macro.Id?,
     override val sharedLocalStorage: MutableMacroValueStorage
-) : MacroEvaluationScopeBase(
-    fullContext = fullContext,
-    stateProvider = stateProvider,
-    sessionContext = sessionContext,
-    macroId = macroId,
-    sharedLocalStorage = sharedLocalStorage
-), MacroStorageScope, StateUpdater by stateUpdater {
+) :
+    MacroEvaluationScopeBase(
+        fullContext = fullContext,
+        stateProvider = stateProvider,
+        sessionContext = sessionContext,
+        macroId = macroId,
+        sharedLocalStorage = sharedLocalStorage
+    ),
+    MacroStorageScope,
+    StateUpdater by stateUpdater {
     override operator fun set(expression: MacroExpression, value: MacroValue?) {
         val property = KnownMacroProperty.from(expression)
         if (property != null) {

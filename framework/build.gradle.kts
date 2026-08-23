@@ -1,5 +1,4 @@
 import dev.detekt.gradle.Detekt
-import org.gradle.kotlin.dsl.withType
 
 plugins {
     kotlin("multiplatform")
@@ -51,6 +50,10 @@ kotlin {
 
 dependencies {
     detektPlugins("dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
+}
+
+tasks.withType<Detekt>().configureEach {
+    exclude("io/kotest/**")
 }
 
 tasks.register("detektAll") {

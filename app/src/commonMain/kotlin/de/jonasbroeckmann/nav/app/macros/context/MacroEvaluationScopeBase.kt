@@ -4,8 +4,6 @@ import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.components.KnownMacroProperty
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Companion.plus
 import de.jonasbroeckmann.nav.app.macros.values.InMemoryMacroValueStorage
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.macros.values.MacroValueStorage

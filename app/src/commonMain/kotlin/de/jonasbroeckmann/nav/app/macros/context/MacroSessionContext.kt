@@ -10,13 +10,13 @@ import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.ConfigProvider
 import de.jonasbroeckmann.nav.framework.utils.div
 
-
 interface MacroSessionContext {
     val sharedSessionStorage: MutableMacroValueStorage
     val sharedPersistentStorage: MutableMacroValueStorage?
     val environmentStorage: MutableMacroValueStorage
 
     fun privateSessionStorage(id: Macro.Id): MutableMacroValueStorage
+
     fun privatePersistentStorage(id: Macro.Id): MutableMacroValueStorage?
 
     companion object {
@@ -54,6 +54,7 @@ private class MacroSessionContextImpl(
     override val sharedPersistentStorage by lazy { persistentStorage?.asSharedStorage() }
 
     override fun privateSessionStorage(id: Macro.Id) = sessionStorage.asPrivateStorage(id)
+
     override fun privatePersistentStorage(id: Macro.Id) = persistentStorage?.asPrivateStorage(id)
 
     companion object {

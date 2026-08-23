@@ -83,10 +83,12 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     override val commandOptions: CommandOptions by CommandOptionsGroup()
 
-    private class CommandOptionsGroup : OptionGroup(
-        name = "Configuration",
-        help = "Options to configure the behavior of $BinaryName"
-    ), CommandOptions {
+    private class CommandOptionsGroup :
+        OptionGroup(
+            name = "Configuration",
+            help = "Options to configure the behavior of $BinaryName"
+        ),
+        CommandOptions {
         override val showHiddenEntries by option("-a", "--all").nullableFlag("-h", "--not-all").help {
             "Choose whether hidden entries are shown or not. ${theme.muted("(Overrides other configuration)")}"
         }

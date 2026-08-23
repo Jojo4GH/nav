@@ -55,7 +55,6 @@ data class MacroPathExpression(
                 return value[index]
             }
 
-
             override fun Scope.update(value: MacroValue?, updateNext: (MacroValue?) -> MacroValue?) = value
                 .expectValueOfTypeOrDefault(Array)
                 .updated(index, updateNext)

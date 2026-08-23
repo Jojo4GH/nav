@@ -1,9 +1,9 @@
 package de.jonasbroeckmann.nav.app.macros
 
-import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.components.MacroAction
 import de.jonasbroeckmann.nav.app.macros.components.MacroActions
+import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.components.MacroCondition
 import de.jonasbroeckmann.nav.app.macros.components.MacroRunnable
 import kotlinx.serialization.InternalSerializationApi

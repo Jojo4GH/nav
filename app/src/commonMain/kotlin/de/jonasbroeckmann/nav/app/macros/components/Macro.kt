@@ -60,7 +60,6 @@ data class Macro private constructor(
     @SerialName("run")
     private val actions: MacroActions = initializerRecorder.record(Macro::actions, MacroActions())
 ) : MacroCallable {
-
     @Serializable
     @JvmInline
     value class Id(private val id: String) : CharSequence by id {

@@ -1,12 +1,6 @@
 package de.jonasbroeckmann.nav.app.macros.values
 
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Keys
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Last
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Next
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Size
-import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator.Function.Values
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 

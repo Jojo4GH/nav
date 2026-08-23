@@ -1,3 +1,5 @@
+@file:Suppress("detekt:Wrapping")
+
 package de.jonasbroeckmann.nav.app.macros.components
 
 import de.jonasbroeckmann.nav.app.context
@@ -46,7 +48,8 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
         name = "directory",
         onGetString = { state.directory.toString() },
         onSetString = { newValue ->
-            newValue.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } } }
+            newValue.parseToAbsolutePathToDirectoryOrNull()?.let { updateState { navigatedTo(it) } }
+        }
     )
 
     object EntryPath : KnownMacroProperty(), MacroProperty<MacroValue.Text> by MacroProperty.delegatedString(

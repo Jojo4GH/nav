@@ -22,6 +22,7 @@ actual object EnvironmentVariables {
             }
         }
     }
+
     actual operator fun set(key: String, value: String?): Boolean = when (value) {
         null -> platform.posix.unsetenv(key) == 0
         else -> platform.posix.setenv(key, value, 1) == 0

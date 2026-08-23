@@ -37,8 +37,7 @@ class TestMainController(
     MacroSessionContext by MacroSessionContext(
         partialContext = fullContext,
         configProvider = fullContext
-    )
-{
+    ) {
     override var state = State.initial(
         startingDirectory = startingDirectory,
         showHiddenEntries = commandOptions.showHiddenEntries ?: config.showHiddenEntries,

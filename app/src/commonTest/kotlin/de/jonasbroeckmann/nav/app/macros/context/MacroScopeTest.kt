@@ -100,7 +100,7 @@ class MacroScopeTest : TestSpec({
                 )
                 get(MacroExpression(SharedSession, "my_var")) shouldBe MacroValue.Text(
                     "Hello shared from outer" +
-                            "Hello shared from inner"
+                        "Hello shared from inner"
                 )
                 call(subMacro) {
                     get(MacroExpression(PrivateSession, "my_var")) shouldBe MacroValue.Text(
@@ -108,17 +108,17 @@ class MacroScopeTest : TestSpec({
                     )
                     get(MacroExpression(SharedSession, "my_var")) shouldBe MacroValue.Text(
                         "Hello shared from outer" +
-                                "Hello shared from inner"
+                            "Hello shared from inner"
                     )
                     subMacro.run()
                     get(MacroExpression(PrivateSession, "my_var")) shouldBe MacroValue.Text(
                         "Hello private from inner" +
-                                "Hello private from inner"
+                            "Hello private from inner"
                     )
                     get(MacroExpression(SharedSession, "my_var")) shouldBe MacroValue.Text(
                         "Hello shared from outer" +
-                                "Hello shared from inner" +
-                                "Hello shared from inner"
+                            "Hello shared from inner" +
+                            "Hello shared from inner"
                     )
                 }
                 get(MacroExpression(PrivateSession, "my_var")) shouldBe MacroValue.Text(
@@ -126,22 +126,22 @@ class MacroScopeTest : TestSpec({
                 )
                 get(MacroExpression(SharedSession, "my_var")) shouldBe MacroValue.Text(
                     "Hello shared from outer" +
-                            "Hello shared from inner" +
-                            "Hello shared from inner"
+                        "Hello shared from inner" +
+                        "Hello shared from inner"
                 )
             }
             MacroRunContext.testRun(macro, subMacro) {
                 macro.run()
                 get(MacroExpression(PrivateSession, "my_var")) shouldBe MacroValue.Text(
                     "Hello private from outer" +
-                            "Hello private from outer"
+                        "Hello private from outer"
                 )
                 get(MacroExpression(SharedSession, "my_var")) shouldBe MacroValue.Text(
                     "Hello shared from outer" +
-                            "Hello shared from inner" +
-                            "Hello shared from inner" +
-                            "Hello shared from outer" +
-                            "Hello shared from inner"
+                        "Hello shared from inner" +
+                        "Hello shared from inner" +
+                        "Hello shared from outer" +
+                        "Hello shared from inner"
                 )
             }
         }

@@ -6,8 +6,8 @@ import de.jonasbroeckmann.nav.app.macros.MacroEvaluable
 import de.jonasbroeckmann.nav.app.macros.MacroException
 import de.jonasbroeckmann.nav.app.macros.MacroProvider
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
-import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.components.Macro
+import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
 import de.jonasbroeckmann.nav.app.macros.macroTrace
@@ -43,8 +43,7 @@ private class MacroRunContextImpl(
     additionalMacros: List<Macro>
 ) : MacroRunContext,
     MacroProvider by MacroProvider(controller.macros + additionalMacros),
-    Logger by controller
-{
+    Logger by controller {
     override val rootMacro get() = callable.macro
 
     val runStorage = InMemoryMacroValueStorage()
@@ -88,8 +87,7 @@ private class MacroCallScopeImpl private constructor(
         macroId = currentMacro.id,
         sharedLocalStorage = rootContext.runStorage
     ),
-    MacroReportContext by MacroReportContextImpl(logger = rootContext.controller)
-{
+    MacroReportContext by MacroReportContextImpl(logger = rootContext.controller) {
     constructor(
         rootContext: MacroRunContextImpl,
         currentMacro: Macro,
@@ -129,7 +127,7 @@ private class MacroCallScopeImpl private constructor(
 
         val input = parameters
             ?.map { (expression, evaluable) ->
-                require(expression.storageType is PrivateLocal?) { "'${expression}' is not in local storage" }
+                require(expression.storageType is PrivateLocal?) { "'$expression' is not in local storage" }
                 expression.path to context(this@MacroCallScopeImpl) { evaluable.evaluate() }
             }
             ?: localStorage.value().map { (key, value) -> MacroPathExpression(key) to value }

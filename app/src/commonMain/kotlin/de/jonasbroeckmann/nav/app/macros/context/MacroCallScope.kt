@@ -9,6 +9,7 @@ interface MacroCallScope : MacroRunContext, MacroStorageScope, MacroCaller, Macr
     val rootContext: MacroRunContext
     val parentCall: MacroCallScope?
     val currentMacro: Macro
+
     fun doReturn(): Nothing
 
     context(_: MacroTraceContext)

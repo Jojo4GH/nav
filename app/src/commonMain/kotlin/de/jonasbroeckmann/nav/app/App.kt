@@ -49,8 +49,7 @@ class App private constructor(
     MacroSessionContext by MacroSessionContext(
         partialContext = partialContext,
         configProvider = configProvider
-    )
-{
+    ) {
     private val stateManager = StateManager(
         initial = State.initial(
             startingDirectory = startingDirectory,

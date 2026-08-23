@@ -309,7 +309,6 @@ data class Config private constructor(
         }
         const val ENV_VAR_NAME = "NAV_CONFIG"
 
-
         private fun Path.isValidFile(mustExist: Boolean) = when {
             exists() -> isRegularFile()
             mustExist -> false

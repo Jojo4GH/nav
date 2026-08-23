@@ -3,12 +3,9 @@ package de.jonasbroeckmann.nav.app
 import de.jonasbroeckmann.nav.app.macros.MacroProvider
 import de.jonasbroeckmann.nav.app.macros.MacroProvider.Companion.onLoaded
 import de.jonasbroeckmann.nav.app.macros.components.DefaultMacro
-import de.jonasbroeckmann.nav.app.macros.components.Macro
-import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.command.PartialContext
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.config.ConfigProvider
-import de.jonasbroeckmann.nav.config.Styles
 import de.jonasbroeckmann.nav.config.StylesProvider
 import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.EnvironmentVariables
@@ -39,8 +36,7 @@ private class FullContextImpl(
     MacroProvider by MacroProvider(DefaultMacro.macros + configProvider.config.macros).onLoaded({
         partialContext.printlnOnDebug { "\nLoaded ${it.size} macros:" }
         partialContext.printlnOnDebug { Config.Yaml.encodeToString(it) + "\n" }
-    })
-{
+    }) {
     override val editorCommand by lazy {
         // override editor from command line argument or config or fill in default editor
         commandOptions.editor

@@ -147,6 +147,7 @@ dependencies {
 
 tasks.withType<Detekt>().configureEach {
     exclude("de/jonasbroeckmann/nav/BuildKonfig.kt")
+    exclude("io/kotest/**")
 }
 
 tasks.register("detektAll") {
