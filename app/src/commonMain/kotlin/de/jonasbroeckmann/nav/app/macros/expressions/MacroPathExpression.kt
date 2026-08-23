@@ -1,6 +1,11 @@
 package de.jonasbroeckmann.nav.app.macros.expressions
 
+import de.jonasbroeckmann.nav.Logger
 import de.jonasbroeckmann.nav.app.macros.ParserException
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Array
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Dictionary
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Text
 
 data class MacroPathExpression(
     val operators: List<Operator>
@@ -18,21 +23,91 @@ data class MacroPathExpression(
 
     sealed interface Operator {
         fun unparse(base: String?): String
-        data class Key(val key: String) : Operator {
-            override fun unparse(base: String?) = if (base == null) key else "$base.$key"
+
+        fun applyTo(value: MacroValue?): MacroValue?
+
+        sealed interface Writable<V : MacroValue> : Operator {
+            fun Scope.update(value: MacroValue?, updateNext: (MacroValue?) -> MacroValue?): V
         }
-        data class Index(val index: Int) : Operator {
+
+        data class Key(val key: String) : Operator, Writable<Dictionary> {
+            override fun unparse(base: String?) = if (base == null) key else "$base.$key"
+
+            override fun applyTo(value: MacroValue?): MacroValue? {
+                if (value !is Dictionary) return null
+                return value[key]
+            }
+
+            override fun Scope.update(value: MacroValue?, updateNext: (MacroValue?) -> MacroValue?) = value
+                .expectValueOfTypeOrDefault(Dictionary)
+                .updated(key, updateNext)
+        }
+
+        data class Index(val index: Int) : Operator, Writable<Array> {
             init {
                 if (index < 0) throw ParserException("Index must be non-negative")
             }
+
             override fun unparse(base: String?) = if (base == null) "[$index]" else "$base[$index]"
+
+            override fun applyTo(value: MacroValue?): MacroValue? {
+                if (value !is Array) return null
+                return value[index]
+            }
+
+
+            override fun Scope.update(value: MacroValue?, updateNext: (MacroValue?) -> MacroValue?) = value
+                .expectValueOfTypeOrDefault(Array)
+                .updated(index, updateNext)
         }
+
         sealed class Function(val name: String) : Operator {
-            data object Last : Function("last")
-            data object Next : Function("next")
-            data object Keys : Function("keys")
-            data object Values : Function("values")
-            data object Size : Function("size")
+            data object Last : Function("last"), Writable<Array> {
+                override fun applyTo(value: MacroValue?): MacroValue? {
+                    if (value !is Array) return null
+                    return value.lastOrNull()
+                }
+
+                override fun Scope.update(value: MacroValue?, updateNext: (MacroValue?) -> MacroValue?): Array {
+                    val current = value.expectValueOfTypeOrDefault(Array)
+                    if (current.isEmpty()) throwHere("Cannot set last element of empty array")
+                    return current.updated(current.lastIndex, updateNext)
+                }
+            }
+
+            data object Next : Function("next"), Writable<Array> {
+                override fun applyTo(value: MacroValue?) = null
+
+                override fun Scope.update(value: MacroValue?, updateNext: (MacroValue?) -> MacroValue?): Array {
+                    val current = value.expectValueOfTypeOrDefault(Array)
+                    return current.updated(current.size, updateNext)
+                }
+            }
+
+            data object Keys : Function("keys") {
+                override fun applyTo(value: MacroValue?): Array? {
+                    if (value !is Dictionary) return null
+                    return Array(value.keys.map { Text(it) })
+                }
+            }
+
+            data object Values : Function("values") {
+                override fun applyTo(value: MacroValue?): Array? {
+                    if (value !is Dictionary) return null
+                    return Array(value.values.toList())
+                }
+            }
+
+            data object Size : Function("size") {
+                override fun applyTo(value: MacroValue?): Text? {
+                    if (value !is MacroValue.Collection) return null
+                    return Text("${value.size}")
+                }
+            }
+
+            data object Type : Function("type") {
+                override fun applyTo(value: MacroValue?) = value?.type?.name?.let { Text(it) }
+            }
 
             override fun unparse(base: String?) = if (base == null) "$name()" else "$name($base)"
 
@@ -43,9 +118,16 @@ data class MacroPathExpression(
                     Keys.name -> Keys
                     Values.name -> Values
                     Size.name -> Size
+                    Type.name -> Type
                     else -> throw ParserException("Unknown function: $name")
                 }
             }
+        }
+
+        interface Scope : Logger {
+            fun throwHere(message: String): Nothing
+
+            fun <T : MacroValue> MacroValue?.expectValueOfTypeOrDefault(type: MacroValue.Type<T>): T
         }
     }
 

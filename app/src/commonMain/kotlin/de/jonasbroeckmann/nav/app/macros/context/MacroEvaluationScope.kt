@@ -1,7 +1,9 @@
 package de.jonasbroeckmann.nav.app.macros.context
 
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
 import de.jonasbroeckmann.nav.app.macros.components.Macro
+import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.values.InMemoryMacroValueStorage
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
@@ -19,5 +21,8 @@ interface MacroEvaluationScope : FullContext, StateProvider {
             macroId = macro.id,
             sharedLocalStorage = InMemoryMacroValueStorage()
         )
+
+        context(_: MacroTraceContext)
+        operator fun MacroEvaluationScope.get(expression: ExpressionString) = this[expression.evaluate()]
     }
 }

@@ -4,6 +4,7 @@ import de.jonasbroeckmann.nav.TestSpec
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression.Operator
 import io.kotest.matchers.shouldBe
+import io.ktor.client.request.invoke
 
 class MacroValueStorageTest : TestSpec({
     test("empty storage") {
@@ -81,6 +82,15 @@ class MacroValueStorageTest : TestSpec({
             val storage = InMemoryMacroValueStorage()
             storage[MacroPathExpression("foo")] = MacroValue.Dictionary("k1" to MacroValue.Text("v1"))
             storage[MacroPathExpression(Operator.Key("foo"), Operator.Function.Last)] shouldBe null
+        }
+        test("type") {
+            val storage = InMemoryMacroValueStorage()
+            storage[MacroPathExpression("myText")] = MacroValue.Text("bar")
+            storage[MacroPathExpression("myList")] = MacroValue.Array()
+            storage[MacroPathExpression("myDict")] = MacroValue.Dictionary()
+            storage[MacroPathExpression(Operator.Key("myText"), Operator.Function.Type)] shouldBe MacroValue.Text("text")
+            storage[MacroPathExpression(Operator.Key("myList"), Operator.Function.Type)] shouldBe MacroValue.Text("list")
+            storage[MacroPathExpression(Operator.Key("myDict"), Operator.Function.Type)] shouldBe MacroValue.Text("dictionary")
         }
     }
 })

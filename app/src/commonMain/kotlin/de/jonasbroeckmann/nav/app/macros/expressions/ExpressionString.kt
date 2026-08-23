@@ -16,6 +16,8 @@ value class ExpressionString(val raw: String) : MacroEvaluable<MacroExpression>,
         return TemplatedExpressionString(TemplateString(raw).parsed())
     }
 
+    fun knownUsedProperties() = parsed().knownUsedProperties
+
     context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
     override fun evaluate() = parsed().evaluate()
 

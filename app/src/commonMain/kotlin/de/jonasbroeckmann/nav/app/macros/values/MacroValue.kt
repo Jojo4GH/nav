@@ -109,7 +109,7 @@ sealed interface MacroValue {
         }
 
         companion object : Type<Array> {
-            override val name = "array"
+            override val name = "list"
 
             override val default = Array()
 
@@ -143,19 +143,7 @@ sealed interface MacroValue {
         }
 
         operator fun Dictionary.get(path: MacroPathExpression) = path.operators.fold<_, MacroValue?>(this) { value, operator ->
-            when (operator) {
-                is Operator.Key if value is Dictionary -> value[operator.key]
-                is Operator.Index if value is Array -> value.getOrNull(operator.index)
-                is Operator.Function -> when (operator) {
-                    Last if value is Array -> value.lastOrNull()
-                    Next if value is Array -> null
-                    Keys if value is Dictionary -> Array(value.keys.map { Text(it) })
-                    Values if value is Dictionary -> Array(value.values.toList())
-                    Size if value is Collection -> Text("${value.size}")
-                    else -> null
-                }
-                else -> null
-            }
+            operator.applyTo(value)
         }
     }
 }

@@ -10,6 +10,8 @@ import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
 import de.jonasbroeckmann.nav.app.macros.MacroTraceElement
 import de.jonasbroeckmann.nav.app.macros.contains
 import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope.Companion.get
+import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
 import de.jonasbroeckmann.nav.app.macros.macroTrace
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePath
@@ -165,6 +167,19 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     data class NotBlank(val notBlank: TemplateString) : MacroCondition by Not(Blank(notBlank))
 
     @Serializable
+    @SerialName("set")
+    data class IsSet(val set: ExpressionString) : MacroCondition {
+        override val knownUsedProperties by lazy { set.knownUsedProperties() }
+
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
+        override fun evaluate() = macroTrace { scope[set] != null }
+    }
+
+    @Serializable
+    @SerialName("notSet")
+    data class IsNotSet(val notSet: ExpressionString) : MacroCondition by Not(IsSet(notSet))
+
+    @Serializable
     @SerialName("exists")
     data class Exists(val exists: TemplateString) : MacroCondition {
         override val knownUsedProperties by lazy { exists.knownUsedProperties() }
@@ -232,6 +247,8 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
                     NotEmpty.serializer(),
                     Blank.serializer(),
                     NotBlank.serializer(),
+                    IsSet.serializer(),
+                    IsNotSet.serializer(),
                     Exists.serializer(),
                     NotExists.serializer(),
                     IsDirectory.serializer(),
