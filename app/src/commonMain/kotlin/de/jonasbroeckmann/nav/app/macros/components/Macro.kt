@@ -20,6 +20,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
+import kotlin.jvm.JvmInline
 import kotlin.reflect.KProperty1
 
 /**
@@ -46,7 +47,7 @@ import kotlin.reflect.KProperty1
 data class Macro private constructor(
     @Transient
     private val initializerRecorder: PropertyInitializerRecorder<Macro> = PropertyInitializerRecorder(),
-    val id: String? = initializerRecorder.record(Macro::id, null),
+    val id: Id? = initializerRecorder.record(Macro::id, null),
     val enabled: Boolean = initializerRecorder.record(Macro::enabled, true),
     val description: TemplateString = initializerRecorder.record(Macro::description, Empty),
     val style: StyleString? = initializerRecorder.record(Macro::style, null),
@@ -59,6 +60,17 @@ data class Macro private constructor(
     @SerialName("run")
     private val actions: MacroActions = initializerRecorder.record(Macro::actions, MacroActions())
 ) : MacroCallable {
+
+    @Serializable
+    @JvmInline
+    value class Id(private val id: String) : CharSequence by id {
+        init {
+            require(id.isNotBlank()) { "Macro ids must not be empty" }
+        }
+
+        override fun toString() = id
+    }
+
     constructor(
         id: String? = null,
         enabled: Boolean = true,
@@ -73,7 +85,7 @@ data class Macro private constructor(
         actions: MacroActions = MacroActions()
     ) : this(
         initializerRecorder = PropertyInitializerRecorder(),
-        id = id,
+        id = id?.let { Id(it) },
         enabled = enabled,
         description = description,
         style = style,
@@ -140,8 +152,8 @@ data class Macro private constructor(
 
     companion object {
         context(_: FullContext, _: StateProvider)
-        private fun <R> evaluationContext(block: context(MacroEvaluationScope, MacroTraceContext) () -> R) = context(
-            MacroEvaluationScope.Empty,
+        private fun <R> Macro.evaluationContext(block: context(MacroEvaluationScope, MacroTraceContext) () -> R) = context(
+            MacroEvaluationScope.emptyFor(this),
             MacroTraceContext.Empty,
             block
         )

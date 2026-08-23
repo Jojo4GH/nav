@@ -11,7 +11,7 @@ import de.jonasbroeckmann.nav.config.StyleString.Companion.styleString
 import de.jonasbroeckmann.nav.config.Styles
 
 sealed class DefaultMacro(
-    val macro: Macro
+    val underlyingMacro: Macro
 ) {
     object RunCommand : DefaultMacro(
         Macro(
@@ -184,16 +184,16 @@ sealed class DefaultMacro(
         )
     )
 
-    context(context: FullContext)
-    fun get(): Macro = macro.id?.let { context.macroById(it) } ?: macro
+    context(provider: MacroProvider)
+    val macro get() = underlyingMacro.id?.let { provider.macro(it) } ?: underlyingMacro
 
-    companion object : MacroProvider {
-        override val macros = listOf(
-            RunCommand.macro,
-            NewFile.macro,
-            NewDirectory.macro,
-            Rename.macro,
-            Delete.macro,
+    companion object : MacroProvider by MacroProvider(
+        listOf(
+            RunCommand.underlyingMacro,
+            NewFile.underlyingMacro,
+            NewDirectory.underlyingMacro,
+            Rename.underlyingMacro,
+            Delete.underlyingMacro,
         )
-    }
+    )
 }

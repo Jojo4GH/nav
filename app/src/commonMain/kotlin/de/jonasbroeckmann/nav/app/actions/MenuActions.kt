@@ -58,7 +58,7 @@ class MenuActions(context: FullContext) : FullContext by context {
                 if (command.isNullOrBlank()) {
                     updateState { withCommand(null) }
                 } else {
-                    runMacro(DefaultMacro.RunCommand.get())
+                    runMacro(DefaultMacro.RunCommand.macro)
                 }
             }
         ),

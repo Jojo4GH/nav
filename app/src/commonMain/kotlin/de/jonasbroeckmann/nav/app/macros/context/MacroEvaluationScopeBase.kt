@@ -17,21 +17,18 @@ open class MacroEvaluationScopeBase(
     fullContext: FullContext,
     stateProvider: StateProvider,
     protected val sessionContext: MacroSessionContext,
-    protected val macro: Macro?,
+    protected val macroId: Macro.Id?,
     protected open val sharedLocalStorage: MacroValueStorage
 ) : MacroEvaluationScope, FullContext by fullContext, StateProvider by stateProvider {
     protected open val localStorage: MutableMacroValueStorage = InMemoryMacroValueStorage()
 
-    protected fun MacroPathExpression.asPrivate(): MacroPathExpression? {
-        val id = macro?.id
-        if (id == null) {
+    protected fun idWarnIfNull(): Macro.Id? {
+        if (macroId == null) {
             warning("Macros without an id cannot use private (non-shared) storage")
             return null
         }
-        return MacroPathExpression.Operator.Key(id) + this
+        return macroId
     }
-
-    protected fun MacroPathExpression.asShared() = MacroPathExpression.Operator.Key("shared") + this
 
     override operator fun get(expression: MacroExpression): MacroValue? {
         val property = KnownMacroProperty.from(expression)
@@ -40,11 +37,11 @@ open class MacroEvaluationScopeBase(
         }
         return when (val type = expression.storageType) {
             null, PrivateLocal -> localStorage[expression.path]
-            PrivateSession -> sessionContext.sessionStorage[expression.path.asPrivate() ?: return null]
-            PrivatePersistent -> sessionContext.persistentStorage?.get(expression.path.asPrivate() ?: return null)
+            PrivateSession -> sessionContext.privateSessionStorage(idWarnIfNull() ?: return null)[expression.path]
+            PrivatePersistent -> sessionContext.privatePersistentStorage(idWarnIfNull() ?: return null)?.get(expression.path)
             SharedLocal -> sharedLocalStorage[expression.path]
-            SharedSession -> sessionContext.sessionStorage[expression.path.asShared()]
-            SharedPersistent -> sessionContext.persistentStorage?.get(expression.path.asShared())
+            SharedSession -> sessionContext.sharedSessionStorage[expression.path]
+            SharedPersistent -> sessionContext.sharedPersistentStorage?.get(expression.path)
             Property -> {
                 warnPropertyUnknown(expression)
                 null

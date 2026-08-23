@@ -4,6 +4,7 @@ import de.jonasbroeckmann.nav.Logger
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.macros.MacroEvaluable
 import de.jonasbroeckmann.nav.app.macros.MacroException
+import de.jonasbroeckmann.nav.app.macros.MacroProvider
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
 import de.jonasbroeckmann.nav.app.macros.components.MacroCallable
 import de.jonasbroeckmann.nav.app.macros.components.Macro
@@ -19,20 +20,31 @@ import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.ui.dialog.decorate
 import de.jonasbroeckmann.nav.infoOnDebug
 
-interface MacroRunContext {
+interface MacroRunContext : MacroProvider {
     val controller: MainController
     val rootMacro: Macro
 
     companion object {
         context(controller: MainController)
-        fun run(callable: MacroCallable) = MacroRunContextImpl(controller, callable).run()
+        fun run(
+            callable: MacroCallable,
+            additionalMacros: List<Macro> = emptyList()
+        ) = MacroRunContextImpl(
+            controller = controller,
+            callable = callable,
+            additionalMacros = additionalMacros
+        ).run()
     }
 }
 
 private class MacroRunContextImpl(
     override val controller: MainController,
-    private val callable: MacroCallable
-) : MacroRunContext, Logger by controller {
+    private val callable: MacroCallable,
+    additionalMacros: List<Macro>
+) : MacroRunContext,
+    MacroProvider by MacroProvider(controller.macros + additionalMacros),
+    Logger by controller
+{
     override val rootMacro get() = callable.macro
 
     val runStorage = InMemoryMacroValueStorage()
@@ -73,7 +85,7 @@ private class MacroCallScopeImpl private constructor(
         stateProvider = rootContext.controller,
         stateUpdater = rootContext.controller,
         sessionContext = rootContext.controller,
-        macro = currentMacro,
+        macroId = currentMacro.id,
         sharedLocalStorage = rootContext.runStorage
     ),
     MacroReportContext by MacroReportContextImpl(logger = rootContext.controller)
@@ -91,6 +103,10 @@ private class MacroCallScopeImpl private constructor(
     ) : this(parentCall.rootContext, parentCall, currentMacro, returnAction)
 
     private val localStorage = InMemoryMacroValueStorage()
+
+    override val macros get() = rootContext.macros
+
+    override fun macro(id: Macro.Id) = rootContext.macro(id)
 
     context(_: MacroTraceContext)
     override fun call(

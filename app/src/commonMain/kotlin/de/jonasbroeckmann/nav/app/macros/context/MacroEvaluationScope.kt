@@ -1,6 +1,7 @@
 package de.jonasbroeckmann.nav.app.macros.context
 
 import de.jonasbroeckmann.nav.app.FullContext
+import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.values.InMemoryMacroValueStorage
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
@@ -11,11 +12,11 @@ interface MacroEvaluationScope : FullContext, StateProvider {
 
     companion object {
         context(fullContext: FullContext, stateProvider: StateProvider)
-        val Empty: MacroEvaluationScope get() = MacroEvaluationScopeBase(
+        fun emptyFor(macro: Macro): MacroEvaluationScope = MacroEvaluationScopeBase(
             fullContext = fullContext,
             stateProvider = stateProvider,
             sessionContext = MacroSessionContext(),
-            macro = null,
+            macroId = macro.id,
             sharedLocalStorage = InMemoryMacroValueStorage()
         )
     }

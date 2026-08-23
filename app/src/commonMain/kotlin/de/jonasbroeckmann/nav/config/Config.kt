@@ -9,6 +9,7 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.charleskorn.kaml.YamlException
 import com.github.ajalt.mordant.input.KeyboardEvent
+import de.jonasbroeckmann.nav.app.macros.MacroProvider
 import de.jonasbroeckmann.nav.app.macros.components.Macro
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.State
@@ -66,8 +67,8 @@ data class Config private constructor(
     val modificationTime: ModificationTime = ModificationTime(),
 
     val entryMacros: List<EntryMacro> = emptyList(),
-    val macros: List<Macro> = emptyList(),
-) : ConfigProvider {
+    override val macros: List<Macro> = emptyList(),
+) : ConfigProvider, MacroProvider {
     override val config get() = this
     override val configPath: Nothing? get() = null
 

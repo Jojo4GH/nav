@@ -41,8 +41,11 @@ import kotlin.time.measureTimedValue
 class App private constructor(
     partialContext: PartialContext,
     configProvider: ConfigProvider
-) : FullContextBase(partialContext, configProvider),
-    MainController,
+) : MainController,
+    FullContext by FullContext(
+        partialContext = partialContext,
+        configProvider = configProvider
+    ),
     MacroSessionContext by MacroSessionContext(
         partialContext = partialContext,
         configProvider = configProvider

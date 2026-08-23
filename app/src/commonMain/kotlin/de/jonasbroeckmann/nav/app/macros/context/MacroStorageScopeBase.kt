@@ -16,9 +16,15 @@ open class MacroStorageScopeBase(
     stateProvider: StateProvider,
     stateUpdater: StateUpdater,
     sessionContext: MacroSessionContext,
-    macro: Macro?,
+    macroId: Macro.Id?,
     override val sharedLocalStorage: MutableMacroValueStorage
-) : MacroEvaluationScopeBase(fullContext, stateProvider, sessionContext, macro, sharedLocalStorage), MacroStorageScope, StateUpdater by stateUpdater {
+) : MacroEvaluationScopeBase(
+    fullContext = fullContext,
+    stateProvider = stateProvider,
+    sessionContext = sessionContext,
+    macroId = macroId,
+    sharedLocalStorage = sharedLocalStorage
+), MacroStorageScope, StateUpdater by stateUpdater {
     override operator fun set(expression: MacroExpression, value: MacroValue?) {
         val property = KnownMacroProperty.from(expression)
         if (property != null) {
@@ -27,11 +33,11 @@ open class MacroStorageScopeBase(
         }
         when (val type = expression.storageType) {
             null, PrivateLocal -> localStorage[expression.path] = value
-            PrivateSession -> sessionContext.sessionStorage[expression.path.asPrivate() ?: return] = value
-            PrivatePersistent -> sessionContext.persistentStorage?.set(expression.path.asPrivate() ?: return, value)
+            PrivateSession -> sessionContext.privateSessionStorage(idWarnIfNull() ?: return)[expression.path] = value
+            PrivatePersistent -> sessionContext.privatePersistentStorage(idWarnIfNull() ?: return)?.set(expression.path, value)
             SharedLocal -> sharedLocalStorage[expression.path] = value
-            SharedSession -> sessionContext.sessionStorage[expression.path.asShared()] = value
-            SharedPersistent -> sessionContext.persistentStorage?.set(expression.path.asShared(), value)
+            SharedSession -> sessionContext.sharedSessionStorage[expression.path] = value
+            SharedPersistent -> sessionContext.sharedPersistentStorage?.set(expression.path, value)
             Property -> warnPropertyUnknown(expression)
             Environment -> sessionContext.environmentStorage[expression.path] = value
             is MacroValueStorageType.Custom -> warnCustomStorageNotSupported(type)

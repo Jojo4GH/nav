@@ -105,8 +105,8 @@ sealed interface MacroAction : MacroRunnable {
     ) : MacroAction {
         context(scope: MacroCallScope, traceContext: MacroTraceContext)
         override fun run() = macroTrace {
-            val macroId = macro.evaluate()
-            val macro = scope.identifiedMacros[macroId]
+            val macroId = Macro.Id(macro.evaluate())
+            val macro = scope.macro(macroId)
                 ?: throw MacroException("No macro with ${Macro::id.name} '$macroId' found")
             scope.call(
                 parameters = parameters?.map { (expressionString, value) ->

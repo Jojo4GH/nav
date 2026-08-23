@@ -43,7 +43,7 @@ data class MacroTemplate private constructor(
         override val knownUsedProperties get() = expressionString.knownUsedProperties
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
-        override fun evaluate() = expressionString.evaluate().evaluate().stringify()
+        override fun evaluate() = expressionString.evaluate().evaluate().stringify(Textual)
 
         override fun tryEvaluateScopeless() = null
 

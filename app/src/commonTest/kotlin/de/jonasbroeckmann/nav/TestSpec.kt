@@ -1,7 +1,6 @@
 package de.jonasbroeckmann.nav
 
 import de.jonasbroeckmann.nav.app.FullContext
-import de.jonasbroeckmann.nav.app.FullContextBase
 import de.jonasbroeckmann.nav.app.MainController
 import de.jonasbroeckmann.nav.app.actions.MenuActions
 import de.jonasbroeckmann.nav.app.actions.NormalModeActions
@@ -30,11 +29,11 @@ context(fullContext: FullContext)
 inline fun withMainController(body: context(MainController) () -> Unit) = context(TestMainController(fullContext), body)
 
 class TestMainController(
-    fullContext: FullContext
+    fullContext: FullContext,
 ) : MainController,
     InputController by TestInputController(),
     DialogShowController by TestDialogShowController(),
-    FullContext by TestFullContext(),
+    FullContext by fullContext,
     MacroSessionContext by MacroSessionContext(
         partialContext = fullContext,
         configProvider = fullContext
@@ -79,7 +78,7 @@ class TestDialogShowController : DialogShowController {
     ) = throw UnsupportedOperationException()
 }
 
-class TestFullContext : FullContextBase(
+class TestFullContext : FullContext by FullContext(
     partialContext = TestPartialContext(),
     configProvider = TestConfigProvider()
 )
