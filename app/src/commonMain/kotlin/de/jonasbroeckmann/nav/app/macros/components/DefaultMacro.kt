@@ -1,11 +1,11 @@
 package de.jonasbroeckmann.nav.app.macros.components
 
 import com.github.ajalt.mordant.input.KeyboardEvent
-import de.jonasbroeckmann.nav.app.FullContext
 import de.jonasbroeckmann.nav.app.macros.MacroProvider
 import de.jonasbroeckmann.nav.app.macros.components.MacroAction.*
 import de.jonasbroeckmann.nav.app.macros.components.MacroCondition.*
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
+import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.config.StyleString.Companion.styleString
 import de.jonasbroeckmann.nav.config.Styles
@@ -140,7 +140,10 @@ sealed class DefaultMacro(
                                 resultTo = childrenVar.expressionString
                             ),
                             If(
-                                condition = NotEmpty(childrenVar.templateString),
+                                condition = Equal(
+                                    childrenVar.copy(path = childrenVar.path + MacroPathExpression.Operator.Function.Size).templateString,
+                                    TemplateString("0")
+                                ),
                                 then = MacroActions(
                                     Prompt(
                                         prompt = TemplateString(

@@ -325,14 +325,14 @@ sealed interface MacroAction : MacroRunnable {
         val resultTo: ExpressionString = DefaultMacroExpressions.ResultDefault.expressionString
     ) : MacroAction {
         context(scope: MacroCallScope, traceContext: MacroTraceContext)
-        override fun run() = macroTrace {
+        override fun run(): Unit = macroTrace {
             val path = childrenOf.evaluateToAbsolutePath()
+            if (!path.isDirectory()) {
+                return
+            }
             scope[resultTo] = when {
-                path.isDirectory() -> when {
-                    fullPath -> path.children().joinToString("\n")
-                    else -> path.children().joinToString("\n") { it.name }
-                }
-                else -> ""
+                fullPath -> MacroValue.Array(path.children().map { MacroValue.Text("$it") })
+                else -> MacroValue.Array(path.children().map { MacroValue.Text(it.name) })
             }
         }
     }

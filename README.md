@@ -728,6 +728,12 @@ macros:
   # True if the value does not contain only whitespace
 - notBlank: "..."         # (supports templates, required)
 
+  # True if the expression represents a value
+- set: "..."              # (must be an expression, required)
+
+  # True if the expression does not represent a value
+- notSet: "..."              # (must be an expression, required)
+
   # True if the value is a path to file or directory
 - exists: "..."           # (supports templates, required)
 
@@ -808,12 +814,12 @@ macros:
 - macro: "..."                # (required)
   ignoreCondition: false      # Whether to ignore the macro's condition (optional, default: false)
   # A map of parameters to pass to the sub macro (the values support templates, optional, default: null)
-  # If this is null, then all currently set variables are passed to the sub macro.
-  # All set parameters are available in the sub macro as variables.
+  # If this is null, then all currently set local variables are passed to the sub macro.
+  # All set parameters are available in the sub macro as local variables.
   # Modifying those variables in the sub macro does not affect the parent macro.
   parameters: null
   # A map of values to capture from the sub macro (the values support templates, optional, default: null)
-  # The keys are the names of properties/variables to assign in the parent macro
+  # The keys are expressions to assign in the parent macro.
   # The values are evaluated in the sub macro's context.
   capture: null
   # Whether to continue executing the current macro if the sub macro explicitly returns (optional, default: true)
@@ -822,18 +828,18 @@ macros:
   # Runs the given command.
   # Commands are run in the directory where nav currently is (see {{directory}} placeholder).
 - command: "..."              # (supports templates, required)
-  exitCodeTo: "exitCode"      # The variable/property to store the exit code in (optional, default: "exitCode")
-  # The variable/property to store the standard output in (optional, default: null)
+  exitCodeTo: "exitCode"      # The expression to store the exit code in (optional, default: "exitCode")
+  # The expression to store the standard output in (optional, default: null)
   # If this is null, the output gets printed to the terminal.
   outputTo: null
   trimTrailingNewline: true   # Whether to trim a single trailing newline from the output (optional, default: true)
-  # The variable/property to store the standard error in (optional, default: null)
+  # The expression to store the standard error in (optional, default: null)
   # If this is null, the error output gets printed to the terminal.
   errorTo: null
 
   # Opens the given file in the editor (see 'editor' configuration or '--editor' command line option).
 - open: "..."                 # (supports templates, required)
-  exitCodeTo: "exitCode"      # The variable/property to store the editor's exit code in (optional, default: "exitCode")
+  exitCodeTo: "exitCode"      # The expression to store the editor's exit code in (optional, default: "exitCode")
 
   # Writes the given content to the given file.
   # If the file does not exist, it is created.
@@ -862,10 +868,10 @@ macros:
   silent: false               # Whether to omit warnings if the operation fails (optional, default: false)
 
   # Returns the children of the given directory.
-  # The children are separated by newlines.
+  # The result is an array of text values.
 - childrenOf: "..."           # (supports templates, required)
   fullPath: false             # Whether to return the full paths of the children instead of their names (optional, default: false)
-  resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
+  resultTo: "result"          # The expression to store the result in (optional, default: "result")
 
   # Prompts the user for input.
   # Not both 'format' and 'choices' can be specified at the same time.
@@ -876,7 +882,7 @@ macros:
   choices: []                 # A list of choices (values support templates, optional, default: [])
   default: null               # The default value (supports templates, optional, default: null)
   hideMainTable: false        # Whether to hide the main table while the prompt is shown (optional, default: false)
-  resultTo: "result"          # The variable/property to store the result in (optional, default: "result")
+  resultTo: "result"          # The expression to store the result in (optional, default: "result")
   onChoice:                   # A map of actions to run when a choice is selected (optional, default: {})
   # "choice1":                # Array of actions (key supports templates, default: [])
   # - # choice1 action 1
@@ -909,13 +915,58 @@ macros:
 
 </details>
 
-### Properties, Variables & Template Strings
+### Template Strings
 
-Many strings in macros support templates with placeholders that get replaced with their respective values when the macro is run.
-Placeholders are specified by surrounding the name with **double** curly braces, e.g. `{{myVariable}}`.
+Many strings in macros support templates with **expressions** (see below) in placeholders that get replaced with their respective evaluations when the macro is run.
+Placeholders are specified by surrounding an expression with **double** curly braces, e.g. `Hello {{name}}`.
 They can appear multiple times in a string and anywhere inside the string.
 Placeholders are replaced once (no recursive replacement).
-Currently, there is no escaping mechanism for placeholders.
+To escape a placeholder, place a backslash before the curly braces, e.g. `Hello \{{not a placeholder}}`.
+
+### Values & Expressions
+
+Macros can store and use three types of values:
+
+- Text
+- Lists of any values
+- Dictionaries of text-values-pairs
+
+Values do not need to be declared or constructed before use, as they are created after first writing to them (see also the `set` macro action above).
+Expressions to read and write values are recursively constructed from the following elements:
+
+| Grammar                     | Description                                      | Example        |
+|-----------------------------|--------------------------------------------------|----------------|
+| name                        | A variable with the given name                   | `myVariable`   |
+| expression `[` index `]`    | Access an index in a list                        | `myList[0]`    |
+| expression `.` key          | Access a key in a dictionary                     | `myDict.myKey` |
+| function `(` expression `)` | Application of a function to a value (see below) | `size(myList)` |
+
+There are currently the following functions:
+
+| Name     | Description                                                                |
+|----------|----------------------------------------------------------------------------|
+| `size`   | Returns the number of elements in a list or dictionary                     |
+| `last`   | Returns the last value in a list                                           |
+| `next`   | Specifies the next value in a list. This is useful for appending to a list |
+| `keys`   | Returns a list of the keys in a dictionary                                 |
+| `values` | Returns a list of the values in a dictionary                               |
+| `type`   | Returns the type of the value (e.g. `text`, `list`, `dictionary`)          |
+
+Values can be stored in different scopes:
+
+| Name                | Description                                                                                    |
+|---------------------|------------------------------------------------------------------------------------------------|
+| `local`             | Values that only exist for the current execution of the macro                                  |
+| `session`           | Values that persist for the current execution of nav, i.e. they are deleted once nav is closed |
+| `persistent`        | Values that persist across execution of nav                                                    |
+| `local_shared`      | Same as `local`, but values are shared between different macros                                |
+| `session_shared`    | Same as `session`, but values are shared between different macros                              |
+| `persistent_shared` | Same as `persistent`, but values are shared between different macros                           |
+| `env`               | Environment variables, e.g. `env:HOME`. These only support text values                         |
+| `property`          | Explicitly specify a property (usually not necessary)                                          |
+
+To specify a scope, prefix the expression with the name separated by a colon, e.g. `persistent:myPersistentVar`.
+If no scope is specified, it is first checked whether a corresponding property exists, otherwise the `local` scope is used.
 
 There are several built-in properties, some of which can be modified to affect nav's behavior:
 
@@ -935,10 +986,6 @@ There are several built-in properties, some of which can be modified to affect n
 | `filter`               |   ✅    | The current filter string or empty if no filter is set                                                                |
 | `filteredEntriesCount` |   ❌    | The number of entries currently matching the filter                                                                   |
 | `command`              |   ✅    | The currently typed command or empty if no command is typed                                                           |
-
-Any environment variable can be accessed and modified as well by using the prefix `env:`, e.g. `{{env:HOME}}`.
-
-Additionally, macros can define their own mutable variables that can be used in template strings (see `set` macro action).
 
 ### Macro Merging & Default Macros
 
@@ -964,7 +1011,7 @@ Users can change their behavior or disable them by using macro merging as descri
 <summary>YAML</summary>
 
 ```yaml
-- id: "nav:newFile"
+- id: "nav_newFile"
   description: "new file: {{filter}}"
   style: "file"
   menuOrder: 200
@@ -976,8 +1023,7 @@ Users can change their behavior or disable them by using macro merging as descri
   - writeFile: "{{filter}}"
   - set:
       "filter": ""
-
-- id: "nav:newDirectory"
+- id: "nav_newDirectory"
   description: "new directory: {{filter}}"
   style: "directory"
   menuOrder: 210
@@ -989,8 +1035,7 @@ Users can change their behavior or disable them by using macro merging as descri
   - createDirectory: "{{filter}}"
   - set:
       "filter": ""
-
-- id: "nav:rename"
+- id: "nav_rename"
   description: "rename {{entryName}}"
   menuOrder: 250
   condition:
@@ -999,12 +1044,12 @@ Users can change their behavior or disable them by using macro merging as descri
   - prompt: "New name:"
     format: "[^:*?\"<>|]+"
     default: "{{entryName}}"
-    resultTo: "nav:rename:newName"
+    resultTo: "nav_rename_newName"
   - if:
-      exists: "{{nav:rename:newName}}"
+      exists: "{{nav_rename_newName}}"
     then:
     - prompt: |-
-        {{nav:rename:newName}} already exists.
+        {{nav_rename_newName}} already exists.
         Do you want to overwrite it?
       default: "No"
       choices:
@@ -1014,13 +1059,12 @@ Users can change their behavior or disable them by using macro merging as descri
         "No":
         - return: true
     - move: "{{entryPath}}"
-      to: "{{nav:rename:newName}}"
+      to: "{{nav_rename_newName}}"
       overwrite: true
     else:
     - move: "{{entryPath}}"
-      to: "{{nav:rename:newName}}"
-
-- id: "nav:delete"
+      to: "{{nav_rename_newName}}"
+- id: "nav_delete"
   description: "delete {{entryName}}"
   key: "Delete"
   menuOrder: 300
@@ -1031,19 +1075,25 @@ Users can change their behavior or disable them by using macro merging as descri
       isDirectory: "{{entryPath}}"
     then:
     - childrenOf: "{{entryPath}}"
-      resultTo: "nav:delete:children"
+      resultTo: "nav_delete_children"
     - if:
-        notEmpty: "{{nav:delete:children}}"
+        equal:
+        - "{{size(nav_delete_children)}}"
+        - "0"
       then:
       - prompt: |-
-          The directory {{entryName}} is not empty.
+          The directory {{property:entryName}} is not empty.
           Do you want to delete it recursively?
         default: "No"
         choices:
         - "No"
         - "Yes"
-        onChoice:
-          "No":
+        resultTo: "nav_delete_prompt"
+      - if:
+          notEqual:
+            - "{{nav_delete_prompt}}"
+            - "Yes"
+        then:
           - return: true
       - delete: "{{entryPath}}"
         recursive: true
@@ -1114,7 +1164,7 @@ quickMacroKey = "..."
 
 </details>
 
-There are several placeholders available for `name` and `command`:
+There are several placeholders available for `description` and `command`:
 - `{initialDir}`: The initial directory where nav was started
 - `{dir}`: The current directory inside nav
 - `{entryPath}`: The path of the currently highlighted entry

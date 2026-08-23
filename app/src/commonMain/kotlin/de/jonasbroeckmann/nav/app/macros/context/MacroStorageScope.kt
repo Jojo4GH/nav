@@ -11,8 +11,11 @@ interface MacroStorageScope : MacroEvaluationScope, StateUpdater {
 
     companion object {
         context(_: MacroTraceContext)
-        operator fun MacroStorageScope.set(expression: ExpressionString, value: String?) {
-            this[expression.evaluate()] = MacroValue(value)
+        operator fun MacroStorageScope.set(expression: ExpressionString, value: MacroValue?) {
+            this[expression.evaluate()] = value
         }
+
+        context(_: MacroTraceContext)
+        operator fun MacroStorageScope.set(expression: ExpressionString, value: String?) = set(expression, MacroValue(value))
     }
 }
