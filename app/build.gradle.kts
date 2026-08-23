@@ -62,17 +62,18 @@ kotlin {
             executable {
                 baseName = binaryName
                 entryPoint = "$group.main"
-
-                if (target.konanTarget == KonanTarget.LINUX_X64) {
-                    @OptIn(KotlinNativeCacheApi::class)
-                    disableNativeCache(
-                        version = DisableCacheInKotlinVersion.`2_4_10`,
-                        reason = "Cache bug with mordant",
-                        issueUrl = URI(
-                            "https://youtrack.jetbrains.com/issue/KT-75928/ld.lld-error-duplicate-symbol-when-enabling-.konan-cache"
-                        )
+            }
+        }
+        binaries.configureEach {
+            if (target.konanTarget == KonanTarget.LINUX_X64) {
+                @OptIn(KotlinNativeCacheApi::class)
+                disableNativeCache(
+                    version = DisableCacheInKotlinVersion.`2_4_10`,
+                    reason = "Cache bug with mordant",
+                    issueUrl = URI(
+                        "https://youtrack.jetbrains.com/issue/KT-75928/ld.lld-error-duplicate-symbol-when-enabling-.konan-cache"
                     )
-                }
+                )
             }
         }
     }
