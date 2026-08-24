@@ -8,7 +8,7 @@ object Paths {
     val WorkingDirectory: Path by lazy { Path(".").absolute() }
 
     val UserHome: Path by lazy {
-        (getEnvironmentVariable("HOME") ?: getEnvironmentVariable("USERPROFILE"))
+        (EnvironmentVariables["HOME"] ?: EnvironmentVariables["USERPROFILE"])
             ?.let { Path(it).absolute() }
             ?: throw IllegalStateException("Could not determine user home directory")
     }

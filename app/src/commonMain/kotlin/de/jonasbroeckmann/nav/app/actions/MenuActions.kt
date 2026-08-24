@@ -2,11 +2,12 @@ package de.jonasbroeckmann.nav.app.actions
 
 import com.github.ajalt.mordant.rendering.TextColors
 import de.jonasbroeckmann.nav.app.*
-import de.jonasbroeckmann.nav.app.macros.DefaultMacro
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeCondition
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeMenuDescription
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeStyle
+import de.jonasbroeckmann.nav.app.macros.components.DefaultMacro
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeCondition
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeMenuDescription
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeStyle
 import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.state.updateState
 import de.jonasbroeckmann.nav.app.ui.prettyName
 import de.jonasbroeckmann.nav.app.ui.style
 import de.jonasbroeckmann.nav.framework.action.MenuAction
@@ -57,7 +58,7 @@ class MenuActions(context: FullContext) : FullContext by context {
                 if (command.isNullOrBlank()) {
                     updateState { withCommand(null) }
                 } else {
-                    runMacro(DefaultMacro.RunCommand.get())
+                    runMacro(DefaultMacro.RunCommand.macro)
                 }
             }
         ),

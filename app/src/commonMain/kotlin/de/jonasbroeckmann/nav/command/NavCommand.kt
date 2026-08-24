@@ -29,21 +29,21 @@ import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.rendering.Theme
 import com.github.ajalt.mordant.terminal.Terminal
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
-import com.github.ajalt.mordant.terminal.success
 import de.jonasbroeckmann.nav.Constants
 import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.Constants.IssuesUrl
 import de.jonasbroeckmann.nav.app.App
+import de.jonasbroeckmann.nav.catchAllDebug
+import de.jonasbroeckmann.nav.catchAllFatal
 import de.jonasbroeckmann.nav.config.Config
-import de.jonasbroeckmann.nav.config.Config.Accessibility
 import de.jonasbroeckmann.nav.config.Themes
+import de.jonasbroeckmann.nav.dangerOnDebug
 import de.jonasbroeckmann.nav.framework.utils.absolute
 import de.jonasbroeckmann.nav.framework.utils.createDirectories
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.metadataOrNull
 import de.jonasbroeckmann.nav.framework.utils.sink
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.update.CheckForUpdatesResult
 import de.jonasbroeckmann.nav.update.checkForUpdates
 import de.jonasbroeckmann.nav.update.checkForUpdatesAnimated
@@ -81,17 +81,19 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         return "The interactive and $stylish replacement for ls & cd!"
     }
 
-    val configurationOptions by ConfigurationOptions()
+    override val commandOptions: CommandOptions by CommandOptionsGroup()
 
-    class ConfigurationOptions : OptionGroup(
-        name = "Configuration",
-        help = "Options to configure the behavior of $BinaryName"
-    ) {
-        val showHiddenEntries by option("-a", "--all").nullableFlag("-h", "--not-all").help {
+    private class CommandOptionsGroup :
+        OptionGroup(
+            name = "Configuration",
+            help = "Options to configure the behavior of $BinaryName"
+        ),
+        CommandOptions {
+        override val showHiddenEntries by option("-a", "--all").nullableFlag("-h", "--not-all").help {
             "Choose whether hidden entries are shown or not. ${theme.muted("(Overrides other configuration)")}"
         }
 
-        val configPath by option(
+        override val configPath by option(
             "--config",
             metavar = "path"
         ).help {
@@ -102,19 +104,19 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             )
         }
 
-        val editConfig by option(
+        override val editConfig by option(
             "--edit-config",
             help = "Opens the current config file in the editor."
         ).flag()
 
-        val editor by option(
+        override val editor by option(
             "--editor",
             metavar = "command"
         ).convert { it.trim() }.help {
             "Explicitly specify the editor to use. ${theme.muted("(Overrides other configuration)")}"
         }
 
-        val forceAnsiLevel by option(
+        override val forceAnsiLevel by option(
             "--force-ansi",
             metavar = "level"
         )
@@ -133,19 +135,19 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
                 )
             }
 
-        val renderMode by option(
+        override val renderMode by option(
             "--render",
             metavar = "mode"
         )
             .choice(
-                RenderModeOption.entries.associateBy { it.label },
+                CommandOptions.RenderModeOption.entries.associateBy { it.label },
                 ignoreCase = true
             )
-            .default(Auto, defaultForHelp = RenderModeOption.Auto.label)
+            .default(Auto, defaultForHelp = CommandOptions.RenderModeOption.Auto.label)
             .help {
                 helpLines(
                     "Configures how the $BinaryName is rendered:",
-                    *RenderModeOption.entries.map { mode ->
+                    *CommandOptions.RenderModeOption.entries.map { mode ->
                         when (mode) {
                             Auto -> "• ${mode.label}: Automatically detect the best mode based on terminal capabilities (default)"
                             Simple -> "• ${mode.label}: Use a simple color theme"
@@ -157,19 +159,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
                 )
             }
 
-        enum class RenderModeOption(
-            val label: String,
-            val accessibility: Accessibility,
-            val forceNoColor: Boolean = false
-        ) {
-            Auto("auto", Accessibility()),
-            Simple("simple", Accessibility(simpleColors = true)),
-            Accessible("accessible", Accessibility(decorations = true)),
-            SimpleAccessible("simple-accessible", Accessibility(simpleColors = true, decorations = true)),
-            NoColor("no-color", Accessibility(simpleColors = true, decorations = true), forceNoColor = true)
-        }
-
-        val shell by option(
+        override val shell by option(
             "--shell",
             "--correct-init", // Deprecated
             metavar = "shell",
@@ -182,7 +172,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         }
     }
 
-    private val initOption by mutuallyExclusiveOptions<InitOption>(
+    private val initOption by mutuallyExclusiveOptions(
         option(
             "--init",
             metavar = "shell"
@@ -254,7 +244,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         help = "Enables debug mode."
     ).flag()
 
-    val directory by argument(
+    private val directory by argument(
         directoryArgumentName,
         help = "Start $BinaryName in this directory.",
         completionCandidates = CompletionCandidates.Path
@@ -270,14 +260,12 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         "Version: ${Constants.Version} • Report issues at: $IssuesUrl"
     )
 
-    override val command get() = this
-
     override val terminal by lazy {
         val commandTerminal = currentContext.terminal
         val detected = commandTerminal.terminalInfo
         Terminal(
-            ansiLevel = configurationOptions.forceAnsiLevel
-                ?: AnsiLevel.NONE.takeIf { configurationOptions.renderMode.forceNoColor }
+            ansiLevel = commandOptions.forceAnsiLevel
+                ?: AnsiLevel.NONE.takeIf { commandOptions.renderMode.forceNoColor }
                 ?: when (detected.ansiLevel) {
                     NONE -> AnsiLevel.ANSI16 // at least ANSI16 if not forced
                     else -> null
@@ -289,8 +277,6 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
 
     override val startingDirectory get() = directory ?: Paths.WorkingDirectory
 
-    override val shell get() = configurationOptions.shell
-
     override fun run() = catchAllFatal {
         runBlocking(Dispatchers.Default) {
             runInternal()
@@ -301,7 +287,7 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
         printlnOnDebug { "${terminal.terminalInfo}" }
 
         if (version) {
-            terminal.println("$BinaryName ${Constants.Version}")
+            println("$BinaryName ${Constants.Version}")
             return
         }
 
@@ -320,17 +306,20 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
             return
         }
 
-        val config = Config.load()
+        val (config, currentConfigPath) = Config.load()
 
+        if (currentConfigPath != null) {
+            printlnOnDebug { "Loaded config from: $currentConfigPath" }
+        }
         printlnOnDebug { "Using config: $config" }
 
-        if (configurationOptions.shell == null && !config.suppressInitCheck) {
+        if (commandOptions.shell == null && !config.suppressInitCheck) {
             warnIncompleteInit()
         }
 
-        App(config) {
-            if (configurationOptions.editConfig) {
-                doEditConfig()
+        App(config, currentConfigPath) {
+            if (commandOptions.editConfig) {
+                doEditConfig(currentConfigPath)
             }
 
             if (config.autoCheckForUpdates) launch {
@@ -344,11 +333,11 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     private suspend fun doCheckForUpdates() {
         when (val result = checkForUpdatesAnimated()) {
             is CheckForUpdatesResult.NoUpdates -> {
-                terminal.success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
+                success("✓ The latest version of $BinaryName (${Constants.Version}) is installed!")
             }
             is CheckForUpdatesResult.UpdateAvailable -> result.print()
             is CheckForUpdatesResult.Error -> {
-                terminal.danger("✗ Failed to check for updates: ${result.message}")
+                danger("✗ Failed to check for updates: ${result.message}")
             }
         }
     }
@@ -376,25 +365,25 @@ class NavCommand : CliktCommand(name = BinaryName), PartialContext {
     }
 
     private fun warnIncompleteInit() {
-        terminal.danger("The installation is not complete and some feature will not work.")
-        terminal.info("Use --init-help to get more information.")
+        danger("The installation is not complete and some feature will not work.")
+        info("Use --init-help to get more information.")
     }
 
-    private fun App.doEditConfig(): Nothing {
-        val configPath = Config.findExplicitPath()
-            ?: Config.findDefaultPath(mustExist = false)
+    private fun App.doEditConfig(currentConfigPath: Path?): Nothing {
+        val configPath = currentConfigPath
+            ?: Config.findConfigPath(mustExist = false)
             ?: run {
-                terminal.danger("Can not use any of ${Config.DefaultPaths} as config file.")
+                danger("Can not use any of ${Config.DefaultPaths} as config file.")
                 exit(1)
             }
         if (!configPath.exists()) {
-            terminal.info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
+            info("""Config file does not exist yet. Creating new config file at "$configPath" ...""")
             configPath.parent?.createDirectories(mustCreate = false)
             configPath.sink().buffered().use {
                 it.writeString("# $BinaryName configuration file\n\n")
             }
         }
-        terminal.info("""Opening config file at "$configPath" ...""")
+        info("""Opening config file at "$configPath" ...""")
         val exitCode = openInEditor(configPath)
         exit(exitCode ?: 1)
     }

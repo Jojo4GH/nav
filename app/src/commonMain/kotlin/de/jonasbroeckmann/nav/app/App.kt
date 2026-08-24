@@ -3,8 +3,6 @@ package de.jonasbroeckmann.nav.app
 import com.github.ajalt.mordant.input.InputEvent
 import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.rendering.Widget
-import com.github.ajalt.mordant.terminal.danger
-import com.github.ajalt.mordant.terminal.info
 import com.kgit2.kommand.exception.KommandException
 import com.kgit2.kommand.process.Command
 import com.kgit2.kommand.process.Stdio.Inherit
@@ -13,12 +11,16 @@ import de.jonasbroeckmann.nav.Constants.BinaryName
 import de.jonasbroeckmann.nav.app.actions.MenuActions
 import de.jonasbroeckmann.nav.app.actions.NormalModeActions
 import de.jonasbroeckmann.nav.app.actions.QuickMacroModeActions
-import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
+import de.jonasbroeckmann.nav.app.macros.components.Macro
+import de.jonasbroeckmann.nav.app.macros.context.MacroRunContext
+import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.app.state.State
 import de.jonasbroeckmann.nav.app.ui.buildUI
+import de.jonasbroeckmann.nav.catchAllFatal
 import de.jonasbroeckmann.nav.command.*
 import de.jonasbroeckmann.nav.config.Config
+import de.jonasbroeckmann.nav.config.ConfigProvider
+import de.jonasbroeckmann.nav.dangerThrowable
 import de.jonasbroeckmann.nav.framework.action.Action
 import de.jonasbroeckmann.nav.framework.input.*
 import de.jonasbroeckmann.nav.framework.input.InputMode.Normal
@@ -26,6 +28,7 @@ import de.jonasbroeckmann.nav.framework.ui.WidgetAnimation
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogOptions
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowScope
 import de.jonasbroeckmann.nav.framework.utils.StateManager
+import de.jonasbroeckmann.nav.printlnOnDebug
 import de.jonasbroeckmann.nav.utils.exitProcess
 import de.jonasbroeckmann.nav.utils.which
 import kotlinx.io.IOException
@@ -36,13 +39,21 @@ import kotlin.time.measureTime
 import kotlin.time.measureTimedValue
 
 class App private constructor(
-    context: PartialContext,
-    override val config: Config
-) : MainControllerBase(), PartialContext by context {
+    partialContext: PartialContext,
+    configProvider: ConfigProvider
+) : MainController,
+    FullContext by FullContext(
+        partialContext = partialContext,
+        configProvider = configProvider
+    ),
+    MacroSessionContext by MacroSessionContext(
+        partialContext = partialContext,
+        configProvider = configProvider
+    ) {
     private val stateManager = StateManager(
         initial = State.initial(
             startingDirectory = startingDirectory,
-            showHiddenEntries = command.configurationOptions.showHiddenEntries ?: config.showHiddenEntries,
+            showHiddenEntries = commandOptions.showHiddenEntries ?: config.showHiddenEntries,
             normalModeActions = NormalModeActions(this),
             quickMacroModeActions = QuickMacroModeActions(this),
             menuActions = MenuActions(this)
@@ -82,7 +93,7 @@ class App private constructor(
         }
     ) {
         if (!terminal.terminalInfo.interactive) {
-            terminal.danger("Cannot use $BinaryName in a non-interactive terminal")
+            danger("Cannot use $BinaryName in a non-interactive terminal")
             exitProcess(1)
         }
 
@@ -160,16 +171,16 @@ class App private constructor(
             val msg = e.message
             when {
                 msg == null -> {
-                    terminal.danger("An unknown error occurred")
-                    terminal.info("If this should be considered a bug, please report it.")
+                    danger("An unknown error occurred")
+                    info("If this should be considered a bug, please report it.")
                 }
                 msg.contains("Permission denied", ignoreCase = true) -> {
-                    terminal.danger(msg)
-                    terminal.info("Try running $BinaryName with elevated permissions :)")
+                    danger(msg)
+                    info("Try running $BinaryName with elevated permissions :)")
                 }
                 else -> {
-                    terminal.danger("An unknown error occurred: $msg")
-                    terminal.info("If this should be considered a bug, please report it.")
+                    danger("An unknown error occurred: $msg")
+                    info("If this should be considered a bug, please report it.")
                 }
             }
         }
@@ -181,7 +192,7 @@ class App private constructor(
 
     override fun openInEditor(file: Path): Int? {
         val editorCommand = editorCommand ?: run {
-            terminal.danger("Could not open file. No editor configured")
+            danger("Could not open file. No editor configured")
             return null
         }
         // if the command is quoted or a single word, we assume it's a single path to the executable
@@ -195,7 +206,7 @@ class App private constructor(
                 stdin(Inherit)
             }?.let {
                 if (!it.isSuccess) {
-                    terminal.danger("Received exit code ${it.exitCode}")
+                    danger("Received exit code ${it.exitCode}")
                 }
                 it.exitCode
             }
@@ -212,7 +223,7 @@ class App private constructor(
             stdin(Inherit)
         }?.let {
             if (!it.isSuccess) {
-                terminal.danger("Received exit code ${it.exitCode}")
+                danger("Received exit code ${it.exitCode}")
             }
             it.exitCode
         }
@@ -241,16 +252,14 @@ class App private constructor(
             }
         } else {
             when (entryMacro.afterFailedCommand) {
-                Config.AfterMacroCommand.DoNothing -> terminal.danger("Received exit code ${result.exitCode}")
+                Config.AfterMacroCommand.DoNothing -> danger("Received exit code ${result.exitCode}")
                 Config.AfterMacroCommand.ExitAtCurrentDirectory -> exit(atDirectory = state.directory)
                 Config.AfterMacroCommand.ExitAtInitialDirectory -> exit()
             }
         }
     }
 
-    override fun runMacro(macro: Macro) {
-        MacroRuntimeContext.run(macro)
-    }
+    override fun runMacro(macro: Macro) = MacroRunContext.run(macro)
 
     override fun exit(exitCode: Int, atDirectory: Path?): Nothing {
         atDirectory?.let {
@@ -286,10 +295,10 @@ class App private constructor(
         collectError: Boolean = false,
         configuration: Command.() -> Command = { this }
     ): MainController.RunCommandResult? {
-        val (exe, args) = when (val shell = shell) {
+        val (exe, args) = when (val shell = commandOptions.shell) {
             null -> {
-                terminal.danger("I do not know how to interpret the command without a shell: $command")
-                terminal.info("Use --init-help to get more information or use --shell to force a shell.")
+                danger("I do not know how to interpret the command without a shell: $command")
+                info("Use --init-help to get more information or use --shell to force a shell.")
                 return null
             }
             else -> shell.shell to shell.execCommandArgs(command)
@@ -344,6 +353,13 @@ class App private constructor(
 
     companion object {
         context(context: PartialContext)
-        operator fun invoke(config: Config, block: App.() -> Unit): Nothing = App(context, config).execute(block)
+        operator fun invoke(
+            config: Config,
+            configPath: Path?,
+            block: App.() -> Unit
+        ): Nothing = App(
+            partialContext = context,
+            configProvider = ConfigProvider(config, configPath)
+        ).execute(block)
     }
 }

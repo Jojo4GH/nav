@@ -5,10 +5,10 @@ import com.github.ajalt.mordant.input.KeyboardEvent
 import com.github.ajalt.mordant.input.enterRawMode
 import com.github.ajalt.mordant.input.isCtrlC
 import de.jonasbroeckmann.nav.command.PartialContext
-import de.jonasbroeckmann.nav.command.printlnOnDebug
 import de.jonasbroeckmann.nav.framework.input.InputController
 import de.jonasbroeckmann.nav.framework.input.InputMode
 import de.jonasbroeckmann.nav.framework.input.InputModeScope
+import de.jonasbroeckmann.nav.printlnOnDebug
 import kotlin.time.Duration
 
 internal class StackBasedInputController(

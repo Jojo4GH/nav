@@ -4,14 +4,13 @@ import com.github.ajalt.mordant.rendering.TextAlign
 import com.github.ajalt.mordant.rendering.TextStyles
 import com.github.ajalt.mordant.table.verticalLayout
 import com.github.ajalt.mordant.widgets.HorizontalRule
-import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.macros.Macro.Companion.computeStyle
-import de.jonasbroeckmann.nav.app.macros.MacroRuntimeContext
 import de.jonasbroeckmann.nav.app.macros.MacroTraceContext
-import de.jonasbroeckmann.nav.app.ui.style
+import de.jonasbroeckmann.nav.app.macros.components.Macro
+import de.jonasbroeckmann.nav.app.macros.components.Macro.Companion.computeStyle
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
 import de.jonasbroeckmann.nav.framework.ui.Decorator
 
-context(_: MacroRuntimeContext, _: MacroTraceContext)
+context(_: MacroEvaluationScope, _: MacroTraceContext)
 fun macroDialogDecorator(macro: Macro) = Decorator { dialog ->
     verticalLayout {
         val style = macro.computeStyle() + TextStyles.dim

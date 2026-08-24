@@ -1,16 +1,15 @@
 package de.jonasbroeckmann.nav.app
 
-import de.jonasbroeckmann.nav.app.macros.Macro
-import de.jonasbroeckmann.nav.app.state.State
+import de.jonasbroeckmann.nav.app.macros.components.Macro
+import de.jonasbroeckmann.nav.app.macros.context.MacroSessionContext
 import de.jonasbroeckmann.nav.app.state.StateProvider
+import de.jonasbroeckmann.nav.app.state.StateUpdater
 import de.jonasbroeckmann.nav.config.Config
 import de.jonasbroeckmann.nav.framework.input.InputController
 import de.jonasbroeckmann.nav.framework.ui.dialog.DialogShowController
 import kotlinx.io.files.Path
 
-interface MainController : InputController, DialogShowController, FullContext, StateProvider {
-    fun updateState(updater: State.() -> State)
-
+interface MainController : InputController, DialogShowController, FullContext, MacroSessionContext, StateProvider, StateUpdater {
     fun openInEditor(file: Path): Int?
 
     fun runCommand(command: String, collectOutput: Boolean = false, collectError: Boolean = false): RunCommandResult?
@@ -23,15 +22,12 @@ interface MainController : InputController, DialogShowController, FullContext, S
         val isSuccess get() = exitCode == 0
     }
 
-    fun runMacro(macro: Macro)
+    fun runMacro(macro: Macro): Boolean
 
     fun runEntryMacro(entryMacro: Config.EntryMacro)
 
     fun exit(exitCode: Int = 0, atDirectory: Path? = null): Nothing
 }
-
-context(controller: MainController)
-fun updateState(updater: State.() -> State) = controller.updateState(updater)
 
 context(controller: MainController)
 fun openInEditor(file: Path): Int? = controller.openInEditor(file)

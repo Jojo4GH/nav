@@ -34,11 +34,13 @@ data class MacroException(
             message = message
         )
 
-        inline fun handle(onException: (MacroException) -> Unit, block: context(MacroTraceContext) () -> Unit) {
+        inline fun handle(onException: (MacroException) -> Unit, block: context(MacroTraceContext) () -> Unit): Boolean {
             try {
                 context(MacroTraceContext.Empty, block)
+                return true
             } catch (e: MacroException) {
                 onException(e)
+                return false
             }
         }
     }

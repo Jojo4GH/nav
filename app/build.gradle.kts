@@ -13,9 +13,11 @@ import java.net.URI
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("dev.detekt")
     id("com.codingfeline.buildkonfig")
+    id("io.kotest")
+    id("com.google.devtools.ksp")
     id("org.gradle.crypto.checksum")
+    id("dev.detekt")
     id("com.netflix.nebula.ospackage")
 }
 
@@ -51,7 +53,7 @@ kotlin {
     jvm()
 
     linuxX64()
-    linuxArm64()
+//    linuxArm64()
     mingwX64()
 //    macosX64()
 
@@ -60,17 +62,18 @@ kotlin {
             executable {
                 baseName = binaryName
                 entryPoint = "$group.main"
-
-                if (target.konanTarget == KonanTarget.LINUX_X64) {
-                    @OptIn(KotlinNativeCacheApi::class)
-                    disableNativeCache(
-                        version = DisableCacheInKotlinVersion.`2_4_10`,
-                        reason = "Cache bug with mordant",
-                        issueUrl = URI(
-                            "https://youtrack.jetbrains.com/issue/KT-75928/ld.lld-error-duplicate-symbol-when-enabling-.konan-cache"
-                        )
+            }
+        }
+        binaries.configureEach {
+            if (target.konanTarget == KonanTarget.LINUX_X64) {
+                @OptIn(KotlinNativeCacheApi::class)
+                disableNativeCache(
+                    version = DisableCacheInKotlinVersion.`2_4_10`,
+                    reason = "Cache bug with mordant",
+                    issueUrl = URI(
+                        "https://youtrack.jetbrains.com/issue/KT-75928/ld.lld-error-duplicate-symbol-when-enabling-.konan-cache"
                     )
-                }
+                )
             }
         }
     }
@@ -105,6 +108,8 @@ kotlin {
             implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
             implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
+            implementation("me.alllex.parsus:parsus:0.6.1")
+
             api(projects.framework)
         }
 
@@ -115,7 +120,26 @@ kotlin {
         mingwMain.dependencies {
             implementation("io.ktor:ktor-client-winhttp:$ktorVersion")
         }
+
+        val kotestVersion = "6.2.3"
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation("io.kotest:kotest-framework-engine:$kotestVersion")
+        }
+
+        jvmTest.dependencies {
+            implementation("io.kotest:kotest-runner-junit5:$kotestVersion")
+        }
     }
+}
+
+kotest {
+    enablePowerAssert = true
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 dependencies {
@@ -124,6 +148,7 @@ dependencies {
 
 tasks.withType<Detekt>().configureEach {
     exclude("de/jonasbroeckmann/nav/BuildKonfig.kt")
+    exclude("io/kotest/**")
 }
 
 tasks.register("detektAll") {
