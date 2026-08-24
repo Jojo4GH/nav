@@ -15,6 +15,8 @@ import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
 import de.jonasbroeckmann.nav.app.macros.macroTrace
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString
 import de.jonasbroeckmann.nav.app.macros.templates.TemplateString.Companion.evaluateToAbsolutePath
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue
+import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Companion.deepEquals
 import de.jonasbroeckmann.nav.framework.utils.exists
 import de.jonasbroeckmann.nav.framework.utils.isDirectory
 import de.jonasbroeckmann.nav.framework.utils.isRegularFile
@@ -22,6 +24,7 @@ import de.jonasbroeckmann.nav.utils.RegexAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlin.collections.plus
 
 @Serializable(with = MacroCondition.Companion::class)
 sealed interface MacroCondition : MacroEvaluable<Boolean> {
@@ -78,7 +81,8 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @SerialName("equal")
     data class Equal(
         val equal: List<TemplateString>,
-        val ignoreCase: Boolean = false
+        val ignoreCase: Boolean = false,
+        val expressions: Boolean = false
     ) : MacroCondition {
         init {
             require(equal.size >= 2) { "${::equal.name} must have at least two elements to compare" }
@@ -88,8 +92,13 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
         override fun evaluate(): Boolean = macroTrace {
-            val toCompare = equal.map { it.evaluate() }
-            return toCompare.all { it.equals(toCompare[0], ignoreCase = ignoreCase) }
+            if (expressions) {
+                val toCompare = equal.map { scope[it.asExpressionString()] }
+                return toCompare.all { it.deepEquals(toCompare[0], ignoreCase = ignoreCase) }
+            } else {
+                val toCompare = equal.map { it.evaluate() }
+                return toCompare.all { it.equals(toCompare[0], ignoreCase = ignoreCase) }
+            }
         }
 
         companion object {
@@ -142,11 +151,24 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
 
     @Serializable
     @SerialName("empty")
-    data class Empty(val empty: TemplateString) : MacroCondition {
+    data class Empty(
+        val empty: TemplateString,
+        val expression: Boolean = false
+    ) : MacroCondition {
         override val knownUsedProperties by lazy { empty.knownUsedProperties() }
 
         context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
-        override fun evaluate() = macroTrace { empty.evaluate().isEmpty() }
+        override fun evaluate() = macroTrace {
+            if (expression) {
+                when (val value = scope[empty.asExpressionString()]) {
+                    is MacroValue.Collection -> value.size == 0
+                    is MacroValue.Text -> value.isEmpty()
+                    null -> true
+                }
+            } else {
+                empty.evaluate().isEmpty()
+            }
+        }
     }
 
     @Serializable
@@ -178,6 +200,53 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
     @Serializable
     @SerialName("notSet")
     data class IsNotSet(val notSet: ExpressionString) : MacroCondition by Not(IsSet(notSet))
+
+    @Serializable
+    @SerialName("contains")
+    data class Contains(
+        val contains: ExpressionString,
+        val text: TemplateString? = null,
+        val regex: Regex? = null,
+        val ignoreCase: Boolean = false
+    ) : MacroCondition {
+        override val knownUsedProperties by lazy {
+            contains.knownUsedProperties() + text?.knownUsedProperties().orEmpty()
+        }
+
+        context(scope: MacroEvaluationScope, traceContext: MacroTraceContext)
+        override fun evaluate() = macroTrace {
+            val value = scope[contains] as? MacroValue.Collection ?: return@macroTrace false
+            val collection = when (value) {
+                is MacroValue.Array -> value.mapNotNull { it?.stringify(format = Textual) }
+                is MacroValue.Dictionary -> value.keys
+            }
+            val predicates = listOfNotNull<(String) -> Boolean>(
+                text
+                    ?.evaluate()
+                    ?.let { text -> { it.contains(text, ignoreCase = ignoreCase) } },
+                regex
+                    ?.let { if (ignoreCase) Regex(it.pattern, it.options + RegexOption.IGNORE_CASE) else it }
+                    ?.let { regex -> { it.matches(regex) } }
+            )
+            collection.any { element -> predicates.all { it(element) } }
+        }
+    }
+
+
+
+    @Serializable
+    @SerialName("notContains")
+    data class NotContains(
+        val notContains: ExpressionString,
+        val text: TemplateString? = null,
+        val regex: Regex? = null,
+        val ignoreCase: Boolean = false
+    ) : MacroCondition by Not(Contains(
+        contains = notContains,
+        text = text,
+        regex = regex,
+        ignoreCase = ignoreCase
+    ))
 
     @Serializable
     @SerialName("exists")
@@ -249,6 +318,8 @@ sealed interface MacroCondition : MacroEvaluable<Boolean> {
                     NotBlank.serializer(),
                     IsSet.serializer(),
                     IsNotSet.serializer(),
+                    Contains.serializer(),
+                    NotContains.serializer(),
                     Exists.serializer(),
                     NotExists.serializer(),
                     IsDirectory.serializer(),
