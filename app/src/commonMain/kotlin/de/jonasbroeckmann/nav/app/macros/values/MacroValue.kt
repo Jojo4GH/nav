@@ -10,6 +10,8 @@ sealed interface MacroValue {
 
     fun stringify(format: StringificationFormat = Representative): String
 
+    fun deepEquals(other: MacroValue, ignoreCase: Boolean = false): Boolean
+
     @Serializable
     @JvmInline
     value class Text(val value: String = "") : MacroValue, CharSequence by value {
@@ -19,6 +21,10 @@ sealed interface MacroValue {
             Representative -> value
             Json -> "\"$value\""
             Textual -> value
+        }
+
+        override fun deepEquals(other: MacroValue, ignoreCase: Boolean): Boolean {
+            return other is Text && value.equals(other.value, ignoreCase)
         }
 
         companion object : Type<Text> {
@@ -60,6 +66,15 @@ sealed interface MacroValue {
             Textual -> ""
         }
 
+        override fun deepEquals(other: MacroValue, ignoreCase: Boolean): Boolean {
+            if (other !is Dictionary) return false
+            if (value.size != other.value.size) return false
+            return all { (key, value) ->
+                val otherValue = other.get(key, ignoreCase = ignoreCase)
+                value.deepEquals(otherValue, ignoreCase = ignoreCase)
+            }
+        }
+
         operator fun plus(pair: Pair<String, MacroValue>) = Dictionary(value + pair)
 
         operator fun minus(key: String) = Dictionary(value - key)
@@ -70,6 +85,13 @@ sealed interface MacroValue {
             override val default = Dictionary()
 
             override fun safeCast(value: MacroValue) = value as? Dictionary
+
+            private fun <V : Any> Map<String, V>.get(key: String, ignoreCase: Boolean = false): V? {
+                if (!ignoreCase) return this[key]
+                return this[key] ?: firstNotNullOfOrNull {
+                    if (key.equals(it.key, ignoreCase = true)) it.value else null
+                }
+            }
         }
     }
 
@@ -100,6 +122,15 @@ sealed interface MacroValue {
                 postfix = " ]"
             ) { it?.stringify(format) ?: "null" }
             Textual -> ""
+        }
+
+        override fun deepEquals(other: MacroValue, ignoreCase: Boolean): Boolean {
+            if (other !is Array) return false
+            if (value.size != other.value.size) return false
+            forEachIndexed { index, value ->
+                if (!value.deepEquals(other[index], ignoreCase = ignoreCase)) return false
+            }
+            return true
         }
 
         companion object : Type<Array> {
@@ -138,6 +169,13 @@ sealed interface MacroValue {
 
         operator fun Dictionary.get(path: MacroPathExpression) = path.operators.fold<_, MacroValue?>(this) { value, operator ->
             operator.applyTo(value)
+        }
+
+        fun MacroValue?.deepEquals(other: MacroValue?, ignoreCase: Boolean = false): Boolean {
+            if (this == null && other == null) return true
+            if (this == null) return false
+            if (other == null) return false
+            return deepEquals(other, ignoreCase = ignoreCase)
         }
     }
 }
