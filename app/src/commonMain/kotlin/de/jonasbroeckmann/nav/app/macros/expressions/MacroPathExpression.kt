@@ -2,10 +2,12 @@ package de.jonasbroeckmann.nav.app.macros.expressions
 
 import de.jonasbroeckmann.nav.Logger
 import de.jonasbroeckmann.nav.app.macros.ParserException
+import de.jonasbroeckmann.nav.app.macros.context.MacroEvaluationScope
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Array
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Dictionary
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue.Text
+import de.jonasbroeckmann.nav.app.macros.values.MacroValueStorageType
 
 data class MacroPathExpression(
     val operators: List<Operator>
@@ -144,4 +146,20 @@ data class MacroPathExpression(
     companion object {
         operator fun Operator.Key.plus(path: MacroPathExpression) = MacroPathExpression(listOf(this) + path.operators)
     }
+}
+
+interface MacroValueReference {
+    data class Root(
+        val storageType: MacroValueStorageType? = null,
+        val key: String
+    ) : MacroValueReference {
+        context(scope: MacroEvaluationScope)
+        fun get() {
+            scope.
+        }
+    }
+
+    data class DictionaryIndex(
+
+    )
 }

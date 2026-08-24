@@ -7,9 +7,13 @@ import de.jonasbroeckmann.nav.app.macros.expressions.ExpressionString
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.values.InMemoryMacroValueStorage
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
+import de.jonasbroeckmann.nav.app.macros.values.MacroValueStorage
+import de.jonasbroeckmann.nav.app.macros.values.MacroValueStorageType
 import de.jonasbroeckmann.nav.app.state.StateProvider
 
 interface MacroEvaluationScope : FullContext, StateProvider {
+    fun storageForType(type: MacroValueStorageType?): MacroValueStorage
+
     operator fun get(expression: MacroExpression): MacroValue?
 
     companion object {

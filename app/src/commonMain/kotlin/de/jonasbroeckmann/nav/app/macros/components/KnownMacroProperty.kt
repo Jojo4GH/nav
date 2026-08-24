@@ -7,6 +7,7 @@ import de.jonasbroeckmann.nav.app.macros.expressions.MacroExpression
 import de.jonasbroeckmann.nav.app.macros.expressions.MacroPathExpression
 import de.jonasbroeckmann.nav.app.macros.parseToAbsolutePathToDirectoryOrNull
 import de.jonasbroeckmann.nav.app.macros.values.MacroValue
+import de.jonasbroeckmann.nav.app.macros.values.MutableMacroValueStorage
 import de.jonasbroeckmann.nav.app.state.Entry
 import de.jonasbroeckmann.nav.app.state.state
 import de.jonasbroeckmann.nav.app.state.updateState
@@ -113,7 +114,7 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
 
     override fun toString() = templateString.toString()
 
-    companion object {
+    companion object : MutableMacroValueStorage {
         val All by lazy {
             listOf(
                 WorkingDirectory,
@@ -140,6 +141,17 @@ sealed class KnownMacroProperty : MacroProperty<MacroValue.Text> {
             if (expression.storageType !is Property?) return null
             val name = (expression.path.operators.singleOrNull() as? MacroPathExpression.Operator.Key)?.key
             return ByName[name]
+        }
+
+        override fun value(): MacroValue.Dictionary {
+            TODO("Not yet implemented")
+        }
+
+        override fun set(
+            path: MacroPathExpression,
+            newValue: MacroValue?
+        ) {
+            TODO("Not yet implemented")
         }
     }
 }
